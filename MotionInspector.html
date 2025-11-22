@@ -277,6 +277,13 @@
       background: #0a0a0a;
     }
 
+    .timeline-bottom-divider {
+      border-top: 1px solid #4a4a4a;
+      margin-top: 15px;
+      height: 15px;
+      position: relative;
+    }
+
     .timeline-ruler {
       position: sticky;
       top: 0;
@@ -351,12 +358,17 @@
       align-items: center;
       justify-content: space-between;
       white-space: nowrap;
-      overflow: hidden;
+      overflow: visible;
       text-overflow: ellipsis;
       height: 32px;
       border-bottom: 1px solid #1a1a1a;
       position: relative;
       box-sizing: border-box;
+      cursor: grab;
+    }
+
+    .timeline-label:active {
+      cursor: grabbing;
     }
 
     .timeline-label-text {
@@ -364,26 +376,78 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      color: #e0e0e0;
     }
 
-    .timeline-label-drag-handle {
-      visibility: hidden;
-      margin-left: 8px;
-      flex-shrink: 0;
-      color: #666;
-      font-size: 12px;
-      cursor: grab;
-      user-select: none;
-      padding: 2px;
-      line-height: 1;
+    .timeline-label:hover .timeline-label-text {
+      color: #ffffff;
     }
 
-    .timeline-label:hover .timeline-label-drag-handle {
-      visibility: visible;
+    .timeline-label-add-btn {
+      position: absolute;
+      right: 8px;
+      bottom: 0;
+      transform: translateY(50%);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      border: 1px solid #555;
+      color: #999;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 23px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.15s ease;
+      pointer-events: auto;
     }
 
-    .timeline-label-drag-handle:active {
-      cursor: grabbing;
+    .timeline-label-add-btn.visible {
+      display: flex;
+    }
+
+    .timeline-label-add-btn:hover {
+      background: #4a4a4a;
+      border-color: #666;
+      color: #fff;
+    }
+
+    /* Section divider add button */
+    .section-divider-add-btn {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      transform: translate(-50%, -50%);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      border: 1px solid #555;
+      color: #999;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 23px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.15s ease;
+      pointer-events: auto;
+    }
+
+    .section-divider-add-btn.visible {
+      display: flex;
+    }
+
+    .section-divider-add-btn:hover {
+      background: #4a4a4a;
+      border-color: #666;
+      color: #fff;
     }
 
     .timeline-label.dragging {
@@ -1461,9 +1525,11 @@ ${cleanedScript}
         html += `<div class="timeline-label layer-header${dividerClass}"
                       draggable="true"
                       data-drag-type="layer"
-                      data-layer-index="${layerIndex}">
+                      data-layer-index="${layerIndex}"
+                      data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
-          <span class="timeline-label-drag-handle">⋮⋮</span>
+          <button class="timeline-label-add-btn" draggable="false">+</button>
+          ${layerIndex > 0 ? '<button class="section-divider-add-btn" draggable="false">+</button>' : ''}
         </div>`;
 
         // Animation labels for this layer
@@ -1475,11 +1541,16 @@ ${cleanedScript}
                         data-layer-index="${layerIndex}"
                         data-anim-in-layer="${animIndexInLayer}">
             <span class="timeline-label-text">${anim.property}</span>
-            <span class="timeline-label-drag-handle">⋮⋮</span>
+            <button class="timeline-label-add-btn" draggable="false">+</button>
           </div>`;
           animIndex++;
         });
       });
+
+      // Bottom section divider for adding new sections at the end
+      html += `<div class="timeline-bottom-divider">
+        <button class="section-divider-add-btn" draggable="false">+</button>
+      </div>`;
 
       html += `</div>`; // timeline-labels-column
 
@@ -1653,6 +1724,9 @@ ${cleanedScript}
 
       // Setup drag and drop
       setupDragAndDrop();
+
+      // Setup hover zones for add buttons
+      setupAddButtonHoverZones();
     }
 
     // Detect which bars have overflowing text and add fade class
@@ -1694,6 +1768,11 @@ ${cleanedScript}
           label.classList.add('dragging');
           e.dataTransfer.effectAllowed = 'move';
           e.dataTransfer.setData('text/html', label.innerHTML);
+
+          // Hide all add buttons during drag
+          document.querySelectorAll('.timeline-label-add-btn, .section-divider-add-btn').forEach(btn => {
+            btn.classList.remove('visible');
+          });
         });
 
         // Dragend - cleanup
@@ -1854,6 +1933,137 @@ ${cleanedScript}
             l.classList.remove('drag-over-top', 'drag-over-bottom');
           });
         });
+      });
+
+      // Set up + button handlers
+      const addButtons = document.querySelectorAll('.timeline-label-add-btn');
+      addButtons.forEach(btn => {
+        // Prevent drag when clicking the + button
+        btn.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+        });
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          // TODO: Add functionality to insert new rows
+          console.log('Add parameter row button clicked');
+        });
+      });
+
+      // Set up section divider button handlers
+      const sectionDividerButtons = document.querySelectorAll('.section-divider-add-btn');
+      sectionDividerButtons.forEach(btn => {
+        btn.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+        });
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          // TODO: Add functionality to insert new sections
+          console.log('Add section button clicked');
+        });
+      });
+    }
+
+    // Setup hover zones for add buttons
+    function setupAddButtonHoverZones() {
+      const labelsColumn = document.querySelector('.timeline-labels-column');
+      const labels = document.querySelectorAll('.timeline-label');
+      const bottomDivider = document.querySelector('.timeline-bottom-divider');
+
+      if (!labelsColumn) return;
+
+      labelsColumn.addEventListener('mousemove', (e) => {
+        const columnRect = labelsColumn.getBoundingClientRect();
+        const mouseY = e.clientY;
+
+        // Find all buttons and their distances
+        let closestButton = null;
+        let closestDistance = Infinity;
+
+        // Check each label's divider line
+        labels.forEach(label => {
+          const btn = label.querySelector('.timeline-label-add-btn');
+          const sectionBtn = label.querySelector('.section-divider-add-btn');
+          const rect = label.getBoundingClientRect();
+          const halfCellHeight = rect.height / 2;
+
+          // Check regular divider line (at bottom of cell)
+          if (btn) {
+            const dividerY = rect.bottom;
+            const distanceFromDivider = Math.abs(mouseY - dividerY);
+            if (distanceFromDivider <= halfCellHeight) {
+              if (distanceFromDivider < closestDistance) {
+                closestDistance = distanceFromDivider;
+                closestButton = btn;
+              }
+            }
+          }
+
+          // Check section divider line (at top of cell, for elements with has-divider)
+          if (sectionBtn) {
+            const sectionDividerY = rect.top; // Border-top is at element's top edge
+            const distanceFromSectionDivider = Math.abs(mouseY - sectionDividerY);
+            // Use a larger hover zone for section dividers (about 15px total margin-top / 2)
+            if (distanceFromSectionDivider <= 15) {
+              if (distanceFromSectionDivider < closestDistance) {
+                closestDistance = distanceFromSectionDivider;
+                closestButton = sectionBtn;
+              }
+            }
+          }
+        });
+
+        // Check bottom divider
+        if (bottomDivider) {
+          const bottomBtn = bottomDivider.querySelector('.section-divider-add-btn');
+          if (bottomBtn) {
+            const rect = bottomDivider.getBoundingClientRect();
+            const dividerY = rect.top; // Border-top is at element's top edge
+            const distanceFromDivider = Math.abs(mouseY - dividerY);
+            if (distanceFromDivider <= 15) {
+              if (distanceFromDivider < closestDistance) {
+                closestDistance = distanceFromDivider;
+                closestButton = bottomBtn;
+              }
+            }
+          }
+        }
+
+        // Hide all buttons first
+        labels.forEach(label => {
+          const btn = label.querySelector('.timeline-label-add-btn');
+          const sectionBtn = label.querySelector('.section-divider-add-btn');
+          if (btn) btn.classList.remove('visible');
+          if (sectionBtn) sectionBtn.classList.remove('visible');
+        });
+        if (bottomDivider) {
+          const bottomBtn = bottomDivider.querySelector('.section-divider-add-btn');
+          if (bottomBtn) bottomBtn.classList.remove('visible');
+        }
+
+        // Show only the closest button
+        if (closestButton) {
+          closestButton.classList.add('visible');
+        }
+      });
+
+      labelsColumn.addEventListener('mouseleave', () => {
+        // Hide all buttons when mouse leaves the column
+        labels.forEach(label => {
+          const btn = label.querySelector('.timeline-label-add-btn');
+          const sectionBtn = label.querySelector('.section-divider-add-btn');
+          if (btn) btn.classList.remove('visible');
+          if (sectionBtn) sectionBtn.classList.remove('visible');
+        });
+
+        // Hide bottom divider button
+        if (bottomDivider) {
+          const bottomBtn = bottomDivider.querySelector('.section-divider-add-btn');
+          if (bottomBtn) bottomBtn.classList.remove('visible');
+        }
       });
     }
 
