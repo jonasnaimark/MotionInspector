@@ -525,7 +525,8 @@
       z-index: 10;
     }
 
-    .timeline-bar:hover {
+    .timeline-bar:hover,
+    .timeline-bar.dragging-resize {
       filter: brightness(1.2);
       z-index: 1;
     }
@@ -548,6 +549,24 @@
     .timeline-bar-text {
       position: relative;
       z-index: 5;
+    }
+
+    /* Resize handles */
+    .timeline-bar-resize-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      cursor: ew-resize;
+      z-index: 15;
+    }
+
+    .timeline-bar-resize-handle.left {
+      left: 0;
+    }
+
+    .timeline-bar-resize-handle.right {
+      right: 0;
     }
 
     /* Text fade overlays - match each bar's background color */
@@ -1671,8 +1690,11 @@ ${cleanedScript}
           html += `
             <div class="timeline-bar ${colorClass}${springClass}"
                  style="left: ${startPercent}%; width: ${widthPercent}%;"
-                 data-anim-index="${animIndex}">
+                 data-anim-index="${animIndex}"
+                 data-is-spring="${anim.easing.type === 'spring'}">
               <span class="timeline-bar-text">${description}</span>
+              <div class="timeline-bar-resize-handle left" data-handle="left"></div>
+              ${anim.easing.type !== 'spring' ? '<div class="timeline-bar-resize-handle right" data-handle="right"></div>' : ''}
             </div>
           `;
           html += `</div>`;
@@ -1722,6 +1744,9 @@ ${cleanedScript}
           }
         });
       });
+
+      // Setup resize handles
+      setupResizeHandles();
 
       updatePlayhead();
 
@@ -2194,6 +2219,130 @@ ${cleanedScript}
           const bottomBtn = bottomDivider.querySelector('.section-divider-add-btn');
           if (bottomBtn) bottomBtn.classList.remove('visible');
         }
+      });
+    }
+
+    // Setup resize handles for timeline bars
+    function setupResizeHandles() {
+      const handles = document.querySelectorAll('.timeline-bar-resize-handle');
+
+      handles.forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const bar = handle.closest('.timeline-bar');
+          const animIndex = parseInt(bar.dataset.animIndex);
+          const handleType = handle.dataset.handle; // 'left' or 'right'
+          const isSpring = bar.dataset.isSpring === 'true';
+
+          // Find the animation in specData
+          let currentAnimIndex = 0;
+          let targetLayer = null;
+          let targetAnim = null;
+          let layerIndex = -1;
+          let animInLayerIndex = -1;
+
+          for (let i = 0; i < specData.layers.length; i++) {
+            const layer = specData.layers[i];
+            for (let j = 0; j < layer.animations.length; j++) {
+              if (currentAnimIndex === animIndex) {
+                targetLayer = layer;
+                targetAnim = layer.animations[j];
+                layerIndex = i;
+                animInLayerIndex = j;
+                break;
+              }
+              currentAnimIndex++;
+            }
+            if (targetAnim) break;
+          }
+
+          if (!targetAnim) return;
+
+          const startDelay = targetAnim.timing.delay;
+          const startDuration = targetAnim.timing.duration;
+          const startX = e.clientX;
+          const timelineGrid = document.querySelector('.timeline-grid-lines').parentElement;
+          const gridRect = timelineGrid.getBoundingClientRect();
+          const specDuration = specData.workArea.duration;
+
+          // Add dragging class to maintain hover state
+          bar.classList.add('dragging-resize');
+
+          // Function to snap to 25ms increments
+          function snapToIncrement(value) {
+            return Math.round(value / 25) * 25;
+          }
+
+          function onMouseMove(moveEvent) {
+            const deltaX = moveEvent.clientX - startX;
+            const deltaTime = (deltaX / gridRect.width) * specDuration;
+
+            let newDelay, newDuration;
+
+            if (handleType === 'left') {
+              // Adjust delay (start time)
+              newDelay = snapToIncrement(startDelay + deltaTime);
+              newDelay = Math.max(0, newDelay); // Can't go below 0
+
+              // Adjust duration to compensate (keep end time the same)
+              newDuration = startDelay + startDuration - newDelay;
+              newDuration = Math.max(25, newDuration); // Minimum 25ms duration
+
+              // Update animation data
+              targetAnim.timing.delay = newDelay;
+              targetAnim.timing.duration = newDuration;
+            } else {
+              // Adjust duration (end time)
+              newDelay = targetAnim.timing.delay;
+              newDuration = snapToIncrement(startDuration + deltaTime);
+              newDuration = Math.max(25, newDuration); // Minimum 25ms duration
+
+              // Make sure it doesn't exceed spec duration
+              const maxDuration = specDuration - targetAnim.timing.delay;
+              newDuration = Math.min(newDuration, maxDuration);
+
+              // Update animation data
+              targetAnim.timing.duration = newDuration;
+            }
+
+            // Update bar position and width directly without full re-render
+            const startPercent = (newDelay / specDuration) * 100;
+            const widthPercent = (newDuration / specDuration) * 100;
+            bar.style.left = `${startPercent}%`;
+            bar.style.width = `${widthPercent}%`;
+
+            // Update info box if this animation is selected
+            if (selectedAnimation === animIndex) {
+              showAnimationDetails(animIndex);
+            }
+          }
+
+          function onMouseUp() {
+            // Remove dragging class
+            bar.classList.remove('dragging-resize');
+
+            // Do a full re-render to ensure everything is consistent
+            renderTimeline();
+
+            // Re-apply selection if needed
+            if (selectedAnimation === animIndex) {
+              setTimeout(() => {
+                const finalBar = document.querySelector(`.timeline-bar[data-anim-index="${animIndex}"]`);
+                const finalLabel = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
+                if (finalBar) finalBar.classList.add('selected');
+                if (finalLabel) finalLabel.classList.add('selected');
+              }, 0);
+            }
+
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+          }
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
       });
     }
 
