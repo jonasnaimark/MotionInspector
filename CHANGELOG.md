@@ -37,6 +37,15 @@ All notable changes to Motion Inspector will be documented in this file.
 - **Bottom section divider line**: Extends across entire timeline width
   - Matches styling of other section dividers
   - Provides visual consistency
+- **Color picker for parameters**: Clickable dot in info box title opens color selection panel
+  - 8 color options: blue, teal, green, purple, pink, red, orange, dark grey
+  - Colors sorted from cool to warm
+  - Popover panel with darker background (#1a1a1a)
+  - Caret points to color dot below
+  - Selected color shows outline stroke
+  - Custom colors apply to timeline bars and info box border
+  - Colors stored in animation's customColor property
+  - Spring animations maintain gradient fade with custom colors
 
 ### Changed
 - **Drag indicator visibility**: Blue hint line now spans full timeline width
