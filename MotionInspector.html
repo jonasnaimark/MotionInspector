@@ -3019,15 +3019,15 @@ ${cleanedScript}
       const barColor = anim.customColor || defaultBarColor;
       const brightColor = brightenColor(barColor);
 
-      // Define available colors for picker (sorted warm to cool)
+      // Define available colors for picker (sorted cool to warm)
       const colorOptions = [
-        '#ae4715', // orange (warmest)
-        '#a89512', // yellow
-        '#a82968', // pink
-        '#5a1778', // purple
-        '#4c7a4c', // green
+        '#045c7d', // blue (coolest)
         '#045c45', // teal
-        '#045c7d'  // blue (coolest)
+        '#4c7a4c', // green
+        '#5a1778', // purple
+        '#a82968', // pink
+        '#887610', // yellow (darker)
+        '#ae4715'  // orange (warmest)
       ];
 
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
