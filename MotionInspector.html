@@ -321,7 +321,7 @@
 
     .color-picker-grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(7, 1fr);
       gap: 8px;
     }
 
@@ -3019,14 +3019,15 @@ ${cleanedScript}
       const barColor = anim.customColor || defaultBarColor;
       const brightColor = brightenColor(barColor);
 
-      // Define available colors for picker (dark colors only)
+      // Define available colors for picker (sorted warm to cool)
       const colorOptions = [
-        '#045c45', // teal
+        '#ae4715', // orange (warmest)
+        '#a89512', // yellow
         '#a82968', // pink
-        '#045c7d', // blue
-        '#ae4715', // orange
         '#5a1778', // purple
-        '#4c7a4c'  // green
+        '#4c7a4c', // green
+        '#045c45', // teal
+        '#045c7d'  // blue (coolest)
       ];
 
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
