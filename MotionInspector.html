@@ -2028,8 +2028,71 @@ ${cleanedScript}
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           e.preventDefault();
-          // TODO: Add functionality to insert new sections
-          console.log('Add section button clicked');
+
+          // Determine insert position
+          let insertIndex;
+          const parentLabel = btn.closest('.timeline-label');
+          const isBottomDivider = btn.closest('.timeline-bottom-divider');
+
+          if (isBottomDivider) {
+            // Bottom divider - add to end
+            insertIndex = specData.layers.length;
+          } else if (parentLabel) {
+            // Section header button - insert before this layer
+            const layerIndex = parseInt(parentLabel.dataset.layerIndex);
+            insertIndex = layerIndex;
+          } else {
+            return;
+          }
+
+          // Create new layer with one default animation
+          const newLayer = {
+            layerName: "New section",
+            animations: [
+              {
+                property: "Add parameter",
+                description: "Add description",
+                timing: {
+                  delay: 0,
+                  duration: 300
+                },
+                easing: {
+                  type: "-",
+                  cubicBezier: ""
+                },
+                values: {
+                  formatted: {
+                    startValue: "-",
+                    endValue: "-"
+                  }
+                }
+              }
+            ]
+          };
+
+          // Insert the new layer
+          specData.layers.splice(insertIndex, 0, newLayer);
+
+          // Re-render timeline
+          renderTimeline();
+
+          // Calculate the global animation index for the newly added parameter
+          let globalAnimIndex = 0;
+          for (let i = 0; i < insertIndex; i++) {
+            globalAnimIndex += specData.layers[i].animations.length;
+          }
+          // The new parameter is at index 0 in the new layer
+
+          // Show the info box for the newly added animation
+          setTimeout(() => {
+            showAnimationDetails(globalAnimIndex);
+
+            // Add selected class to the new bar and label
+            const newBar = document.querySelector(`.timeline-bar[data-anim-index="${globalAnimIndex}"]`);
+            const newLabel = document.querySelector(`.timeline-label.indented[data-anim-index="${globalAnimIndex}"]`);
+            if (newBar) newBar.classList.add('selected');
+            if (newLabel) newLabel.classList.add('selected');
+          }, 0);
         });
       });
     }
