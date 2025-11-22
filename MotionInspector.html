@@ -126,6 +126,51 @@
       display: block;
     }
 
+    .video-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .video-empty-state:hover {
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .video-empty-state.hidden {
+      display: none;
+    }
+
+    .video-empty-state-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .video-empty-state:hover .video-empty-state-icon {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .video-empty-state-text {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 500;
+    }
 
     .playback-controls {
       display: none;
@@ -851,6 +896,7 @@
       font-size: 16px;
       cursor: pointer;
       padding: 0;
+      padding-top: 1px;
       width: 28px;
       height: 28px;
       display: flex;
@@ -858,7 +904,6 @@
       justify-content: center;
       border-radius: 50%;
       transition: all 0.2s;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
     .detail-panel-close:hover {
@@ -1046,9 +1091,6 @@
       <h1>Motion Inspector</h1>
       <div class="controls">
         <input type="file" id="videoInput" accept="video/*">
-        <button class="btn btn-secondary" onclick="document.getElementById('videoInput').click()">
-          📁 Add Video
-        </button>
         <button class="btn btn-secondary" onclick="pasteSpec()">
           📋 Paste Spec
         </button>
@@ -1060,6 +1102,10 @@
 
     <div class="main-content">
       <div class="video-section">
+        <div id="videoEmptyState" class="video-empty-state" onclick="document.getElementById('videoInput').click()">
+          <div class="video-empty-state-icon">+</div>
+          <div class="video-empty-state-text">Add Video</div>
+        </div>
         <video id="videoPlayer"></video>
       </div>
 
@@ -1113,6 +1159,13 @@
         uploadedVideoFile = file; // Store for export
         const url = URL.createObjectURL(file);
         video.src = url;
+
+        // Hide empty state when video is loaded
+        const emptyState = document.getElementById('videoEmptyState');
+        if (emptyState) {
+          emptyState.classList.add('hidden');
+        }
+
         video.addEventListener('loadedmetadata', () => {
           videoDuration = video.duration * 1000; // Convert to ms
           // Ensure video starts at exactly 0
@@ -3049,7 +3102,7 @@ ${cleanedScript}
 
       if (!isExportMode) {
         html += `<div class="detail-panel-actions">`;
-        html += `<button class="detail-panel-action-btn delete" onclick="deleteAnimation(${animIndex})">🗑️&nbsp; Delete</button>`;
+        html += `<button class="detail-panel-action-btn delete" onclick="deleteAnimation(${animIndex})"><span style="font-size: 11px;">🗑️</span>&nbsp; Delete</button>`;
         html += `<span class="detail-panel-separator">•</span>`;
         html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
         html += `</div>`;
