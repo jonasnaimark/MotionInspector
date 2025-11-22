@@ -310,7 +310,7 @@
       content: '';
       position: absolute;
       bottom: -6px;
-      left: 12px;
+      left: 8px;
       width: 12px;
       height: 12px;
       background: #2a2a2a;
@@ -3019,20 +3019,20 @@ ${cleanedScript}
       const barColor = anim.customColor || defaultBarColor;
       const brightColor = brightenColor(barColor);
 
-      // Define available colors for picker
+      // Define available colors for picker (using bright hover versions)
       const colorOptions = [
-        '#045c45', // teal
-        '#a82968', // pink
-        '#682285', // purple
-        '#045c7d', // blue
-        '#ae4715', // orange
-        '#5a1778', // dark purple
-        '#044c7d', // darker blue
-        '#c94c4c', // red
-        '#4c7a4c', // green
-        '#8b7d3a', // yellow-green
-        '#3a5f8b', // steel blue
-        '#7d4c8b'  // violet
+        '#056e53', // teal (bright)
+        '#ca317d', // pink (bright)
+        '#7d29a0', // purple (bright)
+        '#056e96', // blue (bright)
+        '#d15519', // orange (bright)
+        '#6c1c90', // dark purple (bright)
+        '#055b96', // darker blue (bright)
+        '#f15b5b', // red (bright)
+        '#5b925b', // green (bright)
+        '#a79646', // yellow-green (bright)
+        '#4672a7', // steel blue (bright)
+        '#965ba7'  // violet (bright)
       ];
 
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
