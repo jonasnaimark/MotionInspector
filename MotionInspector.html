@@ -1237,6 +1237,7 @@ ${cleanedScript}
     // Get color class for property
     function getPropertyColorClass(property) {
       const prop = property.toLowerCase();
+      if (prop.includes('add parameter')) return 'bar-scale'; // Pink color for new parameters
       if (prop.includes('opacity')) return 'bar-opacity';
       if (prop.includes('scale')) return 'bar-scale';
       if (prop.includes('rotation') || prop.includes('rotate')) return 'bar-rotation';
@@ -1347,9 +1348,14 @@ ${cleanedScript}
     }
 
     // Get natural language description of animation
-    function getAnimationDescription(property, values, fitToShape) {
+    function getAnimationDescription(property, values, fitToShape, customDescription) {
       const prop = property.toLowerCase();
       let description;
+
+      // Check for custom description first
+      if (customDescription) {
+        return customDescription;
+      }
 
       // Handle Fit to Shape animations
       if (fitToShape) {
@@ -1645,13 +1651,13 @@ ${cleanedScript}
             const parentInfo = getParentLayerInfo(anim.fitToShape.containerLayerName);
             startPercent = (parentInfo.delay / specData.workArea.duration) * 100;
             widthPercent = (parentInfo.duration / specData.workArea.duration) * 100;
-            description = getAnimationDescription(anim.property, anim.values, anim.fitToShape);
+            description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
             springClass = parentInfo.hasSpring ? ' bar-spring' : '';
           } else {
             // Normal animation - use its own timing
             startPercent = (anim.timing.delay / specData.workArea.duration) * 100;
             widthPercent = (anim.timing.duration / specData.workArea.duration) * 100;
-            description = getAnimationDescription(anim.property, anim.values);
+            description = getAnimationDescription(anim.property, anim.values, null, anim.description);
             springClass = anim.easing.type === 'spring' ? ' bar-spring' : '';
           }
 
@@ -1946,8 +1952,69 @@ ${cleanedScript}
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           e.preventDefault();
-          // TODO: Add functionality to insert new rows
-          console.log('Add parameter row button clicked');
+
+          // Get the parent label to find which layer and position
+          const label = btn.closest('.timeline-label');
+          if (!label) return;
+
+          const layerIndex = parseInt(label.dataset.layerIndex);
+          const layer = specData.layers[layerIndex];
+          if (!layer) return;
+
+          // Determine insert position
+          let insertIndex;
+          if (label.classList.contains('layer-header')) {
+            // If clicking on header, add to end of layer
+            insertIndex = layer.animations.length;
+          } else {
+            // If clicking on animation row, add after it
+            const animInLayer = parseInt(label.dataset.animInLayer);
+            insertIndex = animInLayer + 1;
+          }
+
+          // Create new animation with default values
+          const newAnimation = {
+            property: "Add parameter",
+            description: "Add description",
+            timing: {
+              delay: 0,
+              duration: 300
+            },
+            easing: {
+              type: "-",
+              cubicBezier: ""
+            },
+            values: {
+              formatted: {
+                startValue: "-",
+                endValue: "-"
+              }
+            }
+          };
+
+          // Insert the new animation
+          layer.animations.splice(insertIndex, 0, newAnimation);
+
+          // Re-render timeline
+          renderTimeline();
+
+          // Calculate the global animation index for the newly added animation
+          let globalAnimIndex = 0;
+          for (let i = 0; i < layerIndex; i++) {
+            globalAnimIndex += specData.layers[i].animations.length;
+          }
+          globalAnimIndex += insertIndex;
+
+          // Show the info box for the newly added animation
+          setTimeout(() => {
+            showAnimationDetails(globalAnimIndex);
+
+            // Add selected class to the new bar and label
+            const newBar = document.querySelector(`.timeline-bar[data-anim-index="${globalAnimIndex}"]`);
+            const newLabel = document.querySelector(`.timeline-label.indented[data-anim-index="${globalAnimIndex}"]`);
+            if (newBar) newBar.classList.add('selected');
+            if (newLabel) newLabel.classList.add('selected');
+          }, 0);
         });
       });
 
@@ -2248,7 +2315,7 @@ ${cleanedScript}
       if (!anim) return;
 
       const detailPanel = document.getElementById('detailPanel');
-      const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape);
+      const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
 
       // Get the color for this animation type
       const colorClass = getPropertyColorClass(anim.property);
