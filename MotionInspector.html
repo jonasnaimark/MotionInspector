@@ -2323,17 +2323,15 @@ ${cleanedScript}
             // Remove dragging class
             bar.classList.remove('dragging-resize');
 
+            // Store whether this animation was selected before re-render
+            const wasSelected = selectedAnimation === animIndex;
+
             // Do a full re-render to ensure everything is consistent
             renderTimeline();
 
-            // Re-apply selection if needed
-            if (selectedAnimation === animIndex) {
-              setTimeout(() => {
-                const finalBar = document.querySelector(`.timeline-bar[data-anim-index="${animIndex}"]`);
-                const finalLabel = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
-                if (finalBar) finalBar.classList.add('selected');
-                if (finalLabel) finalLabel.classList.add('selected');
-              }, 0);
+            // Restore info box if it was showing (renderTimeline clears the detail panel)
+            if (wasSelected) {
+              showAnimationDetails(animIndex);
             }
 
             document.removeEventListener('mousemove', onMouseMove);
