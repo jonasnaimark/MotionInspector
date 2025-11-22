@@ -233,6 +233,48 @@
       font-weight: 500;
     }
 
+    /* Zoom controls */
+    .zoom-controls {
+      position: absolute;
+      top: 8px;
+      right: 16px;
+      display: flex;
+      background: #2a2a2a;
+      border-radius: 6px;
+      border: 1px solid #444;
+      overflow: hidden;
+      z-index: 101;
+    }
+
+    .zoom-btn {
+      width: 28px;
+      height: 24px;
+      background: transparent;
+      border: none;
+      color: #aaa;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .zoom-btn:hover:not(:disabled) {
+      background: #3a3a3a;
+      color: #fff;
+    }
+
+    .zoom-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .zoom-btn:first-child {
+      border-right: 1px solid #444;
+    }
+
     /* DevTools-style timeline */
     .timeline-container {
       display: grid;
@@ -965,6 +1007,7 @@
     const isExportMode = false;
     let animationFrameId = null;
     let lastDraggedSpecTimeMs = null;
+    let viewDuration = null; // Current zoom level (visible duration in ms)
     let lastDraggedVideoTime = null;
     let justFinishedDragging = false;
     let pendingVideoSeek = null;
@@ -1037,6 +1080,38 @@
       if (selectedBtn) {
         selectedBtn.classList.add('selected');
       }
+    }
+
+    // Zoom controls
+    function zoomIn() {
+      if (!specData) return;
+      const specDuration = specData.workArea.duration;
+      const currentViewDuration = viewDuration || specDuration;
+
+      // Calculate new duration and round to nearest 100ms
+      let newViewDuration = Math.max(100, currentViewDuration - 100);
+      newViewDuration = Math.round(newViewDuration / 100) * 100;
+
+      viewDuration = newViewDuration;
+      renderTimeline();
+    }
+
+    function zoomOut() {
+      if (!specData) return;
+      const specDuration = specData.workArea.duration;
+      const currentViewDuration = viewDuration || specDuration;
+
+      // Calculate new duration and round to nearest 100ms
+      let newViewDuration = Math.min(specDuration, currentViewDuration + 100);
+      newViewDuration = Math.round(newViewDuration / 100) * 100;
+
+      // Don't exceed the spec duration
+      if (newViewDuration > specDuration) {
+        newViewDuration = specDuration;
+      }
+
+      viewDuration = newViewDuration;
+      renderTimeline();
     }
 
     // Smooth playhead animation using RAF
@@ -1586,13 +1661,24 @@ ${cleanedScript}
       // Right column - timeline content
       html += `<div class="timeline-content-column">`;
 
-      // Timeline ruler - use spec time for labels and positioning
+      // Zoom controls
       const specDuration = specData.workArea.duration;
-      const timeIntervals = getNiceTimeIntervals(specDuration);
+      // Initialize viewDuration to rounded spec duration if not set
+      if (!viewDuration) {
+        viewDuration = Math.round(specDuration / 100) * 100;
+      }
+      const currentViewDuration = viewDuration;
+      html += `<div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomOut()" ${currentViewDuration >= specDuration ? 'disabled' : ''}>−</button>
+        <button class="zoom-btn" onclick="zoomIn()" ${currentViewDuration <= 100 ? 'disabled' : ''}>+</button>
+      </div>`;
+
+      // Timeline ruler - use view duration for rendering
+      const timeIntervals = getNiceTimeIntervals(currentViewDuration);
       const interval = timeIntervals.interval;
       const ticks = [];
 
-      for (let time = 0; time <= specDuration; time += interval) {
+      for (let time = 0; time <= currentViewDuration; time += interval) {
         ticks.push(time);
       }
       // Don't add final tick at exact duration - we'll stop before it
@@ -1601,10 +1687,10 @@ ${cleanedScript}
       html += `<div style="position: absolute; top: 0; left: 0; right: 0; height: 100%;">`;
       ticks.forEach((time, index) => {
         // Skip the last tick if it's at the end
-        if (time >= specDuration) return;
+        if (time >= currentViewDuration) return;
 
-        // Position based on spec time percentage, centered over grid line
-        const position = (time / specDuration) * 100;
+        // Position based on view time percentage, centered over grid line
+        const position = (time / currentViewDuration) * 100;
         html += `<div class="timeline-tick" style="position: absolute; left: ${position}%; height: 100%; transform: translateX(-50%);">${Math.round(time)}ms</div>`;
       });
       html += `</div></div>`;
@@ -1615,15 +1701,15 @@ ${cleanedScript}
 
       // Main grid lines (taller - extend into ruler)
       ticks.forEach(time => {
-        if (time >= specDuration) return;
-        const position = (time / specDuration) * 100;
+        if (time >= currentViewDuration) return;
+        const position = (time / currentViewDuration) * 100;
         html += `<div style="position: absolute; left: ${position}%; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, 0.12);"></div>`;
       });
 
       // Subtle halfway markers between main grid lines (normal height - start below ruler)
       for (let i = 0; i < ticks.length - 1; i++) {
         const midTime = (ticks[i] + ticks[i + 1]) / 2;
-        const position = (midTime / specDuration) * 100;
+        const position = (midTime / currentViewDuration) * 100;
         html += `<div style="position: absolute; left: ${position}%; top: 8px; bottom: 0; width: 1px; background: rgba(255, 255, 255, 0.06);"></div>`;
       }
 
@@ -1672,14 +1758,14 @@ ${cleanedScript}
           // Handle Fit to Shape animations - use parent layer's timing
           if (anim.isFitToShape && anim.fitToShape) {
             const parentInfo = getParentLayerInfo(anim.fitToShape.containerLayerName);
-            startPercent = (parentInfo.delay / specData.workArea.duration) * 100;
-            widthPercent = (parentInfo.duration / specData.workArea.duration) * 100;
+            startPercent = (parentInfo.delay / currentViewDuration) * 100;
+            widthPercent = (parentInfo.duration / currentViewDuration) * 100;
             description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
             springClass = parentInfo.hasSpring ? ' bar-spring' : '';
           } else {
             // Normal animation - use its own timing
-            startPercent = (anim.timing.delay / specData.workArea.duration) * 100;
-            widthPercent = (anim.timing.duration / specData.workArea.duration) * 100;
+            startPercent = (anim.timing.delay / currentViewDuration) * 100;
+            widthPercent = (anim.timing.duration / currentViewDuration) * 100;
             description = getAnimationDescription(anim.property, anim.values, null, anim.description);
             springClass = anim.easing.type === 'spring' ? ' bar-spring' : '';
           }
@@ -1706,6 +1792,9 @@ ${cleanedScript}
           animIndex++;
         });
       });
+
+      // Bottom divider track to match left column
+      html += `<div class="timeline-track" style="border-top: 1px solid #4a4a4a; margin-top: 15px; height: 15px;"></div>`;
 
       html += `<div class="playhead" id="playhead"><div class="playhead-handle" id="playheadTimeDisplay">0ms</div></div>`;
       html += `</div>`; // position relative wrapper
@@ -2291,6 +2380,7 @@ ${cleanedScript}
           const timelineGrid = document.querySelector('.timeline-grid-lines').parentElement;
           const gridRect = timelineGrid.getBoundingClientRect();
           const specDuration = specData.workArea.duration;
+          const currentViewDuration = viewDuration || specDuration;
 
           // Add dragging class to maintain hover state
           bar.classList.add('dragging-resize');
@@ -2302,7 +2392,7 @@ ${cleanedScript}
 
           function onMouseMove(moveEvent) {
             const deltaX = moveEvent.clientX - startX;
-            const deltaTime = (deltaX / gridRect.width) * specDuration;
+            const deltaTime = (deltaX / gridRect.width) * currentViewDuration;
 
             let newDelay, newDuration;
 
@@ -2329,8 +2419,8 @@ ${cleanedScript}
             }
 
             // Update bar position and width directly without full re-render
-            const startPercent = (newDelay / specDuration) * 100;
-            const widthPercent = (newDuration / specDuration) * 100;
+            const startPercent = (newDelay / currentViewDuration) * 100;
+            const widthPercent = (newDuration / currentViewDuration) * 100;
             bar.style.left = `${startPercent}%`;
             bar.style.width = `${widthPercent}%`;
 
@@ -2407,6 +2497,7 @@ ${cleanedScript}
           const timelineGrid = document.querySelector('.timeline-grid-lines').parentElement;
           const gridRect = timelineGrid.getBoundingClientRect();
           const specDuration = specData.workArea.duration;
+          const currentViewDuration = viewDuration || specDuration;
 
           function snapToIncrement(value) {
             return Math.round(value / 25) * 25;
@@ -2442,7 +2533,7 @@ ${cleanedScript}
 
             if (dragDirection === 'horizontal') {
               // Horizontal drag - move the bar's position in time
-              const deltaTime = (deltaX / gridRect.width) * specDuration;
+              const deltaTime = (deltaX / gridRect.width) * currentViewDuration;
               let newDelay = snapToIncrement(startDelay + deltaTime);
               newDelay = Math.max(0, newDelay);
 
@@ -2450,7 +2541,7 @@ ${cleanedScript}
               targetAnim.timing.delay = newDelay;
 
               // Update bar position directly
-              const startPercent = (newDelay / specDuration) * 100;
+              const startPercent = (newDelay / currentViewDuration) * 100;
               bar.style.left = `${startPercent}%`;
 
               // Update info box if selected
