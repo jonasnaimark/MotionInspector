@@ -322,6 +322,7 @@
     .color-picker-grid {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(2, 1fr);
       gap: 8px;
     }
 
@@ -3019,20 +3020,22 @@ ${cleanedScript}
       const barColor = anim.customColor || defaultBarColor;
       const brightColor = brightenColor(barColor);
 
-      // Define available colors for picker (using bright hover versions)
+      // Define available colors for picker (2 rows: dark on top, bright on bottom, grouped by column)
       const colorOptions = [
+        // Top row - dark colors
+        '#045c45', // teal (dark)
+        '#a82968', // pink (dark)
+        '#045c7d', // blue (dark)
+        '#ae4715', // orange (dark)
+        '#5a1778', // purple (dark)
+        '#4c7a4c', // green (dark)
+        // Bottom row - bright colors
         '#056e53', // teal (bright)
         '#ca317d', // pink (bright)
-        '#7d29a0', // purple (bright)
         '#056e96', // blue (bright)
         '#d15519', // orange (bright)
-        '#6c1c90', // dark purple (bright)
-        '#055b96', // darker blue (bright)
-        '#f15b5b', // red (bright)
-        '#5b925b', // green (bright)
-        '#a79646', // yellow-green (bright)
-        '#4672a7', // steel blue (bright)
-        '#965ba7'  // violet (bright)
+        '#6c1c90', // purple (bright)
+        '#5b925b'  // green (bright)
       ];
 
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
