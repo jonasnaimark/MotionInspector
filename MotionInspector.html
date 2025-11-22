@@ -318,16 +318,14 @@
       background: transparent;
       font-weight: 600;
       border-bottom: 1px solid #1a1a1a;
-      min-height: 32px;
-      max-height: 32px;
+      height: 32px;
     }
 
     .timeline-track.layer-header {
       background: transparent;
       font-weight: 600;
       border-bottom: 1px solid #2a2a2a;
-      min-height: 32px;
-      max-height: 32px;
+      height: 32px;
     }
 
     .timeline-label.layer-header.has-divider,
@@ -351,11 +349,65 @@
       color: #e0e0e0;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      min-height: 32px;
+      height: 32px;
       border-bottom: 1px solid #1a1a1a;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .timeline-label-text {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .timeline-label-drag-handle {
+      visibility: hidden;
+      margin-left: 8px;
+      flex-shrink: 0;
+      color: #666;
+      font-size: 12px;
+      cursor: grab;
+      user-select: none;
+      padding: 2px;
+      line-height: 1;
+    }
+
+    .timeline-label:hover .timeline-label-drag-handle {
+      visibility: visible;
+    }
+
+    .timeline-label-drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .timeline-label.dragging {
+      opacity: 0.5;
+    }
+
+    .timeline-label.drag-over-top::before,
+    .timeline-label.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4a90e2;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .timeline-label.drag-over-top::before {
+      top: -1px;
+    }
+
+    .timeline-label.drag-over-bottom::after {
+      bottom: -1px;
     }
 
     .timeline-label.indented {
@@ -363,15 +415,21 @@
       color: #b0b0b0;
     }
 
+    .timeline-label.indented.selected {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
     .timeline-track {
       position: relative;
-      min-height: 32px;
+      height: 32px;
       border-bottom: 1px solid #2a2a2a;
       display: flex;
       align-items: center;
       padding-right: 80px;
       margin-right: -80px;
       overflow: hidden;
+      box-sizing: border-box;
     }
 
     .timeline-bar {
@@ -587,24 +645,94 @@
     }
 
     .detail-panel-close {
-      background: none;
-      border: none;
-      color: #999;
-      font-size: 20px;
+      background: #333;
+      border: 1px solid #555;
+      color: #e0e0e0;
+      font-size: 16px;
       cursor: pointer;
       padding: 0;
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 50%;
       transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
     .detail-panel-close:hover {
+      background: #444;
+      border-color: #666;
+    }
+
+    .detail-panel-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .detail-panel-action-btn {
       background: #333;
+      border: 1px solid #555;
+      color: #e0e0e0;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 6px 12px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      gap: 4px;
+    }
+
+    .detail-panel-action-btn:hover {
+      background: #444;
+      border-color: #666;
+    }
+
+    .detail-panel-action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .detail-panel-action-btn:disabled:hover {
+      background: #333;
+      border-color: #555;
+    }
+
+    .detail-panel-action-btn .arrow {
+      font-size: 10px;
+    }
+
+    .detail-panel-action-btn.delete {
+      background: #333;
+      border-color: #664444;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 10px;
+      color: #e0e0e0;
+    }
+
+    .detail-panel-action-btn.delete:hover {
+      background: #444;
+      border-color: #775555;
       color: #ffffff;
+    }
+
+    .detail-panel-action-btn.delete:disabled:hover {
+      background: #333;
+      border-color: #664444;
+      color: #e0e0e0;
+    }
+
+    .detail-panel-separator {
+      color: #666;
+      font-size: 12px;
+      margin: 0 4px;
     }
 
     .detail-description {
@@ -747,6 +875,7 @@
     let videoDuration = 0;
     let isDraggingPlayhead = false;
     let selectedAnimation = null;
+    const isExportMode = false;
     let animationFrameId = null;
     let lastDraggedSpecTimeMs = null;
     let lastDraggedVideoTime = null;
@@ -938,7 +1067,8 @@
       const cleanedScript = scriptContent
         .replace(/\/\/ Get the base HTML template for export[\s\S]*?^    }\s*\n/m, '')
         .replace(/\/\/ Export everything as a zip file[\s\S]*?^    }\s*\n/m, '')
-        .replace(/let uploadedVideoFile = null;\s*\n/g, '');
+        .replace(/let uploadedVideoFile = null;\s*\n/g, '')
+        .replace(/const isExportMode = false;/g, 'const isExportMode = true;');
 
       return `<!DOCTYPE html>
 <html lang="en">
@@ -1172,13 +1302,47 @@ ${cleanedScript}
         const changeValue = Array.isArray(change) ? change[0] : change;
         const absChange = Math.abs(changeValue);
 
-        if (prop.includes('x position')) {
+        // Handle generic "Position" property (not X/Y Position)
+        if (prop === 'position' && Array.isArray(change) && values.animatingAxes) {
+          const xChange = change[0];
+          const yChange = change[1];
+
+          if (values.animatingAxes.both) {
+            const xDir = xChange < 0 ? 'left' : 'right';
+            const yDir = yChange < 0 ? 'up' : 'down';
+            description = `slides ${xDir} ${Math.round(Math.abs(xChange))}px and ${yDir} ${Math.round(Math.abs(yChange))}px`;
+          } else if (values.animatingAxes.x) {
+            const direction = xChange < 0 ? 'left' : 'right';
+            description = `slides ${direction} ${Math.round(Math.abs(xChange))}px`;
+          } else if (values.animatingAxes.y) {
+            const direction = yChange < 0 ? 'up' : 'down';
+            description = `slides ${direction} ${Math.round(Math.abs(yChange))}px`;
+          } else {
+            description = property;
+          }
+        }
+        else if (prop.includes('x position')) {
           const direction = changeValue < 0 ? 'left' : 'right';
           description = `slides ${direction} ${Math.round(absChange)}px`;
         }
         else if (prop.includes('y position')) {
           const direction = changeValue < 0 ? 'up' : 'down';
           description = `slides ${direction} ${Math.round(absChange)}px`;
+        }
+        // Handle generic "Size" property
+        else if (prop === 'size' && Array.isArray(change)) {
+          const widthChange = change[0];
+          const heightChange = change[1];
+
+          // Check if both dimensions change the same way
+          if (widthChange === heightChange) {
+            const action = widthChange > 0 ? 'expands' : 'shrinks';
+            description = action;
+          } else {
+            const widthAction = widthChange > 0 ? 'expands' : 'shrinks';
+            const heightAction = heightChange > 0 ? 'expands' : 'shrinks';
+            description = `width ${widthAction}, height ${heightAction}`;
+          }
         }
         else if (prop.includes('width')) {
           const action = changeValue > 0 ? 'expands' : 'shrinks';
@@ -1294,11 +1458,25 @@ ${cleanedScript}
       specData.layers.forEach((layer, layerIndex) => {
         // Layer header label (add divider class if not first layer)
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
-        html += `<div class="timeline-label layer-header${dividerClass}">${layer.layerName}</div>`;
+        html += `<div class="timeline-label layer-header${dividerClass}"
+                      draggable="true"
+                      data-drag-type="layer"
+                      data-layer-index="${layerIndex}">
+          <span class="timeline-label-text">${layer.layerName}</span>
+          <span class="timeline-label-drag-handle">⋮⋮</span>
+        </div>`;
 
         // Animation labels for this layer
-        layer.animations.forEach(anim => {
-          html += `<div class="timeline-label indented">${anim.property}</div>`;
+        layer.animations.forEach((anim, animIndexInLayer) => {
+          html += `<div class="timeline-label indented"
+                        draggable="true"
+                        data-drag-type="animation"
+                        data-anim-index="${animIndex}"
+                        data-layer-index="${layerIndex}"
+                        data-anim-in-layer="${animIndexInLayer}">
+            <span class="timeline-label-text">${anim.property}</span>
+            <span class="timeline-label-drag-handle">⋮⋮</span>
+          </div>`;
           animIndex++;
         });
       });
@@ -1448,16 +1626,21 @@ ${cleanedScript}
           if (selectedAnimation === animIndex) {
             document.getElementById('detailPanel').innerHTML = '';
             selectedAnimation = null;
-            // Remove selected class from all bars
+            // Remove selected class from all bars and labels
             document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
             requestAnimationFrame(() => {
               updatePlayhead();
             });
           } else {
-            // Remove selected class from all bars
+            // Remove selected class from all bars and labels
             document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
             // Add selected class to clicked bar
             bar.classList.add('selected');
+            // Add selected class to corresponding label
+            const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
+            if (label) label.classList.add('selected');
             showAnimationDetails(animIndex);
           }
         });
@@ -1467,6 +1650,9 @@ ${cleanedScript}
 
       // Detect text overflow and add fade class
       detectTextOverflow();
+
+      // Setup drag and drop
+      setupDragAndDrop();
     }
 
     // Detect which bars have overflowing text and add fade class
@@ -1486,6 +1672,215 @@ ${cleanedScript}
           }
         }
       });
+    }
+
+    // Setup drag and drop for timeline labels
+    let draggedElement = null;
+    let draggedType = null;
+    let draggedLayerIndex = null;
+    let draggedAnimIndex = null;
+
+    function setupDragAndDrop() {
+      const labels = document.querySelectorAll('.timeline-label');
+
+      labels.forEach(label => {
+        // Dragstart - record what's being dragged
+        label.addEventListener('dragstart', (e) => {
+          draggedElement = label;
+          draggedType = label.dataset.dragType;
+          draggedLayerIndex = parseInt(label.dataset.layerIndex);
+          draggedAnimIndex = label.dataset.animInLayer ? parseInt(label.dataset.animInLayer) : null;
+
+          label.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', label.innerHTML);
+        });
+
+        // Dragend - cleanup
+        label.addEventListener('dragend', (e) => {
+          label.classList.remove('dragging');
+          // Remove all drop indicators
+          document.querySelectorAll('.timeline-label').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+          draggedElement = null;
+          draggedType = null;
+          draggedLayerIndex = null;
+          draggedAnimIndex = null;
+        });
+
+        // Dragover - show drop indicator
+        label.addEventListener('dragover', (e) => {
+          if (!draggedElement || draggedElement === label) return;
+
+          const targetType = label.dataset.dragType;
+          const targetLayerIndex = parseInt(label.dataset.layerIndex);
+
+          // Check if this drop is valid
+          let isValidDrop = false;
+          let isLastLayerParam = false;
+
+          if (draggedType === 'animation' && targetType === 'animation') {
+            // Animation can only be dropped within same layer
+            if (draggedLayerIndex === targetLayerIndex) {
+              isValidDrop = true;
+            }
+          } else if (draggedType === 'layer' && targetType === 'layer') {
+            isValidDrop = true;
+          } else if (draggedType === 'layer' && targetType === 'animation') {
+            // Allow dropping layers on parameter rows of the last layer (to drop at bottom)
+            const isLastLayer = targetLayerIndex === specData.layers.length - 1;
+            if (isLastLayer) {
+              isValidDrop = true;
+              isLastLayerParam = true;
+            }
+          }
+
+          if (!isValidDrop) return;
+
+          e.preventDefault();
+
+          // Clear previous indicators
+          document.querySelectorAll('.timeline-label').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          // For layers dropping on last layer parameters: only show bottom indicator
+          if (isLastLayerParam) {
+            const targetAnimInLayer = parseInt(label.dataset.animInLayer);
+            const lastAnimIndex = specData.layers[targetLayerIndex].animations.length - 1;
+            // Only show indicator on the last parameter row
+            if (targetAnimInLayer === lastAnimIndex) {
+              label.classList.add('drag-over-bottom');
+            }
+          }
+          // For layers: section headers only respond at their top edge (no bottom indicator)
+          else if (draggedType === 'layer' && targetType === 'layer') {
+            const rect = label.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+
+            // All section headers (including last) only show top indicator
+            if (e.clientY < midpoint) {
+              label.classList.add('drag-over-top');
+            }
+            // Bottom half of all sections shows nothing - use last param row instead
+          } else {
+            // For animations, show both top and bottom indicators normally
+            const rect = label.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            const dropPosition = e.clientY < midpoint ? 'top' : 'bottom';
+
+            if (dropPosition === 'top') {
+              label.classList.add('drag-over-top');
+            } else {
+              label.classList.add('drag-over-bottom');
+            }
+          }
+
+          e.dataTransfer.dropEffect = 'move';
+        });
+
+        // Drop - perform the move
+        label.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (!draggedElement || draggedElement === label) return;
+
+          const targetType = label.dataset.dragType;
+          const targetLayerIndex = parseInt(label.dataset.layerIndex);
+          const targetAnimIndex = label.dataset.animInLayer ? parseInt(label.dataset.animInLayer) : null;
+
+          // Calculate drop position
+          const rect = label.getBoundingClientRect();
+          const midpoint = rect.top + rect.height / 2;
+          let dropPosition = e.clientY < midpoint ? 'before' : 'after';
+
+          // Check if dropping layer on last layer's parameter row (to drop at bottom)
+          const isLastLayer = targetLayerIndex === specData.layers.length - 1;
+          const isLastLayerParam = draggedType === 'layer' && targetType === 'animation' && isLastLayer;
+
+          if (isLastLayerParam) {
+            // Dropping on last layer's parameter row = insert after last layer
+            const lastAnimInLayer = specData.layers[targetLayerIndex].animations.length - 1;
+            if (targetAnimIndex === lastAnimInLayer) {
+              performLayerMove(draggedLayerIndex, targetLayerIndex, 'after');
+            }
+          }
+          // For layer drops: only allow drops in top half (before)
+          else if (draggedType === 'layer' && targetType === 'layer') {
+            if (dropPosition === 'after') {
+              // Don't allow drops on bottom half of any section header
+              return;
+            }
+            // Moving a layer
+            performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
+          } else if (draggedType === 'animation' && targetType === 'animation' && draggedLayerIndex === targetLayerIndex) {
+            // Moving an animation within the same layer
+            performAnimationMove(draggedLayerIndex, draggedAnimIndex, targetAnimIndex, dropPosition);
+          }
+
+          // Clear indicators
+          document.querySelectorAll('.timeline-label').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+        });
+      });
+    }
+
+    // Perform layer move
+    function performLayerMove(fromIndex, toIndex, position) {
+      // Calculate the actual target index
+      let targetIndex = toIndex;
+      if (position === 'after') targetIndex++;
+      if (fromIndex < targetIndex) targetIndex--;
+
+      if (fromIndex === targetIndex) return;
+
+      // Remove from old position
+      const layer = specData.layers.splice(fromIndex, 1)[0];
+
+      // Insert at new position
+      specData.layers.splice(targetIndex, 0, layer);
+
+      // Re-render
+      renderTimeline();
+
+      // Maintain selection if needed
+      if (selectedAnimation !== null) {
+        // Recalculate selected animation index
+        setTimeout(() => {
+          updatePlayhead();
+        }, 0);
+      }
+    }
+
+    // Perform animation move within layer
+    function performAnimationMove(layerIndex, fromAnimIndex, toAnimIndex, position) {
+      // Calculate the actual target index
+      let targetIndex = toAnimIndex;
+      if (position === 'after') targetIndex++;
+      if (fromAnimIndex < targetIndex) targetIndex--;
+
+      if (fromAnimIndex === targetIndex) return;
+
+      const layer = specData.layers[layerIndex];
+
+      // Remove from old position
+      const anim = layer.animations.splice(fromAnimIndex, 1)[0];
+
+      // Insert at new position
+      layer.animations.splice(targetIndex, 0, anim);
+
+      // Re-render
+      renderTimeline();
+
+      // Maintain selection if needed
+      if (selectedAnimation !== null) {
+        setTimeout(() => {
+          updatePlayhead();
+        }, 0);
+      }
     }
 
     // Setup playhead dragging
@@ -1595,12 +1990,15 @@ ${cleanedScript}
       let currentIndex = 0;
       let anim = null;
       let layer = null;
+      let layerIndex = -1;
 
-      for (const l of specData.layers) {
+      for (let lIdx = 0; lIdx < specData.layers.length; lIdx++) {
+        const l = specData.layers[lIdx];
         for (const a of l.animations) {
           if (currentIndex === animIndex) {
             anim = a;
             layer = l;
+            layerIndex = lIdx;
             break;
           }
           currentIndex++;
@@ -1621,7 +2019,17 @@ ${cleanedScript}
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
       html += `<div class="detail-panel-header">`;
       html += `<div class="detail-panel-title">${layer.layerName} › ${anim.property}</div>`;
-      html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
+
+      if (!isExportMode) {
+        html += `<div class="detail-panel-actions">`;
+        html += `<button class="detail-panel-action-btn delete" onclick="deleteAnimation(${animIndex})">🗑️&nbsp; Delete</button>`;
+        html += `<span class="detail-panel-separator">•</span>`;
+        html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
+        html += `</div>`;
+      } else {
+        html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
+      }
+
       html += `</div>`;
 
       // Description - full width above other fields (no label, just as subheader)
@@ -1759,6 +2167,205 @@ ${cleanedScript}
           }
         }
       });
+    }
+
+    // Move entire layer up in the timeline
+    function moveLayerUp(layerIndex) {
+      if (layerIndex === 0) return; // Already at top
+
+      // Swap layers
+      const temp = specData.layers[layerIndex];
+      specData.layers[layerIndex] = specData.layers[layerIndex - 1];
+      specData.layers[layerIndex - 1] = temp;
+
+      // Re-render timeline
+      renderTimeline();
+
+      // If an animation was selected, update the selection
+      if (selectedAnimation !== null) {
+        // Calculate new animation index after the swap
+        let animsBefore = 0;
+        for (let i = 0; i < layerIndex - 1; i++) {
+          animsBefore += specData.layers[i].animations.length;
+        }
+
+        // Find which animation in the layer was selected
+        let currentIndex = 0;
+        let animIndexInLayer = -1;
+        for (let lIdx = 0; lIdx < specData.layers.length; lIdx++) {
+          const layer = specData.layers[lIdx];
+          for (let aIdx = 0; aIdx < layer.animations.length; aIdx++) {
+            if (currentIndex === selectedAnimation) {
+              if (lIdx === layerIndex) {
+                animIndexInLayer = aIdx;
+              }
+            }
+            currentIndex++;
+          }
+        }
+
+        if (animIndexInLayer !== -1) {
+          const newAnimIndex = animsBefore + animIndexInLayer;
+          setTimeout(() => {
+            showAnimationDetails(newAnimIndex);
+            const bar = document.querySelector(`.timeline-bar[data-anim-index="${newAnimIndex}"]`);
+            const label = document.querySelector(`.timeline-label.indented[data-anim-index="${newAnimIndex}"]`);
+            if (bar) bar.classList.add('selected');
+            if (label) label.classList.add('selected');
+          }, 0);
+        }
+      }
+    }
+
+    // Move entire layer down in the timeline
+    function moveLayerDown(layerIndex) {
+      if (layerIndex === specData.layers.length - 1) return; // Already at bottom
+
+      // Swap layers
+      const temp = specData.layers[layerIndex];
+      specData.layers[layerIndex] = specData.layers[layerIndex + 1];
+      specData.layers[layerIndex + 1] = temp;
+
+      // Re-render timeline
+      renderTimeline();
+
+      // If an animation was selected, update the selection
+      if (selectedAnimation !== null) {
+        // Calculate new animation index after the swap
+        let animsBefore = 0;
+        for (let i = 0; i < layerIndex; i++) {
+          animsBefore += specData.layers[i].animations.length;
+        }
+
+        // Find which animation in the layer was selected
+        let currentIndex = 0;
+        let animIndexInLayer = -1;
+        for (let lIdx = 0; lIdx < specData.layers.length; lIdx++) {
+          const layer = specData.layers[lIdx];
+          for (let aIdx = 0; aIdx < layer.animations.length; aIdx++) {
+            if (currentIndex === selectedAnimation) {
+              if (lIdx === layerIndex) {
+                animIndexInLayer = aIdx;
+              }
+            }
+            currentIndex++;
+          }
+        }
+
+        if (animIndexInLayer !== -1) {
+          const newAnimIndex = animsBefore + specData.layers[layerIndex + 1].animations.length + animIndexInLayer;
+          setTimeout(() => {
+            showAnimationDetails(newAnimIndex);
+            const bar = document.querySelector(`.timeline-bar[data-anim-index="${newAnimIndex}"]`);
+            const label = document.querySelector(`.timeline-label.indented[data-anim-index="${newAnimIndex}"]`);
+            if (bar) bar.classList.add('selected');
+            if (label) label.classList.add('selected');
+          }, 0);
+        }
+      }
+    }
+
+    // Move individual animation up within its layer
+    function moveAnimationUp(layerIndex, animIndexInLayer) {
+      if (animIndexInLayer === 0) return; // Already at top of layer
+
+      const layer = specData.layers[layerIndex];
+
+      // Swap animations within the layer
+      const temp = layer.animations[animIndexInLayer];
+      layer.animations[animIndexInLayer] = layer.animations[animIndexInLayer - 1];
+      layer.animations[animIndexInLayer - 1] = temp;
+
+      // Re-render timeline
+      renderTimeline();
+
+      // Update selection if this animation was selected
+      if (selectedAnimation !== null) {
+        // Calculate the new global animation index
+        let animsBefore = 0;
+        for (let i = 0; i < layerIndex; i++) {
+          animsBefore += specData.layers[i].animations.length;
+        }
+        const newAnimIndex = animsBefore + (animIndexInLayer - 1);
+
+        setTimeout(() => {
+          showAnimationDetails(newAnimIndex);
+          const bar = document.querySelector(`.timeline-bar[data-anim-index="${newAnimIndex}"]`);
+          const label = document.querySelector(`.timeline-label.indented[data-anim-index="${newAnimIndex}"]`);
+          if (bar) bar.classList.add('selected');
+          if (label) label.classList.add('selected');
+        }, 0);
+      }
+    }
+
+    // Move individual animation down within its layer
+    function moveAnimationDown(layerIndex, animIndexInLayer) {
+      const layer = specData.layers[layerIndex];
+      if (animIndexInLayer === layer.animations.length - 1) return; // Already at bottom of layer
+
+      // Swap animations within the layer
+      const temp = layer.animations[animIndexInLayer];
+      layer.animations[animIndexInLayer] = layer.animations[animIndexInLayer + 1];
+      layer.animations[animIndexInLayer + 1] = temp;
+
+      // Re-render timeline
+      renderTimeline();
+
+      // Update selection if this animation was selected
+      if (selectedAnimation !== null) {
+        // Calculate the new global animation index
+        let animsBefore = 0;
+        for (let i = 0; i < layerIndex; i++) {
+          animsBefore += specData.layers[i].animations.length;
+        }
+        const newAnimIndex = animsBefore + (animIndexInLayer + 1);
+
+        setTimeout(() => {
+          showAnimationDetails(newAnimIndex);
+          const bar = document.querySelector(`.timeline-bar[data-anim-index="${newAnimIndex}"]`);
+          const label = document.querySelector(`.timeline-label.indented[data-anim-index="${newAnimIndex}"]`);
+          if (bar) bar.classList.add('selected');
+          if (label) label.classList.add('selected');
+        }, 0);
+      }
+    }
+
+    // Delete entire layer section from timeline
+    function deleteAnimation(animIndex) {
+      // Find which layer this animation belongs to
+      let currentIndex = 0;
+      let layerIndex = -1;
+
+      for (let lIdx = 0; lIdx < specData.layers.length; lIdx++) {
+        const layer = specData.layers[lIdx];
+        for (let aIdx = 0; aIdx < layer.animations.length; aIdx++) {
+          if (currentIndex === animIndex) {
+            layerIndex = lIdx;
+            break;
+          }
+          currentIndex++;
+        }
+        if (layerIndex !== -1) break;
+      }
+
+      if (layerIndex === -1) return;
+
+      const layerName = specData.layers[layerIndex].layerName;
+      if (!confirm(`Are you sure you want to remove the entire "${layerName}" section?`)) {
+        return;
+      }
+
+      // Remove the entire layer
+      specData.layers.splice(layerIndex, 1);
+
+      // Close detail panel
+      document.getElementById('detailPanel').innerHTML = '';
+      selectedAnimation = null;
+      document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
+
+      // Re-render timeline
+      renderTimeline();
     }
   </script>
 </body>
