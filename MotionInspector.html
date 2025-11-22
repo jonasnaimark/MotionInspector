@@ -1423,17 +1423,17 @@ ${cleanedScript}
     // Get hex color for property color class
     function getPropertyColor(colorClass) {
       const colorMap = {
-        'bar-opacity': '#045c45',
-        'bar-scale': '#a82968',
-        'bar-rotation': '#682285',
-        'bar-position-x': '#045c7d',
-        'bar-position-y': '#045c7d',
-        'bar-width': '#ae4715',
-        'bar-height': '#ae4715',
-        'bar-transform': '#5a1778',
-        'bar-default': '#044c7d'
+        'bar-opacity': '#03493a',
+        'bar-scale': '#8a2257',
+        'bar-rotation': '#4b1465',
+        'bar-position-x': '#034d69',
+        'bar-position-y': '#034d69',
+        'bar-width': '#933c12',
+        'bar-height': '#933c12',
+        'bar-transform': '#4b1465',
+        'bar-default': '#034d69'
       };
-      return colorMap[colorClass] || '#4a90e2';
+      return colorMap[colorClass] || '#034d69';
     }
 
     // Brighten a hex color to match the selected state (1.2x brightness)
@@ -3022,20 +3022,20 @@ ${cleanedScript}
 
       // Define available colors for picker (2 rows: dark on top, bright on bottom, grouped by column)
       const colorOptions = [
-        // Top row - dark colors
-        '#045c45', // teal (dark)
-        '#a82968', // pink (dark)
-        '#045c7d', // blue (dark)
-        '#ae4715', // orange (dark)
-        '#5a1778', // purple (dark)
-        '#4c7a4c', // green (dark)
-        // Bottom row - bright colors
-        '#056e53', // teal (bright)
-        '#ca317d', // pink (bright)
-        '#056e96', // blue (bright)
-        '#d15519', // orange (bright)
-        '#6c1c90', // purple (bright)
-        '#5b925b'  // green (bright)
+        // Top row - dark colors (slightly darker)
+        '#03493a', // teal (dark)
+        '#8a2257', // pink (dark)
+        '#034d69', // blue (dark)
+        '#933c12', // orange (dark)
+        '#4b1465', // purple (dark)
+        '#3f653f', // green (dark)
+        // Bottom row - bright colors (slightly brighter)
+        '#067d5e', // teal (bright)
+        '#e0378c', // pink (bright)
+        '#067fa9', // blue (bright)
+        '#e9601c', // orange (bright)
+        '#771fa0', // purple (bright)
+        '#65a165'  // green (bright)
       ];
 
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
@@ -3048,7 +3048,7 @@ ${cleanedScript}
       html += `<div class="color-picker-panel" id="colorPickerPanel">`;
       html += `<div class="color-picker-grid">`;
       colorOptions.forEach(color => {
-        const selected = color === brightColor ? 'selected' : '';
+        const selected = color === barColor ? 'selected' : '';
         html += `<div class="color-option ${selected}" style="background: ${color};" onclick="changeAnimationColor(${animIndex}, '${color}')"></div>`;
       });
       html += `</div></div>`;
