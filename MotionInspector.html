@@ -459,7 +459,7 @@
       content: '';
       position: absolute;
       left: 0;
-      right: 0;
+      right: -2000px;
       height: 2px;
       background: #4a90e2;
       z-index: 1000;
@@ -505,12 +505,16 @@
       padding: 0 8px;
       font-size: 11px;
       color: white;
-      cursor: pointer;
+      cursor: grab;
       transition: all 0.1s;
       z-index: 1;
       white-space: nowrap;
       overflow: hidden;
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+
+    .timeline-bar:active {
+      cursor: grabbing;
     }
 
     .timeline-bar::before {
@@ -557,7 +561,7 @@
       top: 0;
       bottom: 0;
       width: 8px;
-      cursor: ew-resize;
+      cursor: ew-resize !important;
       z-index: 15;
     }
 
@@ -1748,6 +1752,9 @@ ${cleanedScript}
       // Setup resize handles
       setupResizeHandles();
 
+      // Setup bar dragging (for moving timeline position or reordering)
+      setupBarDragging();
+
       updatePlayhead();
 
       // Detect text overflow and add fade class
@@ -1831,10 +1838,8 @@ ${cleanedScript}
           let isLastLayerParam = false;
 
           if (draggedType === 'animation' && targetType === 'animation') {
-            // Animation can only be dropped within same layer
-            if (draggedLayerIndex === targetLayerIndex) {
-              isValidDrop = true;
-            }
+            // Animation can be dropped in any layer
+            isValidDrop = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
           } else if (draggedType === 'layer' && targetType === 'animation') {
@@ -1874,11 +1879,17 @@ ${cleanedScript}
             }
           } else if (draggedType === 'animation' && targetType === 'animation') {
             // Check if animation drop would change position
-            const targetAnimIndex = parseInt(label.dataset.animInLayer);
-            let targetIndex = targetAnimIndex;
-            if (dropPosition === 'after') targetIndex++;
-            if (draggedAnimIndex < targetIndex) targetIndex--;
-            wouldChangePosition = draggedAnimIndex !== targetIndex;
+            if (draggedLayerIndex !== targetLayerIndex) {
+              // Moving to a different layer - always a valid change
+              wouldChangePosition = true;
+            } else {
+              // Moving within same layer - check if position changes
+              const targetAnimIndex = parseInt(label.dataset.animInLayer);
+              let targetIndex = targetAnimIndex;
+              if (dropPosition === 'after') targetIndex++;
+              if (draggedAnimIndex < targetIndex) targetIndex--;
+              wouldChangePosition = draggedAnimIndex !== targetIndex;
+            }
           }
 
           // Only show indicators if the drop would actually change the position
@@ -1954,9 +1965,23 @@ ${cleanedScript}
             }
             // Moving a layer
             performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
-          } else if (draggedType === 'animation' && targetType === 'animation' && draggedLayerIndex === targetLayerIndex) {
-            // Moving an animation within the same layer
-            performAnimationMove(draggedLayerIndex, draggedAnimIndex, targetAnimIndex, dropPosition);
+          } else if (draggedType === 'animation' && targetType === 'animation') {
+            // Moving an animation (within same layer or across layers)
+            if (draggedLayerIndex === targetLayerIndex) {
+              // Moving within the same layer
+              performAnimationMove(draggedLayerIndex, draggedAnimIndex, targetAnimIndex, dropPosition);
+            } else {
+              // Moving to a different layer
+              const sourceLayer = specData.layers[draggedLayerIndex];
+              const targetLayer = specData.layers[targetLayerIndex];
+              const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
+
+              let targetIndex = targetAnimIndex;
+              if (dropPosition === 'after') targetIndex++;
+
+              targetLayer.animations.splice(targetIndex, 0, anim);
+              renderTimeline();
+            }
           }
 
           // Clear indicators
@@ -2299,10 +2324,6 @@ ${cleanedScript}
               newDuration = snapToIncrement(startDuration + deltaTime);
               newDuration = Math.max(25, newDuration); // Minimum 25ms duration
 
-              // Make sure it doesn't exceed spec duration
-              const maxDuration = specDuration - targetAnim.timing.delay;
-              newDuration = Math.min(newDuration, maxDuration);
-
               // Update animation data
               targetAnim.timing.duration = newDuration;
             }
@@ -2332,6 +2353,220 @@ ${cleanedScript}
             // Restore info box if it was showing (renderTimeline clears the detail panel)
             if (wasSelected) {
               showAnimationDetails(animIndex);
+            }
+
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+          }
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
+    // Setup bar dragging for moving timeline position or reordering
+    function setupBarDragging() {
+      const bars = document.querySelectorAll('.timeline-bar');
+
+      bars.forEach(bar => {
+        bar.addEventListener('mousedown', (e) => {
+          // Don't interfere with resize handles
+          if (e.target.classList.contains('timeline-bar-resize-handle')) return;
+
+          const animIndex = parseInt(bar.dataset.animIndex);
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const threshold = 5; // pixels to move before determining direction
+          let dragDirection = null; // 'horizontal', 'vertical', or null
+          let isDragging = false;
+
+          // Find the animation in specData
+          let currentAnimIndex = 0;
+          let targetAnim = null;
+          let layerIndex = -1;
+          let animInLayerIndex = -1;
+
+          for (let i = 0; i < specData.layers.length; i++) {
+            const layer = specData.layers[i];
+            for (let j = 0; j < layer.animations.length; j++) {
+              if (currentAnimIndex === animIndex) {
+                targetAnim = layer.animations[j];
+                layerIndex = i;
+                animInLayerIndex = j;
+                break;
+              }
+              currentAnimIndex++;
+            }
+            if (targetAnim) break;
+          }
+
+          if (!targetAnim) return;
+
+          const startDelay = targetAnim.timing.delay;
+          const timelineGrid = document.querySelector('.timeline-grid-lines').parentElement;
+          const gridRect = timelineGrid.getBoundingClientRect();
+          const specDuration = specData.workArea.duration;
+
+          function snapToIncrement(value) {
+            return Math.round(value / 25) * 25;
+          }
+
+          function onMouseMove(moveEvent) {
+            const deltaX = moveEvent.clientX - startX;
+            const deltaY = moveEvent.clientY - startY;
+
+            // Determine drag direction if not yet determined
+            if (!dragDirection && (Math.abs(deltaX) > threshold || Math.abs(deltaY) > threshold)) {
+              moveEvent.preventDefault(); // Prevent default behavior once we start dragging
+
+              if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                dragDirection = 'horizontal';
+                bar.classList.add('dragging-resize');
+              } else {
+                dragDirection = 'vertical';
+                // Start vertical drag - trigger label drag
+                const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
+                if (label) {
+                  // Programmatically trigger dragstart on the label
+                  label.classList.add('dragging');
+                  document.querySelectorAll('.timeline-label-add-btn, .section-divider-add-btn').forEach(btn => {
+                    btn.classList.remove('visible');
+                  });
+                }
+              }
+              isDragging = true;
+            }
+
+            if (!isDragging) return;
+
+            if (dragDirection === 'horizontal') {
+              // Horizontal drag - move the bar's position in time
+              const deltaTime = (deltaX / gridRect.width) * specDuration;
+              let newDelay = snapToIncrement(startDelay + deltaTime);
+              newDelay = Math.max(0, newDelay);
+
+              // Update animation data
+              targetAnim.timing.delay = newDelay;
+
+              // Update bar position directly
+              const startPercent = (newDelay / specDuration) * 100;
+              bar.style.left = `${startPercent}%`;
+
+              // Update info box if selected
+              if (selectedAnimation === animIndex) {
+                showAnimationDetails(animIndex);
+              }
+            } else if (dragDirection === 'vertical') {
+              // Vertical drag - show drop indicators
+              const labels = document.querySelectorAll('.timeline-label.indented');
+              let closestLabel = null;
+              let closestDistance = Infinity;
+
+              labels.forEach(label => {
+                const rect = label.getBoundingClientRect();
+                const distance = Math.abs(rect.top + rect.height / 2 - moveEvent.clientY);
+                if (distance < closestDistance) {
+                  closestDistance = distance;
+                  closestLabel = label;
+                }
+              });
+
+              // Remove all drop indicators first
+              document.querySelectorAll('.timeline-label').forEach(l => {
+                l.classList.remove('drag-over-top', 'drag-over-bottom');
+              });
+
+              // Show drop indicator on closest label
+              if (closestLabel && closestLabel.dataset.animIndex !== String(animIndex)) {
+                const rect = closestLabel.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                if (moveEvent.clientY < midpoint) {
+                  closestLabel.classList.add('drag-over-top');
+                } else {
+                  closestLabel.classList.add('drag-over-bottom');
+                }
+              }
+            }
+          }
+
+          function onMouseUp(upEvent) {
+            // If we dragged, prevent the click event from firing
+            if (isDragging) {
+              const preventClick = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                bar.removeEventListener('click', preventClick, true);
+              };
+              bar.addEventListener('click', preventClick, true);
+            }
+
+            if (dragDirection === 'horizontal') {
+              bar.classList.remove('dragging-resize');
+
+              // Store selection state
+              const wasSelected = selectedAnimation === animIndex;
+
+              // Re-render to finalize
+              renderTimeline();
+
+              // Restore info box if needed
+              if (wasSelected) {
+                showAnimationDetails(animIndex);
+              }
+            } else if (dragDirection === 'vertical') {
+              // Complete the drop
+              const labels = document.querySelectorAll('.timeline-label.indented');
+              let targetLabel = null;
+              let dropPosition = null;
+
+              // Find which label we're hovering over
+              labels.forEach(label => {
+                if (label.classList.contains('drag-over-top') || label.classList.contains('drag-over-bottom')) {
+                  targetLabel = label;
+                  dropPosition = label.classList.contains('drag-over-top') ? 'before' : 'after';
+                }
+              });
+
+              if (targetLabel && targetLabel.dataset.animIndex !== String(animIndex)) {
+                const targetAnimIndex = parseInt(targetLabel.dataset.animIndex);
+                const targetLayerIndex = parseInt(targetLabel.dataset.layerIndex);
+                const targetAnimInLayerIndex = parseInt(targetLabel.dataset.animInLayer);
+
+                // Perform the move
+                if (layerIndex === targetLayerIndex) {
+                  // Moving within the same layer
+                  let targetIndex = targetAnimInLayerIndex;
+                  if (dropPosition === 'after') targetIndex++;
+                  if (animInLayerIndex < targetIndex) targetIndex--;
+
+                  if (animInLayerIndex !== targetIndex) {
+                    const layer = specData.layers[layerIndex];
+                    const anim = layer.animations.splice(animInLayerIndex, 1)[0];
+                    layer.animations.splice(targetIndex, 0, anim);
+                    renderTimeline();
+                  }
+                } else {
+                  // Moving to a different layer
+                  const sourceLayer = specData.layers[layerIndex];
+                  const targetLayer = specData.layers[targetLayerIndex];
+                  const anim = sourceLayer.animations.splice(animInLayerIndex, 1)[0];
+
+                  let targetIndex = targetAnimInLayerIndex;
+                  if (dropPosition === 'after') targetIndex++;
+
+                  targetLayer.animations.splice(targetIndex, 0, anim);
+                  renderTimeline();
+                }
+              }
+
+              // Cleanup
+              const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
+              if (label) label.classList.remove('dragging');
+
+              document.querySelectorAll('.timeline-label').forEach(l => {
+                l.classList.remove('drag-over-top', 'drag-over-bottom');
+              });
             }
 
             document.removeEventListener('mousemove', onMouseMove);
