@@ -1207,6 +1207,7 @@
         console.log('Clipboard text:', text);
         const data = JSON.parse(text);
         specData = data;
+        viewDuration = null; // Reset zoom level for new spec
         renderTimeline();
       } catch (err) {
         alert('Failed to paste or parse JSON.\n\nError: ' + err.message + '\n\nCheck the browser console for more details.');
@@ -2726,6 +2727,7 @@ ${cleanedScript}
     }
 
     // Setup playhead dragging
+    let playheadListenersAdded = false;
     function setupPlayheadDragging() {
       const playhead = document.getElementById('playhead');
       if (!playhead) return;
@@ -2810,18 +2812,34 @@ ${cleanedScript}
 
       playhead.addEventListener('mousedown', onMouseDown);
 
-      // Update playhead position on window resize and scroll
-      window.addEventListener('resize', () => {
-        if (!isDraggingPlayhead) {
-          updatePlayhead();
-        }
-      });
+      // Only add window/container listeners once to avoid duplicates
+      if (!playheadListenersAdded) {
+        playheadListenersAdded = true;
 
-      timelineContainer?.addEventListener('scroll', () => {
-        if (!isDraggingPlayhead) {
-          updatePlayhead();
+        // Update playhead position on window resize and scroll
+        window.addEventListener('resize', () => {
+          if (!isDraggingPlayhead) {
+            updatePlayhead();
+          }
+        });
+
+        // Update playhead position on scroll
+        window.addEventListener('scroll', () => {
+          if (!isDraggingPlayhead) {
+            updatePlayhead();
+          }
+        });
+
+        // Also update on timeline container scroll
+        const timelineContainer = document.querySelector('.timeline-container');
+        if (timelineContainer) {
+          timelineContainer.addEventListener('scroll', () => {
+            if (!isDraggingPlayhead) {
+              updatePlayhead();
+            }
+          });
         }
-      });
+      }
     }
 
     // Show animation details
