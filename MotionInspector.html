@@ -24,7 +24,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #1a1a1a;
       color: #e0e0e0;
-      padding: 20px;
+      padding: 20px 20px 6px 20px;
       overflow: auto;
       user-select: none;
       -webkit-user-select: none;
@@ -117,27 +117,48 @@
       gap: 15px;
       border: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      height: calc(100vh - 96px);
+      max-height: calc(100vh - 96px);
     }
 
     .video-section:not(:has(video[src])) {
-      min-height: calc(100vh - 160px);
+      min-height: calc(100vh - 96px);
     }
 
     .video-container {
-      position: relative;
       display: none;
+      flex: 1;
+      min-height: 0;
     }
 
     .video-container.has-video {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .video-container.has-video.width-constrained {
+      align-items: flex-start;
+    }
+
+    .video-wrapper {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      line-height: 0;
     }
 
     video {
-      width: 100%;
+      max-width: 100%;
+      max-height: calc(100vh - 140px);
+      width: auto;
       height: auto;
       border-radius: 6px;
       background: transparent;
       display: block;
+      object-fit: contain;
     }
 
     .video-overlay {
@@ -157,19 +178,19 @@
       cursor: pointer;
     }
 
-    .video-container:hover .video-overlay {
+    .video-wrapper:hover .video-overlay {
       background: rgba(0, 0, 0, 0.8);
       opacity: 1;
       pointer-events: auto;
     }
 
     .video-replace-btn {
-      padding: 10px 20px;
+      padding: 8px 16px;
       border-radius: 8px;
       background: #333;
       color: #e0e0e0;
       border: 1px solid #555;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       display: flex;
@@ -178,6 +199,9 @@
       transition: all 0.2s ease;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       pointer-events: none;
+      line-height: 1.5;
+      min-height: 38px;
+      box-sizing: border-box;
     }
 
     .video-overlay:hover .video-replace-btn {
@@ -238,11 +262,11 @@
       position: relative;
       display: flex;
       flex-direction: column;
-      height: calc(100vh - 110px);
+      height: calc(100vh - 96px);
     }
 
     .timeline-section:has(#timelineContent:empty) {
-      min-height: calc(100vh - 110px);
+      min-height: calc(100vh - 96px);
     }
 
     #timelineContent {
@@ -1218,11 +1242,13 @@
           </div>
         </div>
         <div id="videoContainer" class="video-container">
-          <video id="videoPlayer"></video>
-          <div class="video-overlay" onclick="document.getElementById('videoInput').click()">
-            <div class="video-replace-btn">
-              <span>📁</span>
-              <span>Replace Video</span>
+          <div class="video-wrapper">
+            <video id="videoPlayer"></video>
+            <div class="video-overlay" onclick="document.getElementById('videoInput').click()">
+              <div class="video-replace-btn">
+                <span>📁</span>
+                <span>Replace Video</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1272,6 +1298,23 @@
     }
 
     // Video upload handler
+    // Check if video is width-constrained and update alignment
+    function updateVideoAlignment() {
+      const videoContainer = document.getElementById('videoContainer');
+      const videoWrapper = document.querySelector('.video-wrapper');
+      if (!videoContainer || !video || !video.videoWidth) return;
+
+      const containerWidth = videoContainer.offsetWidth;
+      const videoDisplayWidth = video.offsetWidth;
+
+      // If video is using full container width (within 5px threshold), it's width-constrained
+      if (Math.abs(containerWidth - videoDisplayWidth) < 5) {
+        videoContainer.classList.add('width-constrained');
+      } else {
+        videoContainer.classList.remove('width-constrained');
+      }
+    }
+
     document.getElementById('videoInput').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -1296,9 +1339,14 @@
           if (specData) {
             renderTimeline();
           }
+          // Check alignment after video loads
+          setTimeout(updateVideoAlignment, 100);
         });
       }
     });
+
+    // Update alignment on window resize
+    window.addEventListener('resize', updateVideoAlignment);
 
     // Play/pause toggle
     function togglePlayPause() {
@@ -1546,6 +1594,7 @@ ${cleanedScript}
         videoDuration = video.duration * 1000;
         video.currentTime = 0;
         renderTimeline();
+        setTimeout(updateVideoAlignment, 100);
       });
     });
   <\/script>
