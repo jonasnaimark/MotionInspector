@@ -242,7 +242,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      aspect-ratio: 1;
+      height: 360px;
       border: 2px dashed rgba(255, 255, 255, 0.2);
       border-radius: 8px;
       cursor: pointer;
@@ -2173,11 +2173,6 @@ ${cleanedScript}
         viewDuration = Math.round(specDuration / 100) * 100;
       }
       const currentViewDuration = viewDuration;
-      html += `<div class="zoom-controls edit-only">
-        <span class="zoom-duration">Timeline duration: ${specDuration}ms</span>
-        <button class="zoom-btn" onclick="zoomOut()">−</button>
-        <button class="zoom-btn" onclick="zoomIn()">+</button>
-      </div>`;
 
       // Timeline ruler - use view duration for rendering
       const timeIntervals = getNiceTimeIntervals(currentViewDuration);
@@ -2190,6 +2185,11 @@ ${cleanedScript}
       // Don't add final tick at exact duration - we'll stop before it
 
       html += `<div class="timeline-ruler">`;
+      html += `<div class="zoom-controls edit-only">
+        <span class="zoom-duration">Timeline duration: ${specDuration}ms</span>
+        <button class="zoom-btn" onclick="zoomOut()">−</button>
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+      </div>`;
       html += `<div style="position: absolute; top: 0; left: 0; right: 0; height: 100%;">`;
       ticks.forEach((time, index) => {
         // Skip the last tick if it's at the end
