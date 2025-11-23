@@ -88,6 +88,11 @@
       background: #444;
     }
 
+    /* Make emojis in buttons 2px larger */
+    .btn-emoji {
+      font-size: 15px;
+    }
+
     #videoInput {
       display: none;
     }
@@ -97,6 +102,10 @@
       grid-template-columns: 400px 1fr;
       gap: 20px;
       grid-auto-rows: max-content;
+    }
+
+    .main-content.split-layout {
+      grid-template-columns: 1fr 1fr;
     }
 
     .video-section {
@@ -114,16 +123,66 @@
       min-height: calc(100vh - 160px);
     }
 
+    .video-container {
+      position: relative;
+      display: none;
+    }
+
+    .video-container.has-video {
+      display: block;
+    }
+
     video {
       width: 100%;
       height: auto;
       border-radius: 6px;
       background: transparent;
-      display: none;
+      display: block;
     }
 
-    video[src] {
-      display: block;
+    .video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: all 0.1s ease;
+      pointer-events: none;
+      cursor: pointer;
+    }
+
+    .video-container:hover .video-overlay {
+      background: rgba(0, 0, 0, 0.8);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .video-replace-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      background: #333;
+      color: #e0e0e0;
+      border: 1px solid #555;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+    }
+
+    .video-overlay:hover .video-replace-btn {
+      background: #444;
+      border-color: #666;
     }
 
     .video-empty-state {
@@ -624,24 +683,51 @@
       opacity: 0.5;
     }
 
+    .timeline-bar.dragging-vertical {
+      opacity: 0.5;
+      cursor: grabbing !important;
+    }
+
+    /* Drop indicators - only on labels, extended to span full timeline width */
     .timeline-label.drag-over-top::before,
     .timeline-label.drag-over-bottom::after {
       content: '';
       position: absolute;
       left: 0;
-      right: -2000px;
+      right: -3000px; /* Extend across entire timeline width */
       height: 2px;
       background: #4a90e2;
       z-index: 1000;
       pointer-events: none;
     }
 
-    .timeline-label.drag-over-top::before {
+    /* Track indicators for label-based dragging */
+    .timeline-track.drag-over-top::before,
+    .timeline-track.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4a90e2;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .timeline-label.drag-over-top::before,
+    .timeline-track.drag-over-top::before {
       top: -1px;
     }
 
-    .timeline-label.drag-over-bottom::after {
+    .timeline-label.drag-over-bottom::after,
+    .timeline-track.drag-over-bottom::after {
       bottom: -1px;
+    }
+
+    .timeline-bottom-divider.drag-over-top,
+    .timeline-bottom-track.drag-over-top {
+      border-top-color: #4a90e2;
+      border-top-width: 2px;
     }
 
     .timeline-label.indented {
@@ -662,7 +748,7 @@
       align-items: center;
       padding-right: 80px;
       margin-right: -80px;
-      overflow: hidden;
+      overflow: visible; /* Changed from hidden to allow drop indicators to extend */
       box-sizing: border-box;
     }
 
@@ -933,7 +1019,7 @@
 
     .detail-panel-actions {
       display: flex;
-      gap: 6px;
+      gap: 14px;
       align-items: center;
     }
 
@@ -1111,11 +1197,14 @@
       <h1>Motion Inspector</h1>
       <div class="controls">
         <input type="file" id="videoInput" accept="video/*">
+        <button class="btn btn-secondary" onclick="toggleLayout()">
+          <span class="btn-emoji">📱</span>&nbsp;&nbsp;Toggle Layout
+        </button>
         <button class="btn btn-secondary" onclick="pasteSpec()">
-          📋&nbsp;&nbsp;Paste Spec
+          <span class="btn-emoji">📋</span>&nbsp;&nbsp;Paste Spec
         </button>
         <button class="btn btn-secondary" onclick="exportZip()">
-          📦&nbsp;&nbsp;Export Zip
+          <span class="btn-emoji">📦</span>&nbsp;&nbsp;Export Zip
         </button>
       </div>
     </div>
@@ -1128,7 +1217,15 @@
             <span>Add Video</span>
           </div>
         </div>
-        <video id="videoPlayer"></video>
+        <div id="videoContainer" class="video-container">
+          <video id="videoPlayer"></video>
+          <div class="video-overlay" onclick="document.getElementById('videoInput').click()">
+            <div class="video-replace-btn">
+              <span>📁</span>
+              <span>Replace Video</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="timeline-section">
@@ -1182,10 +1279,14 @@
         const url = URL.createObjectURL(file);
         video.src = url;
 
-        // Hide empty state when video is loaded
+        // Hide empty state and show video container when video is loaded
         const emptyState = document.getElementById('videoEmptyState');
         if (emptyState) {
           emptyState.classList.add('hidden');
+        }
+        const videoContainer = document.getElementById('videoContainer');
+        if (videoContainer) {
+          videoContainer.classList.add('has-video');
         }
 
         video.addEventListener('loadedmetadata', () => {
@@ -1252,6 +1353,25 @@
       viewDuration = null;
 
       renderTimeline();
+    }
+
+    // Toggle layout between vertical (400px | 1fr) and 50/50 split
+    function toggleLayout() {
+      const mainContent = document.querySelector('.main-content');
+      mainContent.classList.toggle('split-layout');
+
+      // Update button emoji based on current state
+      const toggleBtn = event.currentTarget;
+      if (mainContent.classList.contains('split-layout')) {
+        // Now in 50/50 split, show desktop emoji
+        toggleBtn.innerHTML = '<span class="btn-emoji">🖥️</span>&nbsp;&nbsp;Toggle Layout';
+      } else {
+        // Now in narrow layout, show smartphone emoji
+        toggleBtn.innerHTML = '<span class="btn-emoji">📱</span>&nbsp;&nbsp;Toggle Layout';
+      }
+
+      // Update playhead position after layout change
+      requestAnimationFrame(() => updatePlayhead());
     }
 
     // Smooth playhead animation using RAF
@@ -1418,6 +1538,10 @@ ${cleanedScript}
     window.addEventListener('DOMContentLoaded', () => {
       specData = EMBEDDED_SPEC_DATA;
       video.src = EMBEDDED_VIDEO_PATH;
+      const videoContainer = document.getElementById('videoContainer');
+      if (videoContainer) {
+        videoContainer.classList.add('has-video');
+      }
       video.addEventListener('loadedmetadata', () => {
         videoDuration = video.duration * 1000;
         video.currentTime = 0;
@@ -1952,7 +2076,7 @@ ${cleanedScript}
       });
 
       // Bottom divider track to match left column
-      html += `<div class="timeline-track" style="border-top: 1px solid #4a4a4a; border-bottom: none; margin-top: 15px; height: 15px;"></div>`;
+      html += `<div class="timeline-track timeline-bottom-track" style="border-top: 1px solid #4a4a4a; border-bottom: none; margin-top: 15px; height: 15px;"></div>`;
 
       html += `<div class="playhead" id="playhead"><div class="playhead-handle" id="playheadTimeDisplay">0ms</div></div>`;
       html += `</div>`; // position relative wrapper
@@ -2064,9 +2188,13 @@ ${cleanedScript}
         label.addEventListener('dragend', (e) => {
           label.classList.remove('dragging');
           // Remove all drop indicators
-          document.querySelectorAll('.timeline-label').forEach(l => {
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
             l.classList.remove('drag-over-top', 'drag-over-bottom');
           });
+          const bottomDivider = document.querySelector('.timeline-bottom-divider');
+          const bottomTrack = document.querySelector('.timeline-bottom-track');
+          if (bottomDivider) bottomDivider.classList.remove('drag-over-top');
+          if (bottomTrack) bottomTrack.classList.remove('drag-over-top');
           draggedElement = null;
           draggedType = null;
           draggedLayerIndex = null;
@@ -2089,14 +2217,9 @@ ${cleanedScript}
             isValidDrop = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
-          } else if (draggedType === 'layer' && targetType === 'animation') {
-            // Allow dropping layers on parameter rows of the last layer (to drop at bottom)
-            const isLastLayer = targetLayerIndex === specData.layers.length - 1;
-            if (isLastLayer) {
-              isValidDrop = true;
-              isLastLayerParam = true;
-            }
           }
+          // Note: We don't allow dropping layers on animation rows anymore
+          // because the bottom divider provides a clearer drop target for that
 
           if (!isValidDrop) return;
 
@@ -2118,8 +2241,9 @@ ${cleanedScript}
               wouldChangePosition = draggedLayerIndex !== targetIndex;
             }
           } else if (draggedType === 'layer' && targetType === 'layer') {
-            // Only top half is valid for layer drops
-            if (e.clientY < midpoint) {
+            // Only very close to the top divider line is valid for layer drops (within 10px)
+            const distanceFromTop = e.clientY - rect.top;
+            if (distanceFromTop <= 10) {
               let targetIndex = targetLayerIndex;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
@@ -2143,34 +2267,67 @@ ${cleanedScript}
           if (!wouldChangePosition) return;
 
           // Clear previous indicators
-          document.querySelectorAll('.timeline-label').forEach(l => {
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
             l.classList.remove('drag-over-top', 'drag-over-bottom');
           });
+          const bottomDivider = document.querySelector('.timeline-bottom-divider');
+          const bottomTrack = document.querySelector('.timeline-bottom-track');
+          if (bottomDivider) bottomDivider.classList.remove('drag-over-top');
+          if (bottomTrack) bottomTrack.classList.remove('drag-over-top');
 
           // For layers dropping on last layer parameters: only show bottom indicator
           if (isLastLayerParam) {
             const targetAnimInLayer = parseInt(label.dataset.animInLayer);
             const lastAnimIndex = specData.layers[targetLayerIndex].animations.length - 1;
-            // Only show indicator on the last parameter row
-            if (targetAnimInLayer === lastAnimIndex) {
+            // Only show indicator on the last parameter row, and not on the dragged layer's own parameters
+            if (targetAnimInLayer === lastAnimIndex && targetLayerIndex !== draggedLayerIndex) {
+              // Find corresponding track and add indicator to both
+              const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+              const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+              const labelIndex = allLabels.indexOf(label);
+
               label.classList.add('drag-over-bottom');
+              if (labelIndex >= 0 && allTracks[labelIndex]) {
+                allTracks[labelIndex].classList.add('drag-over-bottom');
+              }
             }
           }
-          // For layers: section headers only respond at their top edge (no bottom indicator)
+          // For layers: section headers only respond very close to the divider line at the top
           else if (draggedType === 'layer' && targetType === 'layer') {
-            // All section headers (including last) only show top indicator
-            if (e.clientY < midpoint) {
+            // Only show indicator when hovering very close to the divider line (within 10px of top)
+            const rect = label.getBoundingClientRect();
+            const distanceFromTop = e.clientY - rect.top;
+            if (distanceFromTop <= 10) {
+              // Find all labels and tracks
+              const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+              const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+              const labelIndex = allLabels.indexOf(label);
+
+              // Show indicator on both label and corresponding track
               label.classList.add('drag-over-top');
+              if (labelIndex >= 0 && allTracks[labelIndex]) {
+                allTracks[labelIndex].classList.add('drag-over-top');
+              }
             }
-            // Bottom half of all sections shows nothing - use last param row instead
           } else {
             // For animations, show both top and bottom indicators normally
             const dropPositionDisplay = e.clientY < midpoint ? 'top' : 'bottom';
 
+            // Find corresponding track and add indicator to both
+            const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+            const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+            const labelIndex = allLabels.indexOf(label);
+
             if (dropPositionDisplay === 'top') {
               label.classList.add('drag-over-top');
+              if (labelIndex >= 0 && allTracks[labelIndex]) {
+                allTracks[labelIndex].classList.add('drag-over-top');
+              }
             } else {
               label.classList.add('drag-over-bottom');
+              if (labelIndex >= 0 && allTracks[labelIndex]) {
+                allTracks[labelIndex].classList.add('drag-over-bottom');
+              }
             }
           }
 
@@ -2232,11 +2389,66 @@ ${cleanedScript}
           }
 
           // Clear indicators
-          document.querySelectorAll('.timeline-label').forEach(l => {
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
             l.classList.remove('drag-over-top', 'drag-over-bottom');
           });
+          const bottomDivider = document.querySelector('.timeline-bottom-divider');
+          const bottomTrack = document.querySelector('.timeline-bottom-track');
+          if (bottomDivider) bottomDivider.classList.remove('drag-over-top');
+          if (bottomTrack) bottomTrack.classList.remove('drag-over-top');
         });
       });
+
+      // Set up drag handlers for bottom divider
+      const bottomDivider = document.querySelector('.timeline-bottom-divider');
+      const bottomTrack = document.querySelector('.timeline-bottom-track');
+      if (bottomDivider && bottomTrack) {
+        bottomDivider.addEventListener('dragover', (e) => {
+          if (!draggedElement || draggedType !== 'layer') return;
+
+          // Check if dragged layer is already the last layer
+          const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
+          if (isLastLayer) {
+            // Don't show indicator if already at the end
+            return;
+          }
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Clear previous indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          // Show indicator on both bottom elements
+          bottomDivider.classList.add('drag-over-top');
+          bottomTrack.classList.add('drag-over-top');
+          e.dataTransfer.dropEffect = 'move';
+        });
+
+        bottomDivider.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (!draggedElement || draggedType !== 'layer') return;
+
+          // Move layer to end
+          performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+
+          // Clear indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+          bottomDivider.classList.remove('drag-over-top');
+          bottomTrack.classList.remove('drag-over-top');
+        });
+
+        bottomDivider.addEventListener('dragleave', (e) => {
+          bottomDivider.classList.remove('drag-over-top');
+          bottomTrack.classList.remove('drag-over-top');
+        });
+      }
 
       // Set up + button handlers
       const addButtons = document.querySelectorAll('.timeline-label-add-btn');
@@ -2674,7 +2886,8 @@ ${cleanedScript}
                 bar.classList.add('dragging-resize');
               } else {
                 dragDirection = 'vertical';
-                // Start vertical drag - trigger label drag
+                // Start vertical drag - add visual feedback
+                bar.classList.add('dragging-vertical');
                 const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
                 if (label) {
                   // Programmatically trigger dragstart on the label
@@ -2722,14 +2935,15 @@ ${cleanedScript}
               });
 
               // Remove all drop indicators first
-              document.querySelectorAll('.timeline-label').forEach(l => {
+              document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
                 l.classList.remove('drag-over-top', 'drag-over-bottom');
               });
 
-              // Show drop indicator on closest label
+              // Show drop indicator on closest label only (extends across full timeline)
               if (closestLabel && closestLabel.dataset.animIndex !== String(animIndex)) {
                 const rect = closestLabel.getBoundingClientRect();
                 const midpoint = rect.top + rect.height / 2;
+
                 if (moveEvent.clientY < midpoint) {
                   closestLabel.classList.add('drag-over-top');
                 } else {
@@ -2810,10 +3024,11 @@ ${cleanedScript}
               }
 
               // Cleanup
+              bar.classList.remove('dragging-vertical');
               const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
               if (label) label.classList.remove('dragging');
 
-              document.querySelectorAll('.timeline-label').forEach(l => {
+              document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
                 l.classList.remove('drag-over-top', 'drag-over-bottom');
               });
             }
