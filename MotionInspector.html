@@ -99,13 +99,41 @@
 
     .main-content {
       display: grid;
-      grid-template-columns: 400px 1fr;
-      gap: 20px;
+      grid-template-columns: 400px 20px 1fr;
+      gap: 0;
       grid-auto-rows: max-content;
+      position: relative;
     }
 
     .main-content.split-layout {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 20px 1fr;
+    }
+
+    .resize-handle {
+      cursor: col-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      user-select: none;
+    }
+
+    .resize-handle::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 4px;
+      height: 40px;
+      background: #4a4a4a;
+      border-radius: 2px;
+      transition: background 0.2s;
+    }
+
+    .resize-handle:hover::before,
+    .resize-handle.dragging::before {
+      background: #4a90e2;
     }
 
     .video-section {
@@ -1221,9 +1249,6 @@
       <h1>Motion Inspector</h1>
       <div class="controls">
         <input type="file" id="videoInput" accept="video/*">
-        <button class="btn btn-secondary" onclick="toggleLayout()">
-          <span class="btn-emoji">📱</span>&nbsp;&nbsp;Toggle Layout
-        </button>
         <button class="btn btn-secondary" onclick="pasteSpec()">
           <span class="btn-emoji">📋</span>&nbsp;&nbsp;Paste Spec
         </button>
@@ -1253,6 +1278,8 @@
           </div>
         </div>
       </div>
+
+      <div class="resize-handle" id="resizeHandle"></div>
 
       <div class="timeline-section">
         <div id="timelineContent"></div>
@@ -1347,6 +1374,51 @@
 
     // Update alignment on window resize
     window.addEventListener('resize', updateVideoAlignment);
+
+    // Resize handle functionality
+    const resizeHandle = document.getElementById('resizeHandle');
+    const mainContent = document.querySelector('.main-content');
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 400;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = document.querySelector('.video-section').offsetWidth;
+      resizeHandle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      const deltaX = e.clientX - startX;
+      const newWidth = startWidth + deltaX;
+      const containerWidth = mainContent.offsetWidth;
+      const minWidth = 400;
+      const maxWidth = containerWidth / 2;
+
+      // Clamp width between min and max
+      const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+
+      // Update grid column
+      mainContent.style.gridTemplateColumns = `${clampedWidth}px 20px 1fr`;
+
+      // Update playhead position during resize
+      requestAnimationFrame(() => updatePlayhead());
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        resizeHandle.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        updateVideoAlignment();
+      }
+    });
 
     // Play/pause toggle
     function togglePlayPause() {
