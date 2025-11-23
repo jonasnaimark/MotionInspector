@@ -2211,10 +2211,15 @@ ${cleanedScript}
           // Check if this drop is valid
           let isValidDrop = false;
           let isLastLayerParam = false;
+          let isDropOnLayerHeader = false;
 
           if (draggedType === 'animation' && targetType === 'animation') {
             // Animation can be dropped in any layer
             isValidDrop = true;
+          } else if (draggedType === 'animation' && targetType === 'layer') {
+            // Allow dropping animations on layer headers (for empty sections or adding to top)
+            isValidDrop = true;
+            isDropOnLayerHeader = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
           }
@@ -2231,7 +2236,16 @@ ${cleanedScript}
           let dropPosition = e.clientY < midpoint ? 'before' : 'after';
           let wouldChangePosition = false;
 
-          if (isLastLayerParam) {
+          if (isDropOnLayerHeader) {
+            // Dropping animation on layer header - always valid unless it's already first in that layer
+            if (draggedLayerIndex !== targetLayerIndex) {
+              // Moving to a different layer - always valid
+              wouldChangePosition = true;
+            } else {
+              // Same layer - only valid if not already first
+              wouldChangePosition = draggedAnimIndex !== 0;
+            }
+          } else if (isLastLayerParam) {
             const targetAnimInLayer = parseInt(label.dataset.animInLayer);
             const lastAnimIndex = specData.layers[targetLayerIndex].animations.length - 1;
             // Check if dropping on last param row would change position
@@ -2275,8 +2289,20 @@ ${cleanedScript}
           if (bottomDivider) bottomDivider.classList.remove('drag-over-top');
           if (bottomTrack) bottomTrack.classList.remove('drag-over-top');
 
+          // For animations dropping on layer headers: show bottom indicator
+          if (isDropOnLayerHeader) {
+            // Find corresponding track and add indicator to both
+            const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+            const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+            const labelIndex = allLabels.indexOf(label);
+
+            label.classList.add('drag-over-bottom');
+            if (labelIndex >= 0 && allTracks[labelIndex]) {
+              allTracks[labelIndex].classList.add('drag-over-bottom');
+            }
+          }
           // For layers dropping on last layer parameters: only show bottom indicator
-          if (isLastLayerParam) {
+          else if (isLastLayerParam) {
             const targetAnimInLayer = parseInt(label.dataset.animInLayer);
             const lastAnimIndex = specData.layers[targetLayerIndex].animations.length - 1;
             // Only show indicator on the last parameter row, and not on the dragged layer's own parameters
@@ -2369,7 +2395,18 @@ ${cleanedScript}
             }
             // Moving a layer
             performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
-          } else if (draggedType === 'animation' && targetType === 'animation') {
+          }
+          // For dropping animations on layer headers (empty sections or add to top)
+          else if (draggedType === 'animation' && targetType === 'layer') {
+            const sourceLayer = specData.layers[draggedLayerIndex];
+            const targetLayer = specData.layers[targetLayerIndex];
+            const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
+
+            // Insert at the beginning of the target layer
+            targetLayer.animations.splice(0, 0, anim);
+            renderTimeline();
+          }
+          else if (draggedType === 'animation' && targetType === 'animation') {
             // Moving an animation (within same layer or across layers)
             if (draggedLayerIndex === targetLayerIndex) {
               // Moving within the same layer
@@ -2921,16 +2958,31 @@ ${cleanedScript}
               }
             } else if (dragDirection === 'vertical') {
               // Vertical drag - show drop indicators
-              const labels = document.querySelectorAll('.timeline-label.indented');
-              let closestLabel = null;
+              const animLabels = document.querySelectorAll('.timeline-label.indented');
+              const layerHeaders = document.querySelectorAll('.timeline-label.layer-header');
+              let closestElement = null;
               let closestDistance = Infinity;
+              let isLayerHeader = false;
 
-              labels.forEach(label => {
+              // Check animation labels
+              animLabels.forEach(label => {
                 const rect = label.getBoundingClientRect();
                 const distance = Math.abs(rect.top + rect.height / 2 - moveEvent.clientY);
                 if (distance < closestDistance) {
                   closestDistance = distance;
-                  closestLabel = label;
+                  closestElement = label;
+                  isLayerHeader = false;
+                }
+              });
+
+              // Also check layer headers (for empty sections)
+              layerHeaders.forEach(header => {
+                const rect = header.getBoundingClientRect();
+                const distance = Math.abs(rect.top + rect.height / 2 - moveEvent.clientY);
+                if (distance < closestDistance) {
+                  closestDistance = distance;
+                  closestElement = header;
+                  isLayerHeader = true;
                 }
               });
 
@@ -2939,15 +2991,25 @@ ${cleanedScript}
                 l.classList.remove('drag-over-top', 'drag-over-bottom');
               });
 
-              // Show drop indicator on closest label only (extends across full timeline)
-              if (closestLabel && closestLabel.dataset.animIndex !== String(animIndex)) {
-                const rect = closestLabel.getBoundingClientRect();
-                const midpoint = rect.top + rect.height / 2;
+              // Show drop indicator on closest element only (extends across full timeline)
+              if (closestElement) {
+                if (isLayerHeader) {
+                  // For layer headers, always show bottom indicator (add to section)
+                  const headerLayerIndex = parseInt(closestElement.dataset.layerIndex);
+                  if (headerLayerIndex !== layerIndex) {
+                    // Only show if dropping into a different section
+                    closestElement.classList.add('drag-over-bottom');
+                  }
+                } else if (closestElement.dataset.animIndex !== String(animIndex)) {
+                  // For animation labels, show top/bottom based on position
+                  const rect = closestElement.getBoundingClientRect();
+                  const midpoint = rect.top + rect.height / 2;
 
-                if (moveEvent.clientY < midpoint) {
-                  closestLabel.classList.add('drag-over-top');
-                } else {
-                  closestLabel.classList.add('drag-over-bottom');
+                  if (moveEvent.clientY < midpoint) {
+                    closestElement.classList.add('drag-over-top');
+                  } else {
+                    closestElement.classList.add('drag-over-bottom');
+                  }
                 }
               }
             }
@@ -2979,47 +3041,71 @@ ${cleanedScript}
               }
             } else if (dragDirection === 'vertical') {
               // Complete the drop
-              const labels = document.querySelectorAll('.timeline-label.indented');
-              let targetLabel = null;
+              const animLabels = document.querySelectorAll('.timeline-label.indented');
+              const layerHeaders = document.querySelectorAll('.timeline-label.layer-header');
+              let targetElement = null;
               let dropPosition = null;
+              let isLayerHeader = false;
 
-              // Find which label we're hovering over
-              labels.forEach(label => {
+              // Check animation labels
+              animLabels.forEach(label => {
                 if (label.classList.contains('drag-over-top') || label.classList.contains('drag-over-bottom')) {
-                  targetLabel = label;
+                  targetElement = label;
                   dropPosition = label.classList.contains('drag-over-top') ? 'before' : 'after';
+                  isLayerHeader = false;
                 }
               });
 
-              if (targetLabel && targetLabel.dataset.animIndex !== String(animIndex)) {
-                const targetAnimIndex = parseInt(targetLabel.dataset.animIndex);
-                const targetLayerIndex = parseInt(targetLabel.dataset.layerIndex);
-                const targetAnimInLayerIndex = parseInt(targetLabel.dataset.animInLayer);
+              // Check layer headers
+              layerHeaders.forEach(header => {
+                if (header.classList.contains('drag-over-bottom')) {
+                  targetElement = header;
+                  isLayerHeader = true;
+                }
+              });
 
-                // Perform the move
-                if (layerIndex === targetLayerIndex) {
-                  // Moving within the same layer
-                  let targetIndex = targetAnimInLayerIndex;
-                  if (dropPosition === 'after') targetIndex++;
-                  if (animInLayerIndex < targetIndex) targetIndex--;
-
-                  if (animInLayerIndex !== targetIndex) {
-                    const layer = specData.layers[layerIndex];
-                    const anim = layer.animations.splice(animInLayerIndex, 1)[0];
-                    layer.animations.splice(targetIndex, 0, anim);
-                    renderTimeline();
-                  }
-                } else {
-                  // Moving to a different layer
+              if (targetElement) {
+                if (isLayerHeader) {
+                  // Dropping on a layer header - add to beginning of that section
+                  const targetLayerIndex = parseInt(targetElement.dataset.layerIndex);
                   const sourceLayer = specData.layers[layerIndex];
                   const targetLayer = specData.layers[targetLayerIndex];
                   const anim = sourceLayer.animations.splice(animInLayerIndex, 1)[0];
 
-                  let targetIndex = targetAnimInLayerIndex;
-                  if (dropPosition === 'after') targetIndex++;
-
-                  targetLayer.animations.splice(targetIndex, 0, anim);
+                  // Insert at beginning of target layer
+                  targetLayer.animations.splice(0, 0, anim);
                   renderTimeline();
+                } else if (targetElement.dataset.animIndex !== String(animIndex)) {
+                  // Dropping on an animation label
+                  const targetAnimIndex = parseInt(targetElement.dataset.animIndex);
+                  const targetLayerIndex = parseInt(targetElement.dataset.layerIndex);
+                  const targetAnimInLayerIndex = parseInt(targetElement.dataset.animInLayer);
+
+                  // Perform the move
+                  if (layerIndex === targetLayerIndex) {
+                    // Moving within the same layer
+                    let targetIndex = targetAnimInLayerIndex;
+                    if (dropPosition === 'after') targetIndex++;
+                    if (animInLayerIndex < targetIndex) targetIndex--;
+
+                    if (animInLayerIndex !== targetIndex) {
+                      const layer = specData.layers[layerIndex];
+                      const anim = layer.animations.splice(animInLayerIndex, 1)[0];
+                      layer.animations.splice(targetIndex, 0, anim);
+                      renderTimeline();
+                    }
+                  } else {
+                    // Moving to a different layer
+                    const sourceLayer = specData.layers[layerIndex];
+                    const targetLayer = specData.layers[targetLayerIndex];
+                    const anim = sourceLayer.animations.splice(animInLayerIndex, 1)[0];
+
+                    let targetIndex = targetAnimInLayerIndex;
+                    if (dropPosition === 'after') targetIndex++;
+
+                    targetLayer.animations.splice(targetIndex, 0, anim);
+                    renderTimeline();
+                  }
                 }
               }
 
