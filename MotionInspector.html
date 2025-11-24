@@ -1322,7 +1322,7 @@
       <h1>Motion Inspector</h1>
       <div class="controls">
         <input type="file" id="videoInput" accept="video/*" class="edit-only main-only">
-        <div class="view-mode-control edit-only main-only">
+        <div class="view-mode-control">
           <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
           <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
         </div>
@@ -1753,7 +1753,12 @@
       console.log('[TABLE] Saved video section width:', savedVideoSectionWidth);
 
       // Set video section to minimum width
-      mainContent.style.gridTemplateColumns = '400px 20px 1fr';
+      // Check if in edit mode (has resize handle) or read mode (no resize handle)
+      if (isEditMode) {
+        mainContent.style.gridTemplateColumns = '400px 20px 1fr';
+      } else {
+        mainContent.style.gridTemplateColumns = '400px 1fr';
+      }
 
       // Clear timeline content (will be replaced with table)
       timelineContent.innerHTML = '';
@@ -1772,7 +1777,12 @@
 
       // Restore video section width
       if (savedVideoSectionWidth) {
-        mainContent.style.gridTemplateColumns = `${savedVideoSectionWidth}px 20px 1fr`;
+        // Check if in edit mode (has resize handle) or read mode (no resize handle)
+        if (isEditMode) {
+          mainContent.style.gridTemplateColumns = `${savedVideoSectionWidth}px 20px 1fr`;
+        } else {
+          mainContent.style.gridTemplateColumns = `${savedVideoSectionWidth}px 1fr`;
+        }
         console.log('[TABLE] Restored video section width:', savedVideoSectionWidth);
       }
 
@@ -1968,6 +1978,10 @@
     <div class="header-section">
       <h1>Motion Inspector</h1>
       <div class="controls">
+        <div class="view-mode-control">
+          <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
+          <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
+        </div>
         <button class="btn btn-secondary" onclick="copySpecJson()">
           <span class="btn-emoji">📋</span>&nbsp;&nbsp;Copy Spec
         </button>
