@@ -1886,7 +1886,7 @@
         <div style="flex: 1; font-size: 12px; color: #e0e0e0; font-weight: 600; padding-right: 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">Description</div>
         <div style="width: 80px; font-size: 12px; color: #e0e0e0; font-weight: 600; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">Delay</div>
         <div style="width: 80px; font-size: 12px; color: #e0e0e0; font-weight: 600; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">Duration</div>
-        <div style="width: 240px; font-size: 12px; color: #e0e0e0; font-weight: 600; padding: 0 12px; user-select: text; cursor: text;">Easing</div>
+        <div style="min-width: 80px; max-width: 380px; flex: 0 1 auto; font-size: 12px; color: #e0e0e0; font-weight: 600; padding: 0 12px; user-select: text; cursor: text;">Easing</div>
       </div>`;
 
       // Table rows - each row exactly 32px to match timeline tracks
@@ -1897,7 +1897,7 @@
           <div style="flex: 1; padding-right: 12px; border-right: 1px solid #2a2a2a;"></div>
           <div style="width: 80px; padding: 0 12px; border-right: 1px solid #2a2a2a;"></div>
           <div style="width: 80px; padding: 0 12px; border-right: 1px solid #2a2a2a;"></div>
-          <div style="width: 240px; padding: 0 12px;"></div>
+          <div style="min-width: 80px; max-width: 380px; flex: 0 1 auto; padding: 0 12px;"></div>
         </div>`;
 
         // Animation rows
@@ -1934,7 +1934,7 @@
                 const link = springLinks[spring.preset];
                 easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
               } else {
-                easingText = `<strong>Stiffness:</strong> ${spring.custom.stiffness}, <strong>Damping:</strong> ${spring.custom.damping}, <strong>Damping Ratio:</strong> ${spring.custom.dampingRatio}, <strong>Mass:</strong> ${spring.custom.mass}`;
+                easingText = `<strong>Stiffness:</strong> ${spring.custom.stiffness}, <strong>Damping:</strong> ${spring.custom.damping}, <strong>Ratio:</strong> ${spring.custom.dampingRatio}, <strong>Mass:</strong> ${spring.custom.mass}`;
               }
             } else if (anim.easing.type === 'cubic-bezier') {
               // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
@@ -1955,7 +1955,7 @@
             <div style="flex: 1; color: #b0b0b0; font-size: 12px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; padding-right: 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">${description}</div>
             <div style="width: 80px; color: #b0b0b0; font-size: 12px; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">${delay}</div>
             <div style="width: 80px; color: #b0b0b0; font-size: 12px; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">${duration}</div>
-            <div style="width: 240px; color: #888; font-size: 11px; font-family: monospace; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; padding: 0 12px; user-select: text; cursor: text;">${easingText}</div>
+            <div style="min-width: 80px; max-width: 380px; flex: 0 1 auto; color: #888; font-size: 11px; font-family: monospace; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; padding: 0 12px; user-select: text; cursor: text;">${easingText}</div>
           </div>`;
         });
       });
