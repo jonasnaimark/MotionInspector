@@ -1261,6 +1261,13 @@
       display: none !important;
     }
 
+    body[data-mode="read"] .timeline-label,
+    body[data-mode="read"] .timeline-label:active,
+    body[data-mode="read"] .timeline-bar,
+    body[data-mode="read"] .timeline-bar:active {
+      cursor: default !important;
+    }
+
     .export-only {
       display: none !important;
     }
@@ -3107,6 +3114,9 @@ ${cleanedScript}
 
       bars.forEach(bar => {
         bar.addEventListener('mousedown', (e) => {
+          // Don't allow dragging in read mode
+          if (!isEditMode) return;
+
           // Don't interfere with resize handles
           if (e.target.classList.contains('timeline-bar-resize-handle')) return;
 
