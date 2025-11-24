@@ -4288,6 +4288,11 @@ ${cleanedScript}
     });
 
     // Show animation details
+    // PATTERN FOR EDITABLE FIELDS:
+    // - In edit mode (isEditMode === true): Render <input> fields with onblur/onkeydown handlers
+    // - In read mode (isEditMode === false): Render plain text (selectable but not editable)
+    // - Use: if (isEditMode) { /* input */ } else { /* plain text */ }
+    // - Call updateAnimationField(animIndex, fieldName, newValue) to save changes
     function showAnimationDetails(animIndex) {
       // Store the selected animation index
       selectedAnimation = animIndex;
@@ -4362,19 +4367,26 @@ ${cleanedScript}
       html += `</div>`;
 
       // Description - full width above other fields (no label, just as subheader)
-      html += `
-        <div class="detail-description">
-          <input
-            type="text"
-            class="detail-description-input"
-            value="${description.replace(/"/g, '&quot;')}"
-            placeholder="Enter description..."
-            onfocus="this.select()"
-            onblur="updateAnimationField(${animIndex}, 'customDescription', this.value)"
-            onkeydown="if(event.key === 'Enter') { this.blur(); }"
-          />
-        </div>
-      `;
+      // Description - editable in edit mode, plain text in read mode
+      if (isEditMode) {
+        html += `
+          <div class="detail-description">
+            <input
+              type="text"
+              class="detail-description-input"
+              value="${description.replace(/"/g, '&quot;')}"
+              placeholder="Enter description..."
+              onfocus="this.select()"
+              onblur="updateAnimationField(${animIndex}, 'customDescription', this.value)"
+              onkeydown="if(event.key === 'Enter') { this.blur(); }"
+            />
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="detail-description">${description}</div>
+        `;
+      }
 
       html += `<div class="detail-grid">`;
 
