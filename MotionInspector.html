@@ -1663,6 +1663,18 @@
       }
     }
 
+    // Copy spec JSON to clipboard (for exported files)
+    async function copySpecJson() {
+      try {
+        const jsonString = JSON.stringify(specData, null, 2);
+        await navigator.clipboard.writeText(jsonString);
+        alert('Spec JSON copied to clipboard!\n\nYou can paste this into MotionInspector.html to edit.');
+      } catch (err) {
+        alert('Failed to copy to clipboard: ' + err.message);
+        console.error(err);
+      }
+    }
+
     // Get the base HTML template for export (without the export button and JSZip)
     function getExportTemplate(videoFileName, specDataJson, videoSectionWidth = 400) {
       console.log('[GET_EXPORT_TEMPLATE] videoSectionWidth:', videoSectionWidth);
@@ -1716,6 +1728,9 @@
     <div class="header-section">
       <h1>Motion Inspector</h1>
       <div class="controls">
+        <button class="btn btn-secondary" onclick="copySpecJson()">
+          <span class="btn-emoji">📋</span>&nbsp;&nbsp;Copy Spec
+        </button>
       </div>
     </div>
 
