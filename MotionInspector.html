@@ -1376,6 +1376,30 @@
       color: #ffffff;
     }
 
+    .detail-description-input {
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 13px;
+      color: #ffffff;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    .detail-description-input:hover {
+      border-color: #555;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .detail-description-input:focus {
+      border-color: #4a90e2;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
     .detail-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -2721,6 +2745,45 @@ ${cleanedScript}
 
       // Fallback: divide by 8
       return { interval: duration / 8, count: 8 };
+    }
+
+    // Helper function to refresh the active view
+    function refreshActiveView() {
+      if (viewMode === 'table') {
+        renderTableView();
+      } else {
+        renderTimeline();
+      }
+      // If an animation is selected, refresh its detail panel
+      if (selectedAnimation !== null) {
+        showAnimationDetails(selectedAnimation);
+      }
+    }
+
+    // Update an animation field and refresh views
+    function updateAnimationField(animIndex, fieldName, newValue) {
+      // Find the animation in specData
+      let currentIndex = 0;
+      for (let layerIndex = 0; layerIndex < specData.layers.length; layerIndex++) {
+        const layer = specData.layers[layerIndex];
+        for (let animIdx = 0; animIdx < layer.animations.length; animIdx++) {
+          if (currentIndex === animIndex) {
+            const anim = layer.animations[animIdx];
+
+            // Update the field
+            if (fieldName === 'customDescription') {
+              anim.description = newValue;
+            } else {
+              anim[fieldName] = newValue;
+            }
+
+            // Refresh the view
+            refreshActiveView();
+            return;
+          }
+          currentIndex++;
+        }
+      }
     }
 
     // Render the timeline
@@ -4300,7 +4363,17 @@ ${cleanedScript}
 
       // Description - full width above other fields (no label, just as subheader)
       html += `
-        <div class="detail-description">${description}</div>
+        <div class="detail-description">
+          <input
+            type="text"
+            class="detail-description-input"
+            value="${description.replace(/"/g, '&quot;')}"
+            placeholder="Enter description..."
+            onfocus="this.select()"
+            onblur="updateAnimationField(${animIndex}, 'customDescription', this.value)"
+            onkeydown="if(event.key === 'Enter') { this.blur(); }"
+          />
+        </div>
       `;
 
       html += `<div class="detail-grid">`;
