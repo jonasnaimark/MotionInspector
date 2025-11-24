@@ -986,27 +986,28 @@
     }
 
     body.table-view-active .timeline-label {
-      height: auto;
-      min-height: 32px;
-      align-items: center;
-      padding-top: 0;
-      padding-bottom: 0;
+      height: 32px;
+      border-bottom: 1px solid #1a1a1a;
+      box-sizing: border-box;
+    }
+
+    body.table-view-active .timeline-label.layer-header {
       border-bottom: 1px solid #1a1a1a;
     }
 
     body.table-view-active .timeline-label.indented {
-      padding: 0 12px 0 32px;
+      padding-left: 32px;
+      border-bottom: 1px solid #1a1a1a;
     }
 
     body.table-view-active .timeline-track.table-row {
-      height: auto;
-      min-height: 32px;
+      height: 32px;
     }
 
     .table-gap-label {
       height: 15px;
       min-height: 15px;
-      border-top: 1px solid #1a1a1a;
+      border-top: none;
       border-bottom: none;
       background: #0a0a0a;
       padding: 0;
