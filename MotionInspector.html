@@ -512,7 +512,7 @@
 
     .color-picker-panel {
       position: absolute;
-      background: #1a1a1a;
+      background: #4a4a4a;
       border: 1px solid #444;
       border-radius: 8px;
       padding: 12px;
@@ -641,7 +641,7 @@
 
     .timeline-row {
       min-height: 32px;
-      border-bottom: 1px solid #2a2a2a;
+      border-bottom: 1px solid #1a1a1a;
       position: relative;
     }
 
@@ -653,7 +653,7 @@
     .timeline-label.layer-header {
       background: transparent;
       font-weight: 600;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: none;
       height: 32px;
     }
 
@@ -690,7 +690,7 @@
       overflow: visible;
       text-overflow: ellipsis;
       height: 32px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: none;
       position: relative;
       box-sizing: border-box;
       cursor: grab;
@@ -981,7 +981,8 @@
     }
 
     body.table-view-active .timeline-label.layer-header {
-      border-bottom: 1px solid #2a2a2a;
+      border-bottom: 1px solid #1a1a1a;
+      padding: 0 12px;
     }
 
     body.table-view-active .timeline-label {
@@ -990,11 +991,7 @@
       align-items: center;
       padding-top: 0;
       padding-bottom: 0;
-      border-bottom: 1px solid #2a2a2a;
-    }
-
-    body.table-view-active .timeline-label.layer-header {
-      padding: 0 12px;
+      border-bottom: 1px solid #1a1a1a;
     }
 
     body.table-view-active .timeline-label.indented {
@@ -1004,6 +1001,37 @@
     body.table-view-active .timeline-track.table-row {
       height: auto;
       min-height: 32px;
+    }
+
+    .table-gap-label {
+      height: 15px;
+      min-height: 15px;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: none;
+      border-right: 1px solid #2a2a2a;
+      background: #0a0a0a;
+      padding: 0;
+      cursor: default;
+      display: flex;
+      align-items: center;
+    }
+
+    .table-gap-row {
+      height: 15px;
+      min-height: 15px !important;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: none !important;
+    }
+
+    .table-gap-row .table-cell {
+      padding: 0;
+      border-right: 1px solid #2a2a2a;
+      height: 100%;
+      min-height: inherit;
+    }
+
+    .table-gap-row .table-cell:last-child {
+      border-right: none;
     }
 
     .timeline-bar {
@@ -2082,6 +2110,16 @@
           const rightRow = rightRows[index];
           if (!rightRow) return;
 
+          const isGapRow = leftRow.classList.contains('table-gap-label') || rightRow.classList.contains('table-gap-row');
+          if (isGapRow) {
+            const gapHeight = 15;
+            leftRow.style.height = `${gapHeight}px`;
+            leftRow.style.minHeight = `${gapHeight}px`;
+            rightRow.style.height = `${gapHeight}px`;
+            rightRow.style.minHeight = `${gapHeight}px`;
+            return;
+          }
+
           const height = Math.max(leftRow.offsetHeight, rightRow.offsetHeight, 32);
           leftRow.style.height = `${height}px`;
           leftRow.style.minHeight = `${height}px`;
@@ -2128,6 +2166,9 @@
             <span class="timeline-label-text">${anim.property}</span>
           </div>`;
         });
+        if (layerIndex < specData.layers.length - 1) {
+          html += `<div class="timeline-label table-gap-label"></div>`;
+        }
       });
 
       html += `</div>`; // timeline-labels-column
@@ -2212,6 +2253,15 @@
             <div class="table-cell table-cell--easing">${easingText}</div>
           </div>`;
         });
+
+        if (layerIndex < specData.layers.length - 1) {
+          html += `<div class="timeline-track table-row table-gap-row">
+            <div class="table-cell table-cell--desc"></div>
+            <div class="table-cell table-cell--delay"></div>
+            <div class="table-cell table-cell--duration"></div>
+            <div class="table-cell table-cell--easing"></div>
+          </div>`;
+        }
       });
 
       html += `</div>`; // timeline-content-column
