@@ -88,6 +88,42 @@
       background: #444;
     }
 
+    /* View mode segmented control */
+    .view-mode-control {
+      display: inline-flex;
+      background: #2a2a2a;
+      border-radius: 20px;
+      border: 1px solid #555;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .view-mode-btn {
+      padding: 8px 16px;
+      width: 80px;
+      background: transparent;
+      border: none;
+      color: #e0e0e0;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-right: 1px solid #555;
+    }
+
+    .view-mode-btn:last-child {
+      border-right: none;
+    }
+
+    .view-mode-btn:hover {
+      background: #333;
+    }
+
+    .view-mode-btn.selected {
+      background: #444;
+      color: #e0e0e0;
+    }
+
     /* Make emojis in buttons 2px larger */
     .btn-emoji {
       font-size: 15px;
@@ -1286,6 +1322,10 @@
       <h1>Motion Inspector</h1>
       <div class="controls">
         <input type="file" id="videoInput" accept="video/*" class="edit-only main-only">
+        <div class="view-mode-control edit-only main-only">
+          <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
+          <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
+        </div>
         <button class="btn btn-secondary edit-only main-only" onclick="pasteSpec()">
           <span class="btn-emoji">📋</span>&nbsp;&nbsp;Paste Spec
         </button>
@@ -1339,6 +1379,8 @@
     let justFinishedDragging = false;
     let pendingVideoSeek = null;
     let videoSeekScheduled = false;
+    let viewMode = 'timeline'; // 'timeline' or 'table'
+    let savedVideoSectionWidth = null;
 
     // Hide main-only buttons in exported files
     if (isExportMode) {
@@ -1673,6 +1715,204 @@
         alert('Failed to copy to clipboard: ' + err.message);
         console.error(err);
       }
+    }
+
+    // Switch between timeline and table view modes
+    function switchToView(view) {
+      // Update view mode state
+      viewMode = view;
+
+      // Update button states
+      document.querySelectorAll('.view-mode-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      const selectedBtn = document.querySelector(`.view-mode-btn[data-view="${view}"]`);
+      if (selectedBtn) {
+        selectedBtn.classList.add('selected');
+      }
+
+      // Switch view
+      if (view === 'table') {
+        switchToTableView();
+      } else {
+        switchToTimelineView();
+      }
+    }
+
+    // Switch to table view
+    function switchToTableView() {
+      console.log('[TABLE] Switching to table view');
+      const videoSection = document.querySelector('.video-section');
+      const mainContent = document.querySelector('.main-content');
+      const timelineContent = document.getElementById('timelineContent');
+
+      console.log('[TABLE] timelineContent:', timelineContent);
+
+      // Save current video section width
+      savedVideoSectionWidth = videoSection.offsetWidth;
+      console.log('[TABLE] Saved video section width:', savedVideoSectionWidth);
+
+      // Set video section to minimum width
+      mainContent.style.gridTemplateColumns = '400px 20px 1fr';
+
+      // Clear timeline content (will be replaced with table)
+      timelineContent.innerHTML = '';
+      console.log('[TABLE] Cleared timeline content');
+
+      // Render table
+      renderTableView();
+      console.log('[TABLE] Table rendered');
+    }
+
+    // Switch back to timeline view
+    function switchToTimelineView() {
+      console.log('[TABLE] Switching back to timeline view');
+      const mainContent = document.querySelector('.main-content');
+      const timelineContent = document.getElementById('timelineContent');
+
+      // Restore video section width
+      if (savedVideoSectionWidth) {
+        mainContent.style.gridTemplateColumns = `${savedVideoSectionWidth}px 20px 1fr`;
+        console.log('[TABLE] Restored video section width:', savedVideoSectionWidth);
+      }
+
+      // Clear table content
+      timelineContent.innerHTML = '';
+      console.log('[TABLE] Cleared table content');
+
+      // Re-render timeline
+      renderTimeline();
+      console.log('[TABLE] Timeline re-rendered');
+    }
+
+    // Render table view
+    function renderTableView() {
+      console.log('[TABLE] renderTableView called');
+      if (!specData) {
+        console.log('[TABLE] No specData, returning');
+        return;
+      }
+
+      const timelineContent = document.getElementById('timelineContent');
+
+      // Build table view HTML - must match timeline structure exactly
+      let html = '';
+
+      // Timeline container
+      html += `<div class="timeline-container">`;
+
+      // ===== LEFT COLUMN - Keep exactly the same as timeline =====
+      html += `<div class="timeline-labels-column" style="border-right: 1px solid #2a2a2a;">`;
+
+      // Top section - playhead-time (44px) - matches timeline-ruler height
+      html += `<div class="playhead-time" style="cursor: default;">
+      </div>`;
+
+      // Labels - exactly the same as timeline mode
+      specData.layers.forEach((layer, layerIndex) => {
+        // Layer header label
+        const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        html += `<div class="timeline-label layer-header${dividerClass}">
+          <span class="timeline-label-text">${layer.layerName}</span>
+        </div>`;
+
+        // Animation labels
+        layer.animations.forEach((anim) => {
+          html += `<div class="timeline-label indented">
+            <span class="timeline-label-text">${anim.property}</span>
+          </div>`;
+        });
+      });
+
+      html += `</div>`; // timeline-labels-column
+
+      // ===== RIGHT COLUMN - Table data =====
+      html += `<div class="timeline-content-column">`;
+
+      // Table header row - matches timeline-ruler styling (44px)
+      html += `<div class="timeline-ruler" style="display: flex; align-items: center; padding: 0 12px; padding-right: 0; margin-right: 0;">
+        <div style="flex: 1; font-size: 12px; color: #e0e0e0; font-weight: 600; padding-right: 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">Description</div>
+        <div style="width: 80px; font-size: 12px; color: #e0e0e0; font-weight: 600; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">Delay</div>
+        <div style="width: 80px; font-size: 12px; color: #e0e0e0; font-weight: 600; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">Duration</div>
+        <div style="width: 240px; font-size: 12px; color: #e0e0e0; font-weight: 600; padding: 0 12px; user-select: text; cursor: text;">Easing</div>
+      </div>`;
+
+      // Table rows - each row exactly 32px to match timeline tracks
+      specData.layers.forEach((layer, layerIndex) => {
+        // Layer header row (empty cells to match left column layer header)
+        const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        html += `<div class="timeline-track layer-header${dividerClass}" style="display: flex; align-items: center; padding: 0 12px; padding-right: 0; margin-right: 0;">
+          <div style="flex: 1; padding-right: 12px; border-right: 1px solid #2a2a2a;"></div>
+          <div style="width: 80px; padding: 0 12px; border-right: 1px solid #2a2a2a;"></div>
+          <div style="width: 80px; padding: 0 12px; border-right: 1px solid #2a2a2a;"></div>
+          <div style="width: 240px; padding: 0 12px;"></div>
+        </div>`;
+
+        // Animation rows
+        layer.animations.forEach((anim) => {
+          const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
+
+          // For Fit to Shape or other special animations, only show description
+          const isFitToShape = anim.isFitToShape || anim.fitToShape;
+
+          let delay, duration, easingText;
+
+          if (isFitToShape) {
+            delay = '-';
+            duration = '-';
+            easingText = '-';
+          } else {
+            delay = anim.timing.delay + 'ms';
+            duration = anim.easing.type === 'spring' ? '-' : anim.timing.duration + 'ms';
+
+            if (anim.easing.type === 'spring') {
+              const spring = anim.easing.spring;
+              const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
+              const springLinks = {
+                'Standard Spring': 'https://air.bb/standard-spring',
+                'Slow Spring': 'https://air.bb/slow-spring',
+                'Fast Spring': 'https://air.bb/fast-spring',
+                'Slow Bounce Spring': 'https://air.bb/slow-bounce-spring',
+                'Medium Bounce Spring': 'https://air.bb/medium-bounce-spring',
+                'Fast Bounce Spring': 'https://air.bb/fast-bounce-spring'
+              };
+              const isPreset = presetSprings.includes(spring.preset);
+
+              if (isPreset) {
+                const link = springLinks[spring.preset];
+                easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
+              } else {
+                easingText = `<strong>Stiffness:</strong> ${spring.custom.stiffness}, <strong>Damping:</strong> ${spring.custom.damping}, <strong>Damping Ratio:</strong> ${spring.custom.dampingRatio}, <strong>Mass:</strong> ${spring.custom.mass}`;
+              }
+            } else if (anim.easing.type === 'cubic-bezier') {
+              // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
+              const bezierValue = anim.easing.cubicBezier;
+              if (bezierValue.includes('cubic-bezier')) {
+                easingText = bezierValue.replace('cubic-bezier', '');
+              } else {
+                easingText = `(${bezierValue})`;
+              }
+            } else if (anim.easing.type === 'linear') {
+              easingText = 'linear';
+            } else {
+              easingText = anim.easing.type || '-';
+            }
+          }
+
+          html += `<div class="timeline-track" style="display: flex; align-items: center; padding: 0 12px; padding-right: 0; margin-right: 0;">
+            <div style="flex: 1; color: #b0b0b0; font-size: 12px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; padding-right: 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">${description}</div>
+            <div style="width: 80px; color: #b0b0b0; font-size: 12px; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">${delay}</div>
+            <div style="width: 80px; color: #b0b0b0; font-size: 12px; padding: 0 12px; border-right: 1px solid #2a2a2a; user-select: text; cursor: text;">${duration}</div>
+            <div style="width: 240px; color: #888; font-size: 11px; font-family: monospace; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; padding: 0 12px; user-select: text; cursor: text;">${easingText}</div>
+          </div>`;
+        });
+      });
+
+      html += `</div>`; // timeline-content-column
+      html += `</div>`; // timeline-container
+
+      timelineContent.innerHTML = html;
+      console.log('[TABLE] Table view rendered');
     }
 
     // Get the base HTML template for export (without the export button and JSZip)
