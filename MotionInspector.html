@@ -1285,6 +1285,9 @@
         <button class="btn btn-secondary edit-only main-only" onclick="exportZip()">
           <span class="btn-emoji">📦</span>&nbsp;&nbsp;Export Zip
         </button>
+        <button class="btn btn-secondary edit-only export-only" onclick="saveFile()">
+          <span class="btn-emoji">💾</span>&nbsp;&nbsp;Save
+        </button>
         <button class="btn btn-secondary read-only export-only" onclick="copySpecJson()">
           <span class="btn-emoji">📋</span>&nbsp;&nbsp;Copy Spec JSON
         </button>
@@ -1671,6 +1674,73 @@
       }
     }
 
+    // Save edited spec to file (for exported files)
+    async function saveFile() {
+      try {
+        // Check if File System Access API is supported
+        if (!window.showSaveFilePicker) {
+          alert('Save is not supported in this browser.\n\nPlease use Chrome or Edge.\n\nAlternatively, use "Copy Spec JSON" to copy the spec and paste it into the main file.');
+          return;
+        }
+
+        // Clone the current document
+        const doc = document.documentElement.cloneNode(true);
+
+        // Ensure body is in read mode for the saved file
+        const body = doc.querySelector('body');
+        if (body) body.setAttribute('data-mode', 'read');
+
+        // Update embedded spec data in the script
+        const scripts = doc.querySelectorAll('script:not([src])');
+        scripts.forEach(script => {
+          let content = script.textContent;
+          // Find and replace EMBEDDED_SPEC_DATA using string manipulation
+          const specDataStart = content.indexOf('const EMBEDDED_SPEC_DATA = ');
+          if (specDataStart !== -1) {
+            const specDataEnd = content.indexOf(';', specDataStart);
+            if (specDataEnd !== -1) {
+              content = content.substring(0, specDataStart) +
+                `const EMBEDDED_SPEC_DATA = ${JSON.stringify(specData)};` +
+                content.substring(specDataEnd + 1);
+              script.textContent = content;
+            }
+          }
+        });
+
+        // Serialize to HTML
+        const serializer = new XMLSerializer();
+        const htmlString = serializer.serializeToString(doc);
+        const fullHtml = '<!DOCTYPE html>\n' + htmlString;
+
+        // Show save file picker
+        const handle = await window.showSaveFilePicker({
+          suggestedName: document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.html',
+          types: [{
+            description: 'HTML Files',
+            accept: { 'text/html': ['.html'] }
+          }]
+        });
+
+        // Write the file
+        const writable = await handle.createWritable();
+        await writable.write(fullHtml);
+        await writable.close();
+
+        alert('File saved successfully!');
+
+        // Switch back to read mode after saving
+        isEditMode = false;
+        document.body.setAttribute('data-mode', 'read');
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log('Save cancelled');
+        } else {
+          alert('Failed to save file: ' + err.message);
+          console.error(err);
+        }
+      }
+    }
+
     // Get the base HTML template for export (without the export button and JSZip)
     function getExportTemplate(videoFileName, specDataJson, videoSectionWidth = 400) {
       console.log('[GET_EXPORT_TEMPLATE] videoSectionWidth:', videoSectionWidth);
@@ -1730,6 +1800,9 @@
         </button>
         <button class="btn btn-secondary edit-only main-only" onclick="exportZip()">
           <span class="btn-emoji">📦</span>&nbsp;&nbsp;Export Zip
+        </button>
+        <button class="btn btn-secondary edit-only export-only" onclick="saveFile()">
+          <span class="btn-emoji">💾</span>&nbsp;&nbsp;Save
         </button>
         <button class="btn btn-secondary read-only export-only" onclick="copySpecJson()">
           <span class="btn-emoji">📋</span>&nbsp;&nbsp;Copy Spec JSON
