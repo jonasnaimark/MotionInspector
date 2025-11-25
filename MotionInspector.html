@@ -1534,6 +1534,26 @@
       border-color: #a82929;
     }
 
+    /* Scrollbar styling for textarea inputs */
+    .detail-value-input::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .detail-value-input::-webkit-scrollbar-track {
+      background: #1a1a1a;
+      border-radius: 4px;
+    }
+
+    .detail-value-input::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 4px;
+      border: 2px solid #1a1a1a;
+    }
+
+    .detail-value-input::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
     .detail-grid {
       display: grid;
       grid-template-columns: 0.8fr 0.8fr 2fr 0.8fr 0.8fr;
@@ -5947,7 +5967,7 @@ ${cleanedScript}
                 rows="1"
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'easing', this.value)"
-                oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight + 4) + 'px';"
                 onkeydown="if(event.key === 'Enter' && !event.shiftKey) { this.blur(); }"
               >${easingText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
             </div>
@@ -6050,12 +6070,16 @@ ${cleanedScript}
         const textareas = detailPanel.querySelectorAll('textarea.detail-value-input');
         textareas.forEach(textarea => {
           textarea.style.height = 'auto';
-          textarea.style.height = textarea.scrollHeight + 'px';
+          // Add 4px buffer to prevent scrollbar from appearing
+          textarea.style.height = (textarea.scrollHeight + 4) + 'px';
         });
       }
 
       // Auto-resize all textareas to fit their content
-      resizeTextareas();
+      // Use requestAnimationFrame to ensure DOM is fully rendered
+      requestAnimationFrame(() => {
+        resizeTextareas();
+      });
 
       // Auto-resize title input fields to fit their content
       const titleInputs = detailPanel.querySelectorAll('.detail-title-input');
