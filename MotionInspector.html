@@ -3011,24 +3011,34 @@ ${cleanedScript}
           if (values.animatingAxes.both) {
             const xDir = xChange < 0 ? 'left' : 'right';
             const yDir = yChange < 0 ? 'up' : 'down';
-            description = `slides ${yDir} and ${xDir}`; // No px values for grouped Position
+            description = `moves ${yDir} and ${xDir}`; // No px values for grouped Position
           } else if (values.animatingAxes.x) {
             const direction = xChange < 0 ? 'left' : 'right';
-            description = `slides ${direction}`;
+            description = `moves ${direction}`;
           } else if (values.animatingAxes.y) {
             const direction = yChange < 0 ? 'up' : 'down';
-            description = `slides ${direction}`;
+            description = `moves ${direction}`;
           } else {
             description = property;
           }
         }
         else if (prop.includes('x position')) {
-          const direction = changeValue < 0 ? 'left' : 'right';
-          description = `slides ${direction} ${Math.round(absChange)}px`;
+          // Check for zero change
+          if (changeValue === 0) {
+            description = `Position X stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+          } else {
+            const direction = changeValue < 0 ? 'right' : 'left';
+            description = `moves ${Math.round(absChange)}px from the ${direction}`;
+          }
         }
         else if (prop.includes('y position')) {
-          const direction = changeValue < 0 ? 'up' : 'down';
-          description = `slides ${direction} ${Math.round(absChange)}px`;
+          // Check for zero change
+          if (changeValue === 0) {
+            description = `Position Y stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+          } else {
+            const direction = changeValue < 0 ? 'up' : 'down';
+            description = `moves ${direction} ${Math.round(absChange)}px`;
+          }
         }
         // Handle grouped "Width & Height" property
         else if (prop.includes('width & height') && Array.isArray(change)) {
@@ -3045,20 +3055,36 @@ ${cleanedScript}
           }
         }
         else if (prop.includes('width')) {
-          const action = changeValue > 0 ? 'expands' : 'shrinks';
-          description = `width ${action}`;
+          if (changeValue === 0) {
+            description = `width stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+          } else {
+            const action = changeValue > 0 ? 'expands' : 'shrinks';
+            description = `width ${action}`;
+          }
         }
         else if (prop.includes('height')) {
-          const action = changeValue > 0 ? 'expands' : 'shrinks';
-          description = `height ${action}`;
+          if (changeValue === 0) {
+            description = `height stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+          } else {
+            const action = changeValue > 0 ? 'expands' : 'shrinks';
+            description = `height ${action}`;
+          }
         }
         else if (prop.includes('blur radius')) {
-          const action = changeValue > 0 ? 'blurs' : 'unblurs';
-          description = action;
+          if (changeValue === 0) {
+            description = `blur stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+          } else {
+            const action = changeValue > 0 ? 'blurs' : 'unblurs';
+            description = action;
+          }
         }
         else if (prop.includes('amount to tint')) {
-          const action = changeValue > 0 ? 'tints' : 'untints';
-          description = action;
+          if (changeValue === 0) {
+            description = `tint stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+          } else {
+            const action = changeValue > 0 ? 'tints' : 'untints';
+            description = action;
+          }
         }
         else if (prop.includes('scale')) {
           if (values.formatted) {
@@ -3085,23 +3111,81 @@ ${cleanedScript}
             endVal = formatDecimalValue(endVal);
 
             if (startVal === endVal) {
-              description = `scales to ${endVal}`;
+              description = `scale stays at ${endVal}`;
             } else {
-              description = `scales ${changeValue > 0 ? 'up' : 'down'} from ${startVal} to ${endVal}`;
+              description = `scale animates from ${startVal} – ${endVal}`;
             }
           } else {
-            description = changeValue > 0 ? 'scales up' : 'scales down';
+            // No formatted values available
+            if (changeValue === 0) {
+              description = `scale stays at ${Math.round(values.startValue)}%`;
+            } else {
+              description = `scale animates from ${Math.round(values.startValue)}% – ${Math.round(values.endValue)}%`;
+            }
           }
         }
         else if (prop.includes('rotation') || prop.includes('rotate')) {
-          const direction = changeValue < 0 ? 'counter-clockwise' : 'clockwise';
-          description = `rotates ${direction} ${Math.round(absChange)}°`;
+          // Check for zero change
+          if (changeValue === 0) {
+            description = `rotation stays at ${values.formatted?.startValue || Math.round(values.startValue)}°`;
+          } else {
+            const direction = changeValue < 0 ? 'counterclockwise' : 'clockwise';
+            const degrees = Math.round(absChange);
+
+            // Determine axis (if specified)
+            const axis = prop.includes('x rotation') ? 'X ' :
+                        prop.includes('y rotation') ? 'Y ' :
+                        prop.includes('z rotation') ? 'Z ' : '';
+
+            description = `rotates ${axis}${degrees}° ${direction}`;
+          }
         }
         else if (prop.includes('opacity')) {
-          if (values.formatted) {
-            description = `fades ${changeValue > 0 ? 'in' : 'out'} from ${formatDecimalValue(values.formatted.startValue)} to ${formatDecimalValue(values.formatted.endValue)}`;
+          const startValue = values.startValue;
+          const endValue = values.endValue;
+
+          // Format opacity values (remove % if present, show as percentage)
+          const startPercent = `${Math.round(typeof startValue === 'string' ? parseFloat(startValue) : startValue)}%`;
+          const endPercent = `${Math.round(typeof endValue === 'string' ? parseFloat(endValue) : endValue)}%`;
+
+          // Special cases
+          if (startValue === 0 && endValue === 100) {
+            description = `alpha animates from 0% – 100%`;
+          } else if (startValue === 100 && endValue === 0) {
+            description = `alpha animates from 100% – 0%`;
+          } else if (startValue === 0) {
+            description = `fades in to ${endPercent}`;
+          } else if (endValue === 0) {
+            description = `fades out from ${startPercent}`;
+          } else if (changeValue === 0) {
+            description = `opacity stays at ${startPercent}`;
           } else {
-            description = changeValue > 0 ? 'fades in' : 'fades out';
+            description = `alpha animates from ${startPercent} – ${endPercent}`;
+          }
+        }
+        // Handle corner radius properties (IndieCorners, Squircle, generic corner/radius)
+        else if (prop === 'tl' || prop === 'tr' || prop === 'bl' || prop === 'br' ||
+                 prop === 'unified radius' || prop === 'unified corners' ||
+                 prop.includes('corner') || prop.includes('radius') ||
+                 prop.includes('border radius')) {
+          const startRounded = Math.round(typeof values.startValue === 'string' ? parseFloat(values.startValue) : values.startValue);
+          const endRounded = Math.round(typeof values.endValue === 'string' ? parseFloat(values.endValue) : values.endValue);
+
+          // Special case: Sharp to rounded
+          if (startRounded === 0 && endRounded > 0) {
+            description = `corner radius animates from sharp (0px) – rounded (${endRounded}px)`;
+          }
+          // Special case: Rounded to sharp
+          else if (startRounded > 0 && endRounded === 0) {
+            description = `corner radius animates from rounded (${startRounded}px) – sharp (0px)`;
+          }
+          // Zero change
+          else if (startRounded === endRounded) {
+            description = `corner radius stays at ${startRounded}px`;
+          }
+          // Default
+          else {
+            description = `corner radius animates from ${startRounded}px – ${endRounded}px`;
           }
         }
         else {
