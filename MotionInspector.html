@@ -2276,14 +2276,8 @@
       if (justFinishedDragging && lastDraggedSpecTimeMs !== null) {
         specTimeMs = lastDraggedSpecTimeMs;
       } else {
-        // Calculate spec time based on video progress with offset adjustment
-        specTimeMs = video.currentTime * 1000;
-        if (video.duration && specData) {
-          // Apply offset: subtract VIDEO_OFFSET_MS from video time before calculating progress
-          const adjustedVideoTime = Math.max(0, video.currentTime - (VIDEO_OFFSET_MS / 1000));
-          const videoProgress = adjustedVideoTime / video.duration;
-          specTimeMs = videoProgress * specData.workArea.duration;
-        }
+        // Calculate spec time as direct time mapping (not percentage-based)
+        specTimeMs = video.currentTime * 1000; // Convert to milliseconds
       }
 
       const playheadTimeDisplay = document.getElementById('playheadTimeDisplay');
@@ -4198,10 +4192,8 @@ ${cleanedScript}
     // Convert video time to timeline position percentage
     function getTimelinePosition(videoTimeSeconds) {
       if (!video.duration || !specData) return 0;
-      // Apply offset: subtract VIDEO_OFFSET_MS from video time
-      const adjustedVideoTime = Math.max(0, videoTimeSeconds - (VIDEO_OFFSET_MS / 1000));
-      const videoProgress = adjustedVideoTime / video.duration;
-      const specTimeMs = videoProgress * specData.workArea.duration;
+      // Direct time mapping in milliseconds (not percentage-based)
+      const specTimeMs = videoTimeSeconds * 1000;
       // Position based on current view duration (accounts for zoom)
       const currentViewDuration = viewDuration || specData.workArea.duration;
       return (specTimeMs / currentViewDuration) * 100;
@@ -6025,10 +6017,8 @@ ${cleanedScript}
           // Store this position for when we release
           lastDraggedSpecTimeMs = specTimeMs;
 
-          // Calculate target video time - direct mapping without offset
-          // (offset is only for display during playback, not for seeking)
-          const videoProgress = specTimeMs / specData.workArea.duration;
-          const targetVideoTime = videoProgress * video.duration;
+          // Calculate target video time - direct time mapping (ms to seconds)
+          const targetVideoTime = specTimeMs / 1000;
           lastDraggedVideoTime = Math.min(targetVideoTime, video.duration);
 
           // Use throttled seek to prevent multiple competing seeks
