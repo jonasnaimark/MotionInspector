@@ -1288,6 +1288,37 @@
       position: relative;
     }
 
+    .detail-title-input {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: -2px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+      box-sizing: border-box;
+      max-width: 200px;
+      min-width: 40px;
+    }
+
+    .detail-title-input:hover {
+      border-color: #555;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .detail-title-input:focus {
+      border-color: #4a90e2;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-title-input-property {
+      margin-left: 2px;
+    }
+
     .detail-panel-close {
       background: #333;
       border: none;
@@ -2874,6 +2905,25 @@ ${cleanedScript}
       }
     }
 
+    // Auto-resize title input fields to fit content
+    function autoResizeTitleInput(input) {
+      // Create a temporary span to measure text width
+      const temp = document.createElement('span');
+      temp.style.font = window.getComputedStyle(input).font;
+      temp.style.fontWeight = '700';
+      temp.style.visibility = 'hidden';
+      temp.style.position = 'absolute';
+      temp.style.whiteSpace = 'pre';
+      temp.textContent = input.value || input.placeholder || '';
+      document.body.appendChild(temp);
+
+      // Set width with some padding (12px for left/right padding in input)
+      const width = Math.min(Math.max(temp.offsetWidth + 16, 40), 200);
+      input.style.width = width + 'px';
+
+      document.body.removeChild(temp);
+    }
+
     // Validate numeric field (for delay and duration)
     function validateNumeric(value, previousValue) {
       // Try to parse as float
@@ -2885,6 +2935,17 @@ ${cleanedScript}
       }
 
       return num;
+    }
+
+    // Update a layer field and refresh views
+    function updateLayerField(layerIndex, fieldName, newValue) {
+      if (layerIndex >= 0 && layerIndex < specData.layers.length) {
+        specData.layers[layerIndex][fieldName] = newValue;
+        // Refresh the view - this will update:
+        // 1. Left column layer header in timeline/table
+        // 2. All info boxes for animations in this layer (they all reference layer.layerName)
+        refreshActiveView();
+      }
     }
 
     // Update an animation field and refresh views
@@ -2928,6 +2989,9 @@ ${cleanedScript}
             } else if (fieldName === 'endValue') {
               // Update end value - no validation
               anim.customEndValue = newValue;
+            } else if (fieldName === 'property') {
+              // Update property name - no validation
+              anim.property = newValue;
             } else {
               anim[fieldName] = newValue;
             }
@@ -4531,7 +4595,31 @@ ${cleanedScript}
       html += `<div class="detail-panel-header">`;
       html += `<div class="detail-panel-title">`;
       html += `<div class="color-picker-dot" id="colorPickerDot" style="background: ${brightColor};" onclick="toggleColorPicker(event, ${animIndex})"></div>`;
-      html += `<span>${layer.layerName} › ${anim.property}</span>`;
+      if (isEditMode) {
+        html += `<input
+          type="text"
+          class="detail-title-input detail-title-input-section"
+          value="${layer.layerName.replace(/"/g, '&quot;')}"
+          maxlength="21"
+          onfocus="this.select()"
+          onblur="updateLayerField(${layerIndex}, 'layerName', this.value)"
+          oninput="autoResizeTitleInput(this)"
+          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+        />`;
+        html += `<span> › </span>`;
+        html += `<input
+          type="text"
+          class="detail-title-input detail-title-input-property"
+          value="${anim.property.replace(/"/g, '&quot;')}"
+          maxlength="21"
+          onfocus="this.select()"
+          onblur="updateAnimationField(${animIndex}, 'property', this.value)"
+          oninput="autoResizeTitleInput(this)"
+          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+        />`;
+      } else {
+        html += `<span>${layer.layerName} › ${anim.property}</span>`;
+      }
 
       // Color picker panel
       html += `<div class="color-picker-panel" id="colorPickerPanel">`;
@@ -4760,6 +4848,10 @@ ${cleanedScript}
 
       // Auto-resize all textareas to fit their content
       resizeTextareas();
+
+      // Auto-resize title input fields to fit their content
+      const titleInputs = detailPanel.querySelectorAll('.detail-title-input');
+      titleInputs.forEach(input => autoResizeTitleInput(input));
 
       // Remove old resize listener if it exists
       if (window.textareaResizeListener) {
