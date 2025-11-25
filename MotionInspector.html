@@ -2334,12 +2334,42 @@
                 easingText = `<strong>Stiffness:</strong> ${spring.custom.stiffness}, <strong>Damping:</strong> ${spring.custom.damping}, <strong>Damping Ratio:</strong> ${spring.custom.dampingRatio}, <strong>Mass:</strong> ${spring.custom.mass}`;
               }
             } else if (anim.easing.type === 'cubic-bezier') {
-              // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
               const bezierValue = anim.easing.cubicBezier;
-              if (bezierValue.includes('cubic-bezier')) {
-                easingText = bezierValue.replace('cubic-bezier', '');
+
+              // Check if preset name is already provided in JSON
+              let presetName = anim.easing.cubicBezierPreset;
+
+              // If not provided, detect from the bezier values
+              if (!presetName) {
+                // Normalize the bezier string by removing spaces and parsing numbers
+                const normalized = bezierValue.replace(/\s+/g, '').toLowerCase();
+                const curvePresets = {
+                  'cubic-bezier(0.2,0,0.2,1)': 'Standard Curve',
+                  'cubic-bezier(0.20,0.00,0.20,1.00)': 'Standard Curve',
+                  'cubic-bezier(0.1,1,0.2,1)': 'Enter Curve',
+                  'cubic-bezier(0.10,1.00,0.20,1.00)': 'Enter Curve',
+                  'cubic-bezier(0.4,0,1,1)': 'Exit Curve',
+                  'cubic-bezier(0.40,0.00,1.00,1.00)': 'Exit Curve'
+                };
+                presetName = curvePresets[normalized];
+              }
+
+              const curveLinks = {
+                'Standard Curve': 'https://air.bb/standard-curve',
+                'Enter Curve': 'https://air.bb/enter-curve',
+                'Exit Curve': 'https://air.bb/exit-curve'
+              };
+
+              if (presetName && curveLinks[presetName]) {
+                const link = curveLinks[presetName];
+                easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
               } else {
-                easingText = `(${bezierValue})`;
+                // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
+                if (bezierValue.includes('cubic-bezier')) {
+                  easingText = bezierValue.replace('cubic-bezier', '');
+                } else {
+                  easingText = `(${bezierValue})`;
+                }
               }
             } else if (anim.easing.type === 'linear') {
               easingText = 'linear';
@@ -4961,7 +4991,27 @@ ${cleanedScript}
             easingText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
           }
         } else if (anim.easing.type === 'cubic-bezier') {
-          easingText = anim.easing.cubicBezier;
+          const bezierValue = anim.easing.cubicBezier;
+
+          // Check if preset name is already provided in JSON
+          let presetName = anim.easing.cubicBezierPreset;
+
+          // If not provided, detect from the bezier values
+          if (!presetName) {
+            // Normalize the bezier string by removing spaces and parsing numbers
+            const normalized = bezierValue.replace(/\s+/g, '').toLowerCase();
+            const curvePresets = {
+              'cubic-bezier(0.2,0,0.2,1)': 'Standard Curve',
+              'cubic-bezier(0.20,0.00,0.20,1.00)': 'Standard Curve',
+              'cubic-bezier(0.1,1,0.2,1)': 'Enter Curve',
+              'cubic-bezier(0.10,1.00,0.20,1.00)': 'Enter Curve',
+              'cubic-bezier(0.4,0,1,1)': 'Exit Curve',
+              'cubic-bezier(0.40,0.00,1.00,1.00)': 'Exit Curve'
+            };
+            presetName = curvePresets[normalized];
+          }
+
+          easingText = presetName || bezierValue;
         } else {
           easingText = anim.easing.type;
         }
