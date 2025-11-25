@@ -927,11 +927,59 @@
     .timeline-label.indented {
       padding-left: 32px;
       color: #b0b0b0;
+      position: relative;
     }
 
     .timeline-label.indented.selected {
       color: #ffffff;
       font-weight: 600;
+    }
+
+    /* Red circle button for parameters */
+    .param-action-btn {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(231, 76, 60, 0.15);
+      border: 1px solid rgba(231, 76, 60, 0.4);
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      padding: 0;
+      transition: opacity 0.2s ease, background 0.15s ease, border-color 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #e74c3c;
+      line-height: 1;
+    }
+
+    .param-action-btn::before {
+      content: '×';
+      font-weight: bold;
+      position: relative;
+      top: 0.5px;
+    }
+
+    .param-action-btn:hover {
+      background: rgba(231, 76, 60, 0.25);
+      border-color: rgba(231, 76, 60, 0.6);
+    }
+
+    .param-action-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Hide delete button when dragging */
+    .timeline-label.dragging .param-action-btn {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .timeline-track {
@@ -2690,6 +2738,7 @@
                         data-drag-type="animation"
                         data-anim-in-layer="${animIndexInLayer}">
             <span class="timeline-label-text">${anim.property}</span>
+            <button class="param-action-btn edit-only" draggable="false"></button>
             <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
         });
@@ -2846,7 +2895,58 @@
       setupTableDragAndDrop();
       setupTableAddButtonHandlers();
       setupTableAddButtonHoverZones();
+      setupParamActionButtonHoverHandlers();
       setupTableEditableFields();
+    }
+
+    // Setup hover handlers for param action buttons to show only one at a time
+    function setupParamActionButtonHoverHandlers() {
+      const paramRows = document.querySelectorAll('.timeline-label.indented');
+
+      paramRows.forEach(row => {
+        row.addEventListener('mouseenter', () => {
+          // Hide all param action buttons
+          document.querySelectorAll('.param-action-btn').forEach(btn => {
+            btn.classList.remove('visible');
+          });
+
+          // Show only this row's button
+          const btn = row.querySelector('.param-action-btn');
+          if (btn) {
+            btn.classList.add('visible');
+          }
+        });
+
+        row.addEventListener('mouseleave', () => {
+          // Hide this row's button
+          const btn = row.querySelector('.param-action-btn');
+          if (btn) {
+            btn.classList.remove('visible');
+          }
+        });
+
+        // Add click handler to the delete button
+        const btn = row.querySelector('.param-action-btn');
+        if (btn) {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            // Calculate global animation index
+            const layerIndex = parseInt(row.dataset.layerIndex);
+            const animInLayer = parseInt(row.dataset.animIndex || row.dataset.animInLayer);
+
+            let globalAnimIndex = 0;
+            for (let i = 0; i < layerIndex; i++) {
+              globalAnimIndex += specData.layers[i].animations.length;
+            }
+            globalAnimIndex += animInLayer;
+
+            // Call the delete function
+            deleteAnimation(globalAnimIndex);
+          });
+        }
+      });
     }
 
     // Add hover event listeners to sync hover state between left and right columns in table view
@@ -4340,15 +4440,19 @@ ${cleanedScript}
 
     // Helper function to refresh the active view
     function refreshActiveView() {
+      console.log('[REFRESH] refreshActiveView called, viewMode:', viewMode);
       if (viewMode === 'table') {
+        console.log('[REFRESH] Calling renderTableView');
         renderTableView();
       } else {
+        console.log('[REFRESH] Calling renderTimeline');
         renderTimeline();
       }
       // If an animation is selected, refresh its detail panel
       if (selectedAnimation !== null) {
         showAnimationDetails(selectedAnimation);
       }
+      console.log('[REFRESH] refreshActiveView complete');
     }
 
     // Auto-resize title input fields to fit content
@@ -4504,6 +4608,7 @@ ${cleanedScript}
                         data-layer-index="${layerIndex}"
                         data-anim-in-layer="${animIndexInLayer}">
             <span class="timeline-label-text">${anim.property}</span>
+            <button class="param-action-btn edit-only" draggable="false"></button>
             <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
           animIndex++;
@@ -4761,6 +4866,9 @@ ${cleanedScript}
 
       // Setup hover zones for add buttons
       setupAddButtonHoverZones();
+
+      // Setup param action button hover handlers
+      setupParamActionButtonHoverHandlers();
     }
 
     // Detect which bars have overflowing text and add fade class
@@ -6619,14 +6727,19 @@ ${cleanedScript}
         layer.animations.splice(animInLayerIndex, 1);
       }
 
-      // Close detail panel
-      document.getElementById('detailPanel').innerHTML = '';
+      // Close detail panel if it exists
+      const detailPanel = document.getElementById('detailPanel');
+      if (detailPanel) {
+        detailPanel.innerHTML = '';
+      }
       selectedAnimation = null;
       document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
       document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
 
-      // Re-render timeline
-      renderTimeline();
+      // Re-render based on current view mode
+      console.log('[DELETE] Calling refreshActiveView, viewMode:', viewMode);
+      refreshActiveView();
+      console.log('[DELETE] After refreshActiveView');
     }
 
     // Initialize with default spec
