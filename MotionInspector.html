@@ -1126,6 +1126,10 @@
       padding-right: 12px;
     }
 
+    .table-cell--easing .num {
+      color: #6DB3E8;
+    }
+
     .table-row--header .table-cell {
       font-weight: 600;
       color: #e0e0e0;
@@ -2507,6 +2511,12 @@
       });
     }
 
+    // Helper function to wrap numbers in spans for styling
+    function wrapNumbers(text) {
+      // Match numbers (including decimals and negatives)
+      return text.replace(/(-?\d+\.?\d*)/g, '<span class="num">$1</span>');
+    }
+
     // Helper function to format easing preset names (springs and curves) with hyperlinks
     function formatSpringPreset(text) {
       const presetLinks = {
@@ -2531,8 +2541,8 @@
         }
       }
 
-      // Not a preset, return as-is
-      return text;
+      // Not a preset, wrap numbers in the text
+      return wrapNumbers(text);
     }
 
     // Easing autocomplete functionality
@@ -2857,11 +2867,11 @@
                 const link = springLinks[spring.preset];
                 easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
               } else {
-                // Use plain text for contenteditable to preserve spacing
+                // Wrap numbers in spans for styling with non-breaking spaces
                 if (isEditMode) {
-                  easingText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
+                  easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>, Damping:&nbsp;<span class="num">${spring.custom.damping}</span>, Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>, Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
                 } else {
-                  easingText = `<strong>Stiffness:</strong> ${spring.custom.stiffness}, <strong>Damping:</strong> ${spring.custom.damping}, <strong>Damping Ratio:</strong> ${spring.custom.dampingRatio}, <strong>Mass:</strong> ${spring.custom.mass}`;
+                  easingText = `<strong>Stiffness:</strong>&nbsp;<span class="num">${spring.custom.stiffness}</span>, <strong>Damping:</strong>&nbsp;<span class="num">${spring.custom.damping}</span>, <strong>Damping Ratio:</strong>&nbsp;<span class="num">${spring.custom.dampingRatio}</span>, <strong>Mass:</strong>&nbsp;<span class="num">${spring.custom.mass}</span>`;
                 }
               }
             } else if (anim.easing.type === 'cubic-bezier') {
@@ -2897,9 +2907,9 @@
               } else {
                 // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
                 if (bezierValue.includes('cubic-bezier')) {
-                  easingText = bezierValue.replace('cubic-bezier', '');
+                  easingText = wrapNumbers(bezierValue.replace('cubic-bezier', ''));
                 } else {
-                  easingText = `(${bezierValue})`;
+                  easingText = wrapNumbers(`(${bezierValue})`);
                 }
               }
             } else if (anim.easing.type === 'linear') {
