@@ -2045,6 +2045,7 @@
         console.log('Clipboard text:', text);
         const data = JSON.parse(text);
         specData = data;
+        groupAnimations(specData); // Group matching X/Y Position and Width/Height
         viewDuration = null; // Reset zoom level for new spec
         renderTimeline();
       } catch (err) {
@@ -2547,6 +2548,7 @@ ${cleanedScript}
       console.log('[EXPORT] body data-mode:', document.body.getAttribute('data-mode'));
 
       specData = EMBEDDED_SPEC_DATA;
+      groupAnimations(specData); // Group matching X/Y Position and Width/Height
       console.log('[EXPORT] specData loaded:', specData);
 
       video.src = EMBEDDED_VIDEO_PATH;
@@ -2624,10 +2626,148 @@ ${cleanedScript}
       }
     }
 
+    // Group matching animations (X/Y Position, Width/Height)
+    function groupAnimations(specData) {
+      if (!specData || !specData.layers) return;
+
+      specData.layers.forEach(layer => {
+        if (!layer.animations || layer.animations.length < 2) return;
+
+        const toRemove = [];
+        const toAdd = [];
+
+        // Check each animation for potential grouping
+        for (let i = 0; i < layer.animations.length; i++) {
+          if (toRemove.includes(i)) continue;
+
+          const anim1 = layer.animations[i];
+          const prop1 = anim1.property.toLowerCase();
+
+          // Check for X Position + Y Position
+          if (prop1.includes('x position')) {
+            for (let j = i + 1; j < layer.animations.length; j++) {
+              if (toRemove.includes(j)) continue;
+
+              const anim2 = layer.animations[j];
+              const prop2 = anim2.property.toLowerCase();
+
+              if (prop2.includes('y position') && animationsMatch(anim1, anim2)) {
+                // Create combined Position animation
+                toAdd.push(createGroupedAnimation(anim1, anim2, 'Position', 'position'));
+                toRemove.push(i, j);
+                break;
+              }
+            }
+          }
+
+          // Check for Width + Height
+          if (prop1.includes('width') && !prop1.includes('x position')) {
+            for (let j = i + 1; j < layer.animations.length; j++) {
+              if (toRemove.includes(j)) continue;
+
+              const anim2 = layer.animations[j];
+              const prop2 = anim2.property.toLowerCase();
+
+              if (prop2.includes('height') && !prop2.includes('y position') && animationsMatch(anim1, anim2)) {
+                // Create combined Size animation
+                toAdd.push(createGroupedAnimation(anim1, anim2, 'Size', 'size'));
+                toRemove.push(i, j);
+                break;
+              }
+            }
+          }
+        }
+
+        // Remove grouped animations and add combined ones
+        if (toRemove.length > 0) {
+          layer.animations = layer.animations.filter((_, idx) => !toRemove.includes(idx));
+          layer.animations.push(...toAdd);
+        }
+      });
+    }
+
+    // Check if two animations match (same delay, duration, easing)
+    function animationsMatch(anim1, anim2) {
+      if (anim1.timing.delay !== anim2.timing.delay) return false;
+      if (anim1.timing.duration !== anim2.timing.duration) return false;
+      if (anim1.easing.type !== anim2.easing.type) return false;
+
+      // For cubic-bezier, check if values match
+      if (anim1.easing.type === 'cubic-bezier') {
+        return anim1.easing.cubicBezier === anim2.easing.cubicBezier;
+      }
+
+      // For springs, check if preset or custom values match
+      if (anim1.easing.type === 'spring') {
+        const spring1 = anim1.easing.spring;
+        const spring2 = anim2.easing.spring;
+        if (spring1.preset !== spring2.preset) return false;
+        if (spring1.preset === 'Custom') {
+          return spring1.custom.stiffness === spring2.custom.stiffness &&
+                 spring1.custom.damping === spring2.custom.damping &&
+                 spring1.custom.dampingRatio === spring2.custom.dampingRatio &&
+                 spring1.custom.mass === spring2.custom.mass;
+        }
+      }
+
+      return true;
+    }
+
+    // Create a grouped animation from two matching animations
+    function createGroupedAnimation(anim1, anim2, propertyName, groupType) {
+      const grouped = { ...anim1 };
+      grouped.property = propertyName;
+      grouped.isGrouped = true;
+      grouped.groupType = groupType; // 'position' or 'size'
+      grouped.groupedAnimations = [anim1, anim2];
+
+      // Build combined values structure for description generation
+      if (groupType === 'position') {
+        // Determine which is X and which is Y
+        const xAnim = anim1.property.toLowerCase().includes('x position') ? anim1 : anim2;
+        const yAnim = anim1.property.toLowerCase().includes('x position') ? anim2 : anim1;
+
+        const xChange = xAnim.values?.change || 0;
+        const yChange = yAnim.values?.change || 0;
+
+        grouped.values = {
+          change: [xChange, yChange],
+          animatingAxes: {
+            both: true,
+            x: true,
+            y: true
+          },
+          formatted: {
+            startValue: `${xAnim.values?.formatted?.startValue || '-'}\n${yAnim.values?.formatted?.startValue || '-'}`,
+            endValue: `${xAnim.values?.formatted?.endValue || '-'}\n${yAnim.values?.formatted?.endValue || '-'}`
+          }
+        };
+      } else if (groupType === 'size') {
+        // Determine which is Width and which is Height
+        const widthAnim = anim1.property.toLowerCase().includes('width') ? anim1 : anim2;
+        const heightAnim = anim1.property.toLowerCase().includes('width') ? anim2 : anim1;
+
+        const widthChange = widthAnim.values?.change || 0;
+        const heightChange = heightAnim.values?.change || 0;
+
+        grouped.values = {
+          change: [widthChange, heightChange],
+          formatted: {
+            startValue: `${widthAnim.values?.formatted?.startValue || '-'}\n${heightAnim.values?.formatted?.startValue || '-'}`,
+            endValue: `${widthAnim.values?.formatted?.endValue || '-'}\n${heightAnim.values?.formatted?.endValue || '-'}`
+          }
+        };
+      }
+
+      return grouped;
+    }
+
     // Get color class for property
     function getPropertyColorClass(property) {
       const prop = property.toLowerCase();
       if (prop.includes('add parameter')) return 'bar-scale'; // Pink color for new parameters
+      if (prop.includes('position')) return 'bar-position-x'; // Grouped position uses same color as X Position
+      if (prop.includes('size')) return 'bar-width'; // Grouped size uses same color as Width
       if (prop.includes('opacity')) return 'bar-opacity';
       if (prop.includes('scale')) return 'bar-scale';
       if (prop.includes('rotation') || prop.includes('rotate')) return 'bar-rotation';
@@ -2773,13 +2913,13 @@ ${cleanedScript}
           if (values.animatingAxes.both) {
             const xDir = xChange < 0 ? 'left' : 'right';
             const yDir = yChange < 0 ? 'up' : 'down';
-            description = `slides ${xDir} ${Math.round(Math.abs(xChange))}px and ${yDir} ${Math.round(Math.abs(yChange))}px`;
+            description = `slides ${yDir} and ${xDir}`; // No px values for grouped Position
           } else if (values.animatingAxes.x) {
             const direction = xChange < 0 ? 'left' : 'right';
-            description = `slides ${direction} ${Math.round(Math.abs(xChange))}px`;
+            description = `slides ${direction}`;
           } else if (values.animatingAxes.y) {
             const direction = yChange < 0 ? 'up' : 'down';
-            description = `slides ${direction} ${Math.round(Math.abs(yChange))}px`;
+            description = `slides ${direction}`;
           } else {
             description = property;
           }
@@ -4796,40 +4936,70 @@ ${cleanedScript}
         html += `<div class="detail-item">`;
         html += `<div class="detail-label">Start Value</div>`;
         if (isEditMode) {
-          html += `
-            <div class="detail-value">
-              <input
-                type="text"
-                class="detail-value-input"
-                value="${startValue.replace(/"/g, '&quot;')}"
-                onfocus="this.select()"
-                onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
-                onkeydown="if(event.key === 'Enter') { this.blur(); }"
-              />
-            </div>
-          `;
+          const hasNewline = startValue.includes('\n');
+          if (hasNewline) {
+            html += `
+              <div class="detail-value">
+                <textarea
+                  class="detail-value-input"
+                  rows="2"
+                  onfocus="this.select()"
+                  onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
+                  onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.blur(); }"
+                >${startValue.replace(/"/g, '&quot;')}</textarea>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="detail-value">
+                <input
+                  type="text"
+                  class="detail-value-input"
+                  value="${startValue.replace(/"/g, '&quot;')}"
+                  onfocus="this.select()"
+                  onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
+                  onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                />
+              </div>
+            `;
+          }
         } else {
-          html += `<div class="detail-value">${startValue}</div>`;
+          html += `<div class="detail-value">${startValue.replace(/\n/g, '<br>')}</div>`;
         }
         html += `</div>`;
 
         html += `<div class="detail-item">`;
         html += `<div class="detail-label">End Value</div>`;
         if (isEditMode) {
-          html += `
-            <div class="detail-value">
-              <input
-                type="text"
-                class="detail-value-input"
-                value="${endValue.replace(/"/g, '&quot;')}"
-                onfocus="this.select()"
-                onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
-                onkeydown="if(event.key === 'Enter') { this.blur(); }"
-              />
-            </div>
-          `;
+          const hasNewline = endValue.includes('\n');
+          if (hasNewline) {
+            html += `
+              <div class="detail-value">
+                <textarea
+                  class="detail-value-input"
+                  rows="2"
+                  onfocus="this.select()"
+                  onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
+                  onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.blur(); }"
+                >${endValue.replace(/"/g, '&quot;')}</textarea>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="detail-value">
+                <input
+                  type="text"
+                  class="detail-value-input"
+                  value="${endValue.replace(/"/g, '&quot;')}"
+                  onfocus="this.select()"
+                  onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
+                  onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                />
+              </div>
+            `;
+          }
         } else {
-          html += `<div class="detail-value">${endValue}</div>`;
+          html += `<div class="detail-value">${endValue.replace(/\n/g, '<br>')}</div>`;
         }
         html += `</div>`;
       }
