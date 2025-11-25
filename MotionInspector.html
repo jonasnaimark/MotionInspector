@@ -2262,9 +2262,16 @@
             easingText = '-';
           } else {
             delay = anim.timing.delay + 'ms';
-            duration = anim.easing.type === 'spring' ? '-' : anim.timing.duration + 'ms';
+            // Display duration: show "-" for imported springs (not yet edited)
+            const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+            const userSetDuration = anim.durationUserSet === true;
+            const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+            duration = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration + 'ms' : '-');
 
-            if (anim.easing.type === 'spring') {
+            // Check for custom easing first
+            if (anim.customEasing !== undefined && anim.customEasing !== null) {
+              easingText = anim.customEasing;
+            } else if (anim.easing.type === 'spring') {
               const spring = anim.easing.spring;
               const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
               const springLinks = {
@@ -2815,11 +2822,27 @@ ${cleanedScript}
             if (fieldName === 'customDescription') {
               anim.description = newValue;
             } else if (fieldName === 'delay') {
-              // Validate and update delay
+              // Validate and update delay (must be numeric)
               anim.timing.delay = validateNumeric(newValue, anim.timing.delay);
             } else if (fieldName === 'duration') {
-              // Validate and update duration
-              anim.timing.duration = validateNumeric(newValue, anim.timing.duration);
+              // Update duration - accept numbers or "-"
+              const num = parseFloat(newValue);
+              if (!isNaN(num) && num >= 0) {
+                // Valid number - curve style
+                anim.timing.duration = num;
+                // Mark that duration has been explicitly set by user
+                anim.durationUserSet = true;
+              } else if (newValue === '-' || newValue.trim() === '') {
+                // "-" or empty - spring style
+                anim.timing.duration = '-';
+                anim.durationUserSet = true;
+              } else {
+                // Invalid input, keep previous value
+                anim.timing.duration = anim.timing.duration;
+              }
+            } else if (fieldName === 'easing') {
+              // Update easing - allow any text value
+              anim.customEasing = newValue;
             } else {
               anim[fieldName] = newValue;
             }
@@ -3007,9 +3030,34 @@ ${cleanedScript}
           } else {
             // Normal animation - use its own timing
             startPercent = (anim.timing.delay / currentViewDuration) * 100;
-            widthPercent = (anim.timing.duration / currentViewDuration) * 100;
+
+            // Determine styling based on duration value
+            const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+            const durationIsString = typeof anim.timing.duration === 'string';
+
+            // Check if user has explicitly set duration, or if it's an imported spring
+            const userSetDuration = anim.durationUserSet === true;
+            const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+
+            if (durationIsString) {
+              // Duration is "-" - spring style
+              widthPercent = 40;
+              springClass = ' bar-spring';
+            } else if (isImportedSpring) {
+              // Imported spring (not yet edited) - spring style
+              widthPercent = (anim.timing.duration / currentViewDuration) * 100;
+              springClass = ' bar-spring';
+            } else if (durationIsNumeric) {
+              // Numeric duration (curve or user-edited) - curve style
+              widthPercent = (anim.timing.duration / currentViewDuration) * 100;
+              springClass = '';
+            } else {
+              // Fallback - spring style
+              widthPercent = 40;
+              springClass = ' bar-spring';
+            }
+
             description = getAnimationDescription(anim.property, anim.values, null, anim.description);
-            springClass = anim.easing.type === 'spring' ? ' bar-spring' : '';
           }
 
           // Cap width so bars don't extend past the edge (shows rounded corners naturally)
@@ -3032,14 +3080,22 @@ ${cleanedScript}
           }
 
           html += `<div class="timeline-track">`;
+
+          // Determine if this is a spring
+          const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+          const durationIsString = typeof anim.timing.duration === 'string';
+          const userSetDuration = anim.durationUserSet === true;
+          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+          const isSpring = durationIsString || isImportedSpring;
+
           html += `
             <div class="timeline-bar ${colorClass}${springClass}"
                  style="${customStyle}"
                  data-anim-index="${animIndex}"
-                 data-is-spring="${anim.easing.type === 'spring'}">
+                 data-is-spring="${isSpring}">
               <span class="timeline-bar-text">${description}</span>
               <div class="timeline-bar-resize-handle left" data-handle="left"></div>
-              ${anim.easing.type !== 'spring' ? '<div class="timeline-bar-resize-handle right" data-handle="right"></div>' : ''}
+              ${!isSpring ? '<div class="timeline-bar-resize-handle right" data-handle="right"></div>' : ''}
             </div>
           `;
           html += `</div>`;
@@ -4476,17 +4532,24 @@ ${cleanedScript}
         }
         html += `</div>`;
 
-        // Duration - editable in edit mode (not for springs)
-        const durationValue = anim.easing.type === 'spring' ? '-' : `${anim.timing.duration}ms`;
+        // Duration - always editable in edit mode
+        // For springs from import (not yet edited), show "-"
+        const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+        const userSetDuration = anim.durationUserSet === true;
+        const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+
+        const durationInputValue = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration : '-');
+        const durationDisplayValue = isImportedSpring ? '-' : (durationIsNumeric ? `${anim.timing.duration}ms` : '-');
+
         html += `<div class="detail-item">`;
         html += `<div class="detail-label">DURATION (ms)</div>`;
-        if (isEditMode && anim.easing.type !== 'spring') {
+        if (isEditMode) {
           html += `
             <div class="detail-value">
               <input
                 type="text"
                 class="detail-value-input"
-                value="${anim.timing.duration}"
+                value="${durationInputValue}"
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'duration', this.value)"
                 onkeydown="if(event.key === 'Enter') { this.blur(); }"
@@ -4494,60 +4557,54 @@ ${cleanedScript}
             </div>
           `;
         } else {
-          html += `<div class="detail-value">${durationValue}</div>`;
+          html += `<div class="detail-value">${durationDisplayValue}</div>`;
         }
         html += `</div>`;
       }
 
       // Easing (skip for Fit to Shape since it doesn't have meaningful easing)
-      if (!anim.isFitToShape && anim.easing.type === 'spring') {
-        const spring = anim.easing.spring;
-        const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
-        const springLinks = {
-          'Standard Spring': 'https://air.bb/standard-spring',
-          'Slow Spring': 'https://air.bb/slow-spring',
-          'Fast Spring': 'https://air.bb/fast-spring',
-          'Slow Bounce Spring': 'https://air.bb/slow-bounce-spring',
-          'Medium Bounce Spring': 'https://air.bb/medium-bounce-spring',
-          'Fast Bounce Spring': 'https://air.bb/fast-bounce-spring'
-        };
-        const isPreset = presetSprings.includes(spring.preset);
+      if (!anim.isFitToShape) {
+        let easingText = '';
 
-        if (isPreset) {
-          // Just show the preset name for standard presets with link
-          const link = springLinks[spring.preset];
+        // Check for custom easing first
+        if (anim.customEasing !== undefined && anim.customEasing !== null) {
+          easingText = anim.customEasing;
+        } else if (anim.easing.type === 'spring') {
+          const spring = anim.easing.spring;
+          const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
+          const isPreset = presetSprings.includes(spring.preset);
+
+          if (isPreset) {
+            easingText = spring.preset;
+          } else {
+            // Custom spring values as text
+            easingText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
+          }
+        } else if (anim.easing.type === 'cubic-bezier') {
+          easingText = anim.easing.cubicBezier;
+        } else {
+          easingText = anim.easing.type;
+        }
+
+        html += `<div class="detail-item">`;
+        html += `<div class="detail-label">Easing</div>`;
+        if (isEditMode) {
           html += `
-            <div class="detail-item">
-              <div class="detail-label">Easing</div>
-              <div class="detail-value"><a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a></div>
+            <div class="detail-value">
+              <input
+                type="text"
+                class="detail-value-input"
+                value="${easingText.replace(/"/g, '&quot;')}"
+                onfocus="this.select()"
+                onblur="updateAnimationField(${animIndex}, 'easing', this.value)"
+                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              />
             </div>
           `;
         } else {
-          // Show custom spring values
-          html += `
-            <div class="detail-item">
-              <div class="detail-label">Easing</div>
-              <div class="spring-params"><strong>Stiffness:</strong> ${spring.custom.stiffness}
-<strong>Damping:</strong> ${spring.custom.damping}
-<strong>Damping Ratio:</strong> ${spring.custom.dampingRatio}
-<strong>Mass:</strong> ${spring.custom.mass}</div>
-            </div>
-          `;
+          html += `<div class="detail-value">${easingText}</div>`;
         }
-      } else if (!anim.isFitToShape && anim.easing.type === 'cubic-bezier') {
-        html += `
-          <div class="detail-item">
-            <div class="detail-label">Easing</div>
-            <div class="bezier-curve">${anim.easing.cubicBezier}</div>
-          </div>
-        `;
-      } else if (!anim.isFitToShape) {
-        html += `
-          <div class="detail-item">
-            <div class="detail-label">Easing</div>
-            <div class="detail-value">${anim.easing.type}</div>
-          </div>
-        `;
+        html += `</div>`;
       }
 
       // Values (skip for Fit to Shape)
