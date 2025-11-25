@@ -4749,12 +4749,26 @@ ${cleanedScript}
       html += `</div></div>`;
       detailPanel.innerHTML = html;
 
+      // Function to resize all textareas to fit their content
+      function resizeTextareas() {
+        const textareas = detailPanel.querySelectorAll('textarea.detail-value-input');
+        textareas.forEach(textarea => {
+          textarea.style.height = 'auto';
+          textarea.style.height = textarea.scrollHeight + 'px';
+        });
+      }
+
       // Auto-resize all textareas to fit their content
-      const textareas = detailPanel.querySelectorAll('textarea.detail-value-input');
-      textareas.forEach(textarea => {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-      });
+      resizeTextareas();
+
+      // Remove old resize listener if it exists
+      if (window.textareaResizeListener) {
+        window.removeEventListener('resize', window.textareaResizeListener);
+      }
+
+      // Add resize listener to handle window resizing
+      window.textareaResizeListener = () => resizeTextareas();
+      window.addEventListener('resize', window.textareaResizeListener);
 
       // Update playhead position after info box is shown
       requestAnimationFrame(() => {
