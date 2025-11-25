@@ -1556,7 +1556,7 @@
 
     .detail-grid {
       display: grid;
-      grid-template-columns: 0.8fr 0.8fr 2fr 0.8fr 0.8fr;
+      grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr;
       gap: 20px;
       align-items: start;
     }
@@ -3077,14 +3077,16 @@
           } else if (fieldName === 'duration') {
             // Parse duration - remove "ms" suffix if present
             newValue = newValue.replace(/ms$/i, '').trim();
-            if (newValue === '-') {
-              // Keep as is for springs
-              return;
-            }
+
             const numValue = parseFloat(newValue);
-            if (!isNaN(numValue)) {
+            if (!isNaN(numValue) && numValue >= 0) {
+              // Valid number - set duration
               anim.timing.duration = numValue;
-              anim.durationUserSet = true; // Mark as user-edited
+              anim.durationUserSet = true;
+            } else if (newValue === '-' || newValue === '') {
+              // "-" or empty - spring style (no defined end time)
+              anim.timing.duration = '-';
+              anim.durationUserSet = true;
             } else {
               // Invalid - restore original
               cell.textContent = cell.dataset.originalValue || '';
