@@ -2,7 +2,51 @@
 
 All notable changes to Motion Inspector will be documented in this file.
 
-## [Unreleased] - 2025-11-21
+## [Unreleased] - 2025-11-25
+
+### Added
+- **Table mode with editable fields**: All animation properties can now be edited directly in table view
+  - Click any cell to edit description, delay, duration, or easing values
+  - Changes automatically sync to timeline view and persist in exports
+  - 5px drag threshold prevents accidental edits when trying to drag rows
+  - Smooth contenteditable experience with focus/blur handlers
+- **Editable page title**: Main title in top-left is now editable
+  - Click to edit, Enter to save, Escape to cancel
+  - Syncs with document title and spec data
+  - Outline only visible on hover for clean UI
+  - Auto-updates when loading new spec data
+- **Table bottom divider**: Extends across entire table width
+  - Matches left column divider for visual consistency
+  - Proper cell border handling to avoid extra vertical lines
+- **Add parameter and section buttons in table mode**: Circular + buttons work in both timeline and table views
+  - Consistent hover zones and button positioning
+  - Auto-opens info box for new items with field selection
+
+### Changed
+- **Table text styling**: Body text uses subtle grey (#c0c0c0) instead of white
+  - Improves readability and visual hierarchy
+  - Left column labels and header row remain white
+  - Consistent across description, delay, duration, and easing columns
+- **Text selection behavior**: Clicking outside editable fields now properly deselects text
+  - Improved UX for page title editing
+  - Document-level listener clears selection when clicking elsewhere
+
+### Fixed
+- **Spring parameter spacing in table mode**: Fixed whitespace collapse in edit mode
+  - HTML `<strong>` tags caused spacing issues in contenteditable cells
+  - Now uses plain text in edit mode, HTML formatting in read mode
+  - Preserves proper spacing between Stiffness, Damping, Damping Ratio, and Mass
+- **Duration deletion persistence**: Clearing duration field now properly refreshes view
+  - Removed premature return that prevented table re-render
+  - Springs maintain dash display, other animations show updated values
+
+### Technical Details
+- Contenteditable cells use `data-field` attributes for field identification
+- Conditional rendering of spring parameters based on `isEditMode` flag
+- Selection management via `window.getSelection()` API
+- Page title editing syncs to `specData.compName` and `document.title`
+
+## [Previous] - 2025-11-21
 
 ### Added
 - **Timeline zoom controls**: +/- buttons in top-right to adjust visible timeline duration
