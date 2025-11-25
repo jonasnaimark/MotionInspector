@@ -1400,6 +1400,34 @@
       background: rgba(255, 255, 255, 0.05);
     }
 
+    .detail-value-input {
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 12px;
+      color: #ffffff;
+      font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    .detail-value-input:hover {
+      border-color: #555;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .detail-value-input:focus {
+      border-color: #4a90e2;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-value-input.invalid {
+      border-color: #a82929;
+    }
+
     .detail-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -2600,8 +2628,8 @@ ${cleanedScript}
       const prop = property.toLowerCase();
       let description;
 
-      // Check for custom description first
-      if (customDescription) {
+      // Check for custom description first (allow empty strings)
+      if (customDescription !== undefined && customDescription !== null) {
         return customDescription;
       }
 
@@ -2760,6 +2788,19 @@ ${cleanedScript}
       }
     }
 
+    // Validate numeric field (for delay and duration)
+    function validateNumeric(value, previousValue) {
+      // Try to parse as float
+      const num = parseFloat(value);
+
+      // If invalid or negative, return previous value
+      if (isNaN(num) || num < 0) {
+        return previousValue;
+      }
+
+      return num;
+    }
+
     // Update an animation field and refresh views
     function updateAnimationField(animIndex, fieldName, newValue) {
       // Find the animation in specData
@@ -2773,6 +2814,12 @@ ${cleanedScript}
             // Update the field
             if (fieldName === 'customDescription') {
               anim.description = newValue;
+            } else if (fieldName === 'delay') {
+              // Validate and update delay
+              anim.timing.delay = validateNumeric(newValue, anim.timing.delay);
+            } else if (fieldName === 'duration') {
+              // Validate and update duration
+              anim.timing.duration = validateNumeric(newValue, anim.timing.duration);
             } else {
               anim[fieldName] = newValue;
             }
@@ -4408,22 +4455,48 @@ ${cleanedScript}
         `;
       } else {
         // Normal animation details
-        // Delay
-        html += `
-          <div class="detail-item">
-            <div class="detail-label">Delay</div>
-            <div class="detail-value">${anim.timing.delay}ms</div>
-          </div>
-        `;
+        // Delay - editable in edit mode
+        html += `<div class="detail-item">`;
+        html += `<div class="detail-label">DELAY (ms)</div>`;
+        if (isEditMode) {
+          html += `
+            <div class="detail-value">
+              <input
+                type="text"
+                class="detail-value-input"
+                value="${anim.timing.delay}"
+                onfocus="this.select()"
+                onblur="updateAnimationField(${animIndex}, 'delay', this.value)"
+                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              />
+            </div>
+          `;
+        } else {
+          html += `<div class="detail-value">${anim.timing.delay}ms</div>`;
+        }
+        html += `</div>`;
 
-        // Duration
+        // Duration - editable in edit mode (not for springs)
         const durationValue = anim.easing.type === 'spring' ? '-' : `${anim.timing.duration}ms`;
-        html += `
-          <div class="detail-item">
-            <div class="detail-label">Duration</div>
-            <div class="detail-value">${durationValue}</div>
-          </div>
-        `;
+        html += `<div class="detail-item">`;
+        html += `<div class="detail-label">DURATION (ms)</div>`;
+        if (isEditMode && anim.easing.type !== 'spring') {
+          html += `
+            <div class="detail-value">
+              <input
+                type="text"
+                class="detail-value-input"
+                value="${anim.timing.duration}"
+                onfocus="this.select()"
+                onblur="updateAnimationField(${animIndex}, 'duration', this.value)"
+                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              />
+            </div>
+          `;
+        } else {
+          html += `<div class="detail-value">${durationValue}</div>`;
+        }
+        html += `</div>`;
       }
 
       // Easing (skip for Fit to Shape since it doesn't have meaningful easing)
