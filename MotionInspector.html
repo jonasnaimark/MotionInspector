@@ -962,7 +962,7 @@
       padding-left: 0;
       padding-right: 12px;
       border-right: 1px solid #2a2a2a;
-      color: #e0e0e0;
+      color: #c0c0c0;
       white-space: normal;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -983,11 +983,11 @@
     .table-cell--delay,
     .table-cell--duration {
       border-right: 1px solid #2a2a2a;
-      color: #e0e0e0;
+      color: #c0c0c0;
     }
 
     .table-cell--easing {
-      color: #e0e0e0;
+      color: #c0c0c0;
       font-size: 11px;
       font-family: monospace;
       white-space: nowrap;
@@ -1019,7 +1019,7 @@
     .table-row:not(.table-row--header) .table-desc-text {
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       font-size: 11px;
-      color: #e0e0e0;
+      color: #c0c0c0;
     }
 
     .table-row:not(.table-row--header) .table-cell--delay,
@@ -1027,7 +1027,7 @@
     .table-row:not(.table-row--header) .table-cell--easing {
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       font-size: 11px;
-      color: #e0e0e0;
+      color: #c0c0c0;
     }
 
     .timeline-track.table-row.table-row--layer {
@@ -2485,7 +2485,12 @@
                 const link = springLinks[spring.preset];
                 easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
               } else {
-                easingText = `<strong>Stiffness:</strong> ${spring.custom.stiffness}, <strong>Damping:</strong> ${spring.custom.damping}, <strong>Damping Ratio:</strong> ${spring.custom.dampingRatio}, <strong>Mass:</strong> ${spring.custom.mass}`;
+                // Use plain text for contenteditable to preserve spacing
+                if (isEditMode) {
+                  easingText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
+                } else {
+                  easingText = `<strong>Stiffness:</strong> ${spring.custom.stiffness}, <strong>Damping:</strong> ${spring.custom.damping}, <strong>Damping Ratio:</strong> ${spring.custom.dampingRatio}, <strong>Mass:</strong> ${spring.custom.mass}`;
+                }
               }
             } else if (anim.easing.type === 'cubic-bezier') {
               const bezierValue = anim.easing.cubicBezier;
@@ -3036,11 +3041,8 @@
 
           // Apply validation and update based on field type
           if (fieldName === 'description') {
-            // Update custom description - allow empty
+            // Update custom description
             anim.description = newValue || undefined;
-            // Don't refresh view here, just update cell
-            cell.textContent = newValue || '';
-            return;
           } else if (fieldName === 'delay') {
             // Parse delay - remove "ms" suffix if present
             newValue = newValue.replace(/ms$/i, '').trim();
@@ -3055,22 +3057,18 @@
           } else if (fieldName === 'duration') {
             // Parse duration - remove "ms" suffix if present
             newValue = newValue.replace(/ms$/i, '').trim();
-
-            // Allow empty or "-" for springs
-            if (newValue === '' || newValue === '-') {
-              // Clear user-set flag to allow spring auto-calculation
-              anim.durationUserSet = false;
-              // Don't return - let renderTableView() refresh the display
+            if (newValue === '-') {
+              // Keep as is for springs
+              return;
+            }
+            const numValue = parseFloat(newValue);
+            if (!isNaN(numValue)) {
+              anim.timing.duration = numValue;
+              anim.durationUserSet = true; // Mark as user-edited
             } else {
-              const numValue = parseFloat(newValue);
-              if (!isNaN(numValue)) {
-                anim.timing.duration = numValue;
-                anim.durationUserSet = true; // Mark as user-edited
-              } else {
-                // Invalid - restore original
-                cell.textContent = cell.dataset.originalValue || '';
-                return;
-              }
+              // Invalid - restore original
+              cell.textContent = cell.dataset.originalValue || '';
+              return;
             }
           } else if (fieldName === 'easing') {
             // Store custom easing as plain text
