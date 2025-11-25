@@ -2630,8 +2630,12 @@ ${cleanedScript}
     function groupAnimations(specData) {
       if (!specData || !specData.layers) return;
 
-      specData.layers.forEach(layer => {
+      console.log('[GROUPING] Starting animation grouping');
+
+      specData.layers.forEach((layer, layerIdx) => {
         if (!layer.animations || layer.animations.length < 2) return;
+
+        console.log(`[GROUPING] Checking layer "${layer.layerName}" with ${layer.animations.length} animations`);
 
         const toRemove = [];
         const toAdd = [];
@@ -2642,72 +2646,136 @@ ${cleanedScript}
 
           const anim1 = layer.animations[i];
           const prop1 = anim1.property.toLowerCase();
+          console.log(`[GROUPING]   Checking "${anim1.property}" (index ${i})`);
 
           // Check for X Position + Y Position
           if (prop1.includes('x position')) {
+            console.log(`[GROUPING]     Found X Position, looking for Y Position`);
             for (let j = i + 1; j < layer.animations.length; j++) {
               if (toRemove.includes(j)) continue;
 
               const anim2 = layer.animations[j];
               const prop2 = anim2.property.toLowerCase();
 
-              if (prop2.includes('y position') && animationsMatch(anim1, anim2)) {
-                // Create combined Position animation
-                toAdd.push(createGroupedAnimation(anim1, anim2, 'Position', 'position'));
-                toRemove.push(i, j);
-                break;
+              if (prop2.includes('y position')) {
+                console.log(`[GROUPING]     Found Y Position at index ${j}, checking if they match`);
+                console.log(`[GROUPING]       anim1 delay: ${anim1.timing.delay}, duration: ${anim1.timing.duration}, easing: ${anim1.easing.type}`);
+                console.log(`[GROUPING]       anim2 delay: ${anim2.timing.delay}, duration: ${anim2.timing.duration}, easing: ${anim2.easing.type}`);
+
+                if (animationsMatch(anim1, anim2)) {
+                  console.log(`[GROUPING]     ✓ Animations match! Creating Position group`);
+                  // Create combined Position animation
+                  toAdd.push(createGroupedAnimation(anim1, anim2, 'Position', 'position'));
+                  toRemove.push(i, j);
+                  break;
+                } else {
+                  console.log(`[GROUPING]     ✗ Animations don't match`);
+                }
               }
             }
           }
 
           // Check for Width + Height
           if (prop1.includes('width') && !prop1.includes('x position')) {
+            console.log(`[GROUPING]     Found Width, looking for Height`);
             for (let j = i + 1; j < layer.animations.length; j++) {
               if (toRemove.includes(j)) continue;
 
               const anim2 = layer.animations[j];
               const prop2 = anim2.property.toLowerCase();
 
-              if (prop2.includes('height') && !prop2.includes('y position') && animationsMatch(anim1, anim2)) {
-                // Create combined Size animation
-                toAdd.push(createGroupedAnimation(anim1, anim2, 'Size', 'size'));
-                toRemove.push(i, j);
-                break;
+              if (prop2.includes('height') && !prop2.includes('y position')) {
+                console.log(`[GROUPING]     Found Height at index ${j}, checking if they match`);
+                console.log(`[GROUPING]       anim1 delay: ${anim1.timing.delay}, duration: ${anim1.timing.duration}, easing: ${anim1.easing.type}`);
+                console.log(`[GROUPING]       anim2 delay: ${anim2.timing.delay}, duration: ${anim2.timing.duration}, easing: ${anim2.easing.type}`);
+
+                if (animationsMatch(anim1, anim2)) {
+                  console.log(`[GROUPING]     ✓ Animations match! Creating Width & Height group`);
+                  // Create combined Width & Height animation
+                  toAdd.push(createGroupedAnimation(anim1, anim2, 'Width & Height', 'size'));
+                  toRemove.push(i, j);
+                  break;
+                } else {
+                  console.log(`[GROUPING]     ✗ Animations don't match`);
+                }
               }
             }
           }
         }
 
-        // Remove grouped animations and add combined ones
+        // Remove grouped animations and add combined ones at the original position
         if (toRemove.length > 0) {
-          layer.animations = layer.animations.filter((_, idx) => !toRemove.includes(idx));
-          layer.animations.push(...toAdd);
+          console.log(`[GROUPING] Removing indices ${toRemove} and adding ${toAdd.length} grouped animations`);
+
+          // Sort toRemove to process from highest to lowest index
+          toRemove.sort((a, b) => b - a);
+
+          // Insert grouped animations at the position of the first removed animation
+          const insertPosition = Math.min(...toRemove);
+
+          // Remove the animations (in reverse order to preserve indices)
+          for (const idx of toRemove) {
+            layer.animations.splice(idx, 1);
+          }
+
+          // Insert grouped animations at the original position
+          layer.animations.splice(insertPosition, 0, ...toAdd);
         }
       });
+
+      console.log('[GROUPING] Grouping complete');
     }
 
     // Check if two animations match (same delay, duration, easing)
     function animationsMatch(anim1, anim2) {
-      if (anim1.timing.delay !== anim2.timing.delay) return false;
-      if (anim1.timing.duration !== anim2.timing.duration) return false;
-      if (anim1.easing.type !== anim2.easing.type) return false;
-
-      // For cubic-bezier, check if values match
-      if (anim1.easing.type === 'cubic-bezier') {
-        return anim1.easing.cubicBezier === anim2.easing.cubicBezier;
+      // Always check delay
+      if (anim1.timing.delay !== anim2.timing.delay) {
+        console.log(`[GROUPING]         Delay mismatch: ${anim1.timing.delay} !== ${anim2.timing.delay}`);
+        return false;
       }
 
-      // For springs, check if preset or custom values match
+      // Check easing type
+      if (anim1.easing.type !== anim2.easing.type) {
+        console.log(`[GROUPING]         Easing type mismatch: ${anim1.easing.type} !== ${anim2.easing.type}`);
+        return false;
+      }
+
+      // For cubic-bezier, check duration AND bezier values
+      if (anim1.easing.type === 'cubic-bezier') {
+        // Check duration for cubic-bezier animations
+        if (anim1.timing.duration !== anim2.timing.duration) {
+          console.log(`[GROUPING]         Duration mismatch: ${anim1.timing.duration} !== ${anim2.timing.duration}`);
+          return false;
+        }
+
+        const match = anim1.easing.cubicBezier === anim2.easing.cubicBezier;
+        if (!match) {
+          console.log(`[GROUPING]         Cubic-bezier mismatch: ${anim1.easing.cubicBezier} !== ${anim2.easing.cubicBezier}`);
+        }
+        return match;
+      }
+
+      // For springs, IGNORE duration (it's calculated from physics), only check spring parameters
       if (anim1.easing.type === 'spring') {
         const spring1 = anim1.easing.spring;
         const spring2 = anim2.easing.spring;
-        if (spring1.preset !== spring2.preset) return false;
-        if (spring1.preset === 'Custom') {
-          return spring1.custom.stiffness === spring2.custom.stiffness &&
-                 spring1.custom.damping === spring2.custom.damping &&
-                 spring1.custom.dampingRatio === spring2.custom.dampingRatio &&
-                 spring1.custom.mass === spring2.custom.mass;
+        console.log(`[GROUPING]         (Ignoring duration for springs - calculated from physics)`);
+        console.log(`[GROUPING]         Comparing spring values:`);
+        console.log(`[GROUPING]           stiffness: ${spring1?.stiffness} === ${spring2?.stiffness}`);
+        console.log(`[GROUPING]           damping: ${spring1?.damping} === ${spring2?.damping}`);
+        console.log(`[GROUPING]           dampingRatio: ${spring1?.dampingRatio} === ${spring2?.dampingRatio}`);
+        console.log(`[GROUPING]           mass: ${spring1?.mass} === ${spring2?.mass}`);
+
+        const match = spring1?.stiffness === spring2?.stiffness &&
+               spring1?.damping === spring2?.damping &&
+               spring1?.dampingRatio === spring2?.dampingRatio &&
+               spring1?.mass === spring2?.mass;
+
+        if (!match) {
+          console.log(`[GROUPING]         Spring values don't match`);
         }
+
+        return match;
       }
 
       return true;
@@ -2766,8 +2834,8 @@ ${cleanedScript}
     function getPropertyColorClass(property) {
       const prop = property.toLowerCase();
       if (prop.includes('add parameter')) return 'bar-scale'; // Pink color for new parameters
+      if (prop.includes('width & height')) return 'bar-width'; // Grouped Width & Height uses Width color
       if (prop.includes('position')) return 'bar-position-x'; // Grouped position uses same color as X Position
-      if (prop.includes('size')) return 'bar-width'; // Grouped size uses same color as Width
       if (prop.includes('opacity')) return 'bar-opacity';
       if (prop.includes('scale')) return 'bar-scale';
       if (prop.includes('rotation') || prop.includes('rotate')) return 'bar-rotation';
@@ -2932,19 +3000,18 @@ ${cleanedScript}
           const direction = changeValue < 0 ? 'up' : 'down';
           description = `slides ${direction} ${Math.round(absChange)}px`;
         }
-        // Handle generic "Size" property
-        else if (prop === 'size' && Array.isArray(change)) {
+        // Handle grouped "Width & Height" property
+        else if (prop.includes('width & height') && Array.isArray(change)) {
           const widthChange = change[0];
           const heightChange = change[1];
+          const widthAction = widthChange > 0 ? 'expands' : 'shrinks';
+          const heightAction = heightChange > 0 ? 'expands' : 'shrinks';
 
           // Check if both dimensions change the same way
-          if (widthChange === heightChange) {
-            const action = widthChange > 0 ? 'expands' : 'shrinks';
-            description = action;
+          if (widthAction === heightAction) {
+            description = `Width and Height ${widthAction}`;
           } else {
-            const widthAction = widthChange > 0 ? 'expands' : 'shrinks';
-            const heightAction = heightChange > 0 ? 'expands' : 'shrinks';
-            description = `width ${widthAction}, height ${heightAction}`;
+            description = `Width ${widthAction} and Height ${heightAction}`;
           }
         }
         else if (prop.includes('width')) {
