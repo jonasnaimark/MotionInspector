@@ -2375,6 +2375,34 @@
       });
     }
 
+    // Helper function to format easing preset names (springs and curves) with hyperlinks
+    function formatSpringPreset(text) {
+      const presetLinks = {
+        // Spring presets
+        'Standard Spring': 'https://air.bb/standard-spring',
+        'Slow Spring': 'https://air.bb/slow-spring',
+        'Fast Spring': 'https://air.bb/fast-spring',
+        'Slow Bounce Spring': 'https://air.bb/slow-bounce-spring',
+        'Medium Bounce Spring': 'https://air.bb/medium-bounce-spring',
+        'Fast Bounce Spring': 'https://air.bb/fast-bounce-spring',
+        // Curve presets
+        'Standard Curve': 'https://air.bb/standard-curve',
+        'Enter Curve': 'https://air.bb/enter-curve',
+        'Exit Curve': 'https://air.bb/exit-curve'
+      };
+
+      // Check if text matches a preset name (case-insensitive)
+      const trimmedText = text.trim();
+      for (const [presetName, link] of Object.entries(presetLinks)) {
+        if (trimmedText.toLowerCase() === presetName.toLowerCase()) {
+          return `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
+        }
+      }
+
+      // Not a preset, return as-is
+      return text;
+    }
+
     // Render table view
     function renderTableView() {
       console.log('[TABLE] renderTableView called');
@@ -2466,7 +2494,7 @@
 
         // Animation rows
         layer.animations.forEach((anim, animIndex) => {
-          const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
+          const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layer.layerName);
 
           // For Fit to Shape or other special animations, only show description
           const isFitToShape = anim.isFitToShape || anim.fitToShape;
@@ -2487,7 +2515,7 @@
 
             // Check for custom easing first
             if (anim.customEasing !== undefined && anim.customEasing !== null) {
-              easingText = anim.customEasing;
+              easingText = formatSpringPreset(anim.customEasing);
             } else if (anim.easing.type === 'spring') {
               const spring = anim.easing.spring;
               const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
@@ -3830,7 +3858,7 @@ ${cleanedScript}
     }
 
     // Get natural language description of animation
-    function getAnimationDescription(property, values, fitToShape, customDescription) {
+    function getAnimationDescription(property, values, fitToShape, customDescription, layerName) {
       const prop = property.toLowerCase();
       let description;
 
@@ -3858,17 +3886,19 @@ ${cleanedScript}
         if (prop === 'position' && Array.isArray(change) && values.animatingAxes) {
           const xChange = change[0];
           const yChange = change[1];
+          const absXChange = Math.abs(xChange);
+          const absYChange = Math.abs(yChange);
 
           if (values.animatingAxes.both) {
             const xDir = xChange < 0 ? 'left' : 'right';
             const yDir = yChange < 0 ? 'up' : 'down';
-            description = `moves ${yDir} and ${xDir}`; // No px values for grouped Position
+            description = `Moves ${xDir} ${Math.round(absXChange)}px and ${yDir} ${Math.round(absYChange)}px`;
           } else if (values.animatingAxes.x) {
             const direction = xChange < 0 ? 'left' : 'right';
-            description = `moves ${direction}`;
+            description = `Moves ${direction} ${Math.round(absXChange)}px`;
           } else if (values.animatingAxes.y) {
             const direction = yChange < 0 ? 'up' : 'down';
-            description = `moves ${direction}`;
+            description = `Moves ${direction} ${Math.round(absYChange)}px`;
           } else {
             description = property;
           }
@@ -3878,8 +3908,8 @@ ${cleanedScript}
           if (changeValue === 0) {
             description = `Position X stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
           } else {
-            const direction = changeValue < 0 ? 'right' : 'left';
-            description = `moves ${Math.round(absChange)}px from the ${direction}`;
+            const direction = changeValue < 0 ? 'left' : 'right';
+            description = `Moves ${direction} ${Math.round(absChange)}px`;
           }
         }
         else if (prop.includes('y position')) {
@@ -3888,7 +3918,7 @@ ${cleanedScript}
             description = `Position Y stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
           } else {
             const direction = changeValue < 0 ? 'up' : 'down';
-            description = `moves ${direction} ${Math.round(absChange)}px`;
+            description = `Moves ${direction} ${Math.round(absChange)}px`;
           }
         }
         // Handle grouped "Width & Height" property
@@ -3926,7 +3956,7 @@ ${cleanedScript}
             description = `blur stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
           } else {
             const action = changeValue > 0 ? 'blurs' : 'unblurs';
-            description = action;
+            description = `Layer ${action}`;
           }
         }
         else if (prop.includes('amount to tint')) {
@@ -4346,7 +4376,7 @@ ${cleanedScript}
             const parentInfo = getParentLayerInfo(anim.fitToShape.containerLayerName);
             startPercent = (parentInfo.delay / currentViewDuration) * 100;
             widthPercent = (parentInfo.duration / currentViewDuration) * 100;
-            description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
+            description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layer.layerName);
             springClass = parentInfo.hasSpring ? ' bar-spring' : '';
           } else {
             // Normal animation - use its own timing
@@ -4378,7 +4408,7 @@ ${cleanedScript}
               springClass = ' bar-spring';
             }
 
-            description = getAnimationDescription(anim.property, anim.values, null, anim.description);
+            description = getAnimationDescription(anim.property, anim.values, null, anim.description, layer.layerName);
           }
 
           // Cap width so bars don't extend past the edge (shows rounded corners naturally)
@@ -5751,7 +5781,7 @@ ${cleanedScript}
       if (!anim) return;
 
       const detailPanel = document.getElementById('detailPanel');
-      const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
+      const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layer.layerName);
 
       // Get the color for this animation type (use custom color if set)
       const colorClass = getPropertyColorClass(anim.property);
@@ -5921,7 +5951,7 @@ ${cleanedScript}
 
         // Check for custom easing first
         if (anim.customEasing !== undefined && anim.customEasing !== null) {
-          easingText = anim.customEasing;
+          easingText = formatSpringPreset(anim.customEasing);
         } else if (anim.easing.type === 'spring') {
           const spring = anim.easing.spring;
           const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
