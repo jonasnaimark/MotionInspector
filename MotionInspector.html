@@ -532,7 +532,7 @@
 
     .color-picker-panel {
       position: absolute;
-      background: #4a4a4a;
+      background: #2a2a2a;
       border: 1px solid #444;
       border-radius: 8px;
       padding: 12px;
@@ -552,7 +552,7 @@
       left: 62px;
       width: 12px;
       height: 12px;
-      background: #1a1a1a;
+      background: #2a2a2a;
       border-right: 1px solid #444;
       border-bottom: 1px solid #444;
       transform: rotate(45deg);
@@ -580,6 +580,47 @@
     .color-option.selected {
       border-color: rgba(255, 255, 255, 0.8);
       box-shadow: 0 0 0 2px #2a2a2a, 0 0 0 4px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Easing autocomplete dropdown */
+    .easing-autocomplete {
+      position: absolute;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: none;
+      min-width: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .easing-autocomplete.visible {
+      display: block;
+    }
+
+    .easing-autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #e0e0e0;
+      transition: background 0.15s ease;
+      font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
+    }
+
+    .easing-autocomplete-item:hover {
+      background: #3a3a3a;
+    }
+
+    .easing-autocomplete-item.spring-preset {
+      color: #9fd4ff;
+    }
+
+    .easing-autocomplete-item.curve-preset {
+      color: #ffb38a;
     }
 
     /* DevTools-style timeline */
@@ -2403,6 +2444,149 @@
       return text;
     }
 
+    // Easing autocomplete functionality
+    let easingAutocomplete = null;
+    let autocompleteTarget = null;
+
+    function createEasingAutocomplete() {
+      const presets = [
+        { name: 'Standard Spring', type: 'spring' },
+        { name: 'Slow Spring', type: 'spring' },
+        { name: 'Fast Spring', type: 'spring' },
+        { name: 'Slow Bounce Spring', type: 'spring' },
+        { name: 'Medium Bounce Spring', type: 'spring' },
+        { name: 'Fast Bounce Spring', type: 'spring' },
+        { name: 'Standard Curve', type: 'curve' },
+        { name: 'Enter Curve', type: 'curve' },
+        { name: 'Exit Curve', type: 'curve' }
+      ];
+
+      // Create dropdown if it doesn't exist
+      if (!easingAutocomplete) {
+        easingAutocomplete = document.createElement('div');
+        easingAutocomplete.className = 'easing-autocomplete';
+        document.body.appendChild(easingAutocomplete);
+      }
+
+      return { dropdown: easingAutocomplete, presets };
+    }
+
+    function showEasingAutocomplete(inputElement, filterText = '') {
+      const { dropdown, presets } = createEasingAutocomplete();
+      autocompleteTarget = inputElement;
+
+      // Check if input is in info box (detail panel)
+      const isInInfoBox = inputElement.closest('#detailPanel') !== null;
+
+      // Always show all presets (no filtering)
+      let filtered = [...presets];
+
+      // Reverse order for info box (curves first, then springs)
+      if (isInInfoBox) {
+        filtered = filtered.reverse();
+      }
+
+      // Build dropdown HTML
+      let html = '';
+      filtered.forEach(preset => {
+        const className = preset.type === 'spring' ? 'spring-preset' : 'curve-preset';
+        html += `<div class="easing-autocomplete-item ${className}" data-preset="${preset.name}">${preset.name}</div>`;
+      });
+
+      dropdown.innerHTML = html;
+
+      // Show dropdown first to get its height
+      dropdown.classList.add('visible');
+
+      // Position the dropdown
+      const rect = inputElement.getBoundingClientRect();
+      dropdown.style.left = (rect.left + window.scrollX) + 'px';
+
+      // Use fixed width for consistent sizing
+      dropdown.style.minWidth = '220px';
+      dropdown.style.width = '220px';
+
+      if (isInInfoBox) {
+        // Position above the input for info box
+        const dropdownHeight = dropdown.offsetHeight;
+        dropdown.style.top = (rect.top + window.scrollY - dropdownHeight - 4) + 'px';
+        dropdown.style.bottom = 'auto';
+      } else {
+        // Position below the input for table mode
+        dropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+        dropdown.style.bottom = 'auto';
+      }
+
+      // Use event delegation on the dropdown itself (prevents duplicate listeners)
+      dropdown.onclick = (e) => {
+        const item = e.target.closest('.easing-autocomplete-item');
+        if (!item) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const presetName = item.dataset.preset;
+        console.log('Selected preset:', presetName, 'Element type:', inputElement.tagName);
+
+        hideEasingAutocomplete();
+
+        // Set the value and trigger save based on element type
+        if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
+          // For info box elements, extract animIndex from the onblur handler
+          const onblurAttr = inputElement.getAttribute('onblur');
+          const match = onblurAttr.match(/updateAnimationField\((\d+),\s*'easing'/);
+          if (match) {
+            const animIndex = parseInt(match[1]);
+            console.log('Extracted animIndex:', animIndex);
+            // Directly call updateAnimationField
+            updateAnimationField(animIndex, 'easing', presetName);
+          }
+        } else {
+          // Contenteditable DIV (table mode)
+          const row = inputElement.closest('.table-row');
+          const layerIndex = parseInt(row.dataset.layerIndex);
+          const animIndex = parseInt(row.dataset.animIndex);
+
+          inputElement.textContent = presetName;
+          console.log('Set contenteditable to:', inputElement.textContent);
+
+          // Manually trigger save for table mode
+          const layer = specData.layers[layerIndex];
+          if (layer) {
+            const anim = layer.animations[animIndex];
+            if (anim) {
+              anim.customEasing = presetName;
+              console.log('Saved to specData:', presetName);
+              renderTableView();
+            }
+          }
+        }
+      };
+    }
+
+    function hideEasingAutocomplete() {
+      if (easingAutocomplete) {
+        easingAutocomplete.classList.remove('visible');
+        autocompleteTarget = null;
+      }
+    }
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('mousedown', (e) => {
+      // Check if clicking on an easing field (which would open the autocomplete)
+      const isEasingTextarea = e.target.tagName === 'TEXTAREA' &&
+                               e.target.classList.contains('detail-value-input');
+      const isEasingCell = e.target.dataset && e.target.dataset.field === 'easing';
+      const isEasingField = isEasingTextarea || isEasingCell;
+
+      if (easingAutocomplete &&
+          easingAutocomplete.classList.contains('visible') &&
+          !easingAutocomplete.contains(e.target) &&
+          !isEasingField) {
+        hideEasingAutocomplete();
+      }
+    });
+
     // Render table view
     function renderTableView() {
       console.log('[TABLE] renderTableView called');
@@ -3059,7 +3243,19 @@
           const selection = window.getSelection();
           selection.removeAllRanges();
           selection.addRange(range);
+
+          // Show autocomplete for easing fields
+          if (cell.dataset.field === 'easing') {
+            showEasingAutocomplete(cell, cell.textContent.trim());
+          }
         });
+
+        // Update autocomplete filter on input for easing fields
+        if (cell.dataset.field === 'easing') {
+          cell.addEventListener('input', (e) => {
+            showEasingAutocomplete(cell, cell.textContent.trim());
+          });
+        }
 
         // Handle Enter key
         cell.addEventListener('keydown', (e) => {
@@ -5948,20 +6144,25 @@ ${cleanedScript}
       // Easing (skip for Fit to Shape since it doesn't have meaningful easing)
       if (!anim.isFitToShape) {
         let easingText = '';
+        let easingTextPlain = '';  // Plain text version for edit mode
 
         // Check for custom easing first
         if (anim.customEasing !== undefined && anim.customEasing !== null) {
-          easingText = formatSpringPreset(anim.customEasing);
+          easingTextPlain = anim.customEasing;  // Plain text for textarea
+          easingText = formatSpringPreset(anim.customEasing);  // HTML for read-only
         } else if (anim.easing.type === 'spring') {
           const spring = anim.easing.spring;
           const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
           const isPreset = presetSprings.includes(spring.preset);
 
           if (isPreset) {
+            easingTextPlain = spring.preset;
             easingText = spring.preset;
           } else {
             // Custom spring values as text
-            easingText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
+            const springText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
+            easingTextPlain = springText;
+            easingText = springText;
           }
         } else if (anim.easing.type === 'cubic-bezier') {
           const bezierValue = anim.easing.cubicBezier;
@@ -5984,8 +6185,10 @@ ${cleanedScript}
             presetName = curvePresets[normalized];
           }
 
+          easingTextPlain = presetName || bezierValue;
           easingText = presetName || bezierValue;
         } else {
+          easingTextPlain = anim.easing.type;
           easingText = anim.easing.type;
         }
 
@@ -6001,7 +6204,7 @@ ${cleanedScript}
                 onblur="updateAnimationField(${animIndex}, 'easing', this.value)"
                 oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight + 4) + 'px';"
                 onkeydown="if(event.key === 'Enter' && !event.shiftKey) { this.blur(); }"
-              >${easingText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+              >${easingTextPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
             </div>
           `;
         } else {
@@ -6116,6 +6319,17 @@ ${cleanedScript}
       // Auto-resize title input fields to fit their content
       const titleInputs = detailPanel.querySelectorAll('.detail-title-input');
       titleInputs.forEach(input => autoResizeTitleInput(input));
+
+      // Setup autocomplete for easing textarea
+      const easingTextarea = detailPanel.querySelector('textarea.detail-value-input');
+      if (easingTextarea) {
+        easingTextarea.addEventListener('focus', () => {
+          showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
+        });
+        easingTextarea.addEventListener('input', () => {
+          showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
+        });
+      }
 
       // Remove old resize listener if it exists
       if (window.textareaResizeListener) {
