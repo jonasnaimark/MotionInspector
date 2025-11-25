@@ -2254,13 +2254,31 @@
       specData.layers.forEach((layer, layerIndex) => {
         // Layer header label
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
-        html += `<div class="timeline-label layer-header${dividerClass}" data-row-type="layer" data-layer-index="${layerIndex}">
+        html += `<div class="timeline-label layer-header${dividerClass}"
+                      data-row-type="layer"
+                      data-layer-index="${layerIndex}"
+                      draggable="${isEditMode}"
+                      data-drag-type="layer"
+                      data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
         </div>`;
 
         // Animation labels
-        layer.animations.forEach((anim, animIndex) => {
-          html += `<div class="timeline-label indented" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
+        layer.animations.forEach((anim, animIndexInLayer) => {
+          // Calculate global animation index
+          let globalAnimIndex = 0;
+          for (let i = 0; i < layerIndex; i++) {
+            globalAnimIndex += specData.layers[i].animations.length;
+          }
+          globalAnimIndex += animIndexInLayer;
+
+          html += `<div class="timeline-label indented"
+                        data-row-type="animation"
+                        data-layer-index="${layerIndex}"
+                        data-anim-index="${animIndexInLayer}"
+                        draggable="${isEditMode}"
+                        data-drag-type="animation"
+                        data-anim-in-layer="${animIndexInLayer}">
             <span class="timeline-label-text">${anim.property}</span>
           </div>`;
         });
@@ -2396,6 +2414,7 @@
       updateTableEasingWidth();
       syncTableRowHeights();
       addTableHoverListeners();
+      setupTableDragAndDrop();
     }
 
     // Add hover event listeners to sync hover state between left and right columns in table view
@@ -2472,6 +2491,194 @@
           }
         });
       });
+    }
+
+    // Setup drag and drop for table mode (reuses timeline drag logic)
+    function setupTableDragAndDrop() {
+      const labels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"]');
+
+      labels.forEach(label => {
+        // Dragstart - record what's being dragged
+        label.addEventListener('dragstart', (e) => {
+          draggedElement = label;
+          draggedType = label.dataset.dragType;
+          draggedLayerIndex = parseInt(label.dataset.layerIndex);
+          draggedAnimIndex = label.dataset.animInLayer ? parseInt(label.dataset.animInLayer) : null;
+
+          label.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', label.innerHTML);
+
+          // Find and add dragging class to corresponding right row
+          const rightRow = findCorrespondingRightRow(label);
+          if (rightRow) {
+            rightRow.classList.add('dragging');
+          }
+        });
+
+        // Dragend - cleanup
+        label.addEventListener('dragend', (e) => {
+          label.classList.remove('dragging');
+
+          // Remove all drop indicators from both columns
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom', 'dragging');
+          });
+
+          draggedElement = null;
+          draggedType = null;
+          draggedLayerIndex = null;
+          draggedAnimIndex = null;
+        });
+
+        // Dragover - show drop indicator
+        label.addEventListener('dragover', (e) => {
+          if (!draggedElement || draggedElement === label) return;
+
+          const targetType = label.dataset.dragType;
+          const targetLayerIndex = parseInt(label.dataset.layerIndex);
+
+          // Check if this drop is valid
+          let isValidDrop = false;
+          let isDropOnLayerHeader = false;
+
+          if (draggedType === 'animation' && targetType === 'animation') {
+            isValidDrop = true;
+          } else if (draggedType === 'animation' && targetType === 'layer') {
+            isValidDrop = true;
+            isDropOnLayerHeader = true;
+          } else if (draggedType === 'layer' && targetType === 'layer') {
+            isValidDrop = true;
+          }
+
+          if (!isValidDrop) return;
+
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+
+          // Determine drop position
+          const rect = label.getBoundingClientRect();
+          const midpoint = rect.top + rect.height / 2;
+          const dropPosition = e.clientY < midpoint ? 'before' : 'after';
+
+          // Check if this drop would actually change position
+          let wouldChangePosition = false;
+
+          if (isDropOnLayerHeader) {
+            wouldChangePosition = draggedLayerIndex !== targetLayerIndex;
+          } else if (draggedType === 'layer' && targetType === 'layer') {
+            const distanceFromTop = e.clientY - rect.top;
+            if (distanceFromTop <= 10) {
+              let targetIndex = targetLayerIndex;
+              if (draggedLayerIndex < targetIndex) targetIndex--;
+              wouldChangePosition = draggedLayerIndex !== targetIndex;
+            }
+          } else if (draggedType === 'animation' && targetType === 'animation') {
+            if (draggedLayerIndex !== targetLayerIndex) {
+              wouldChangePosition = true;
+            } else {
+              const targetAnimIndex = parseInt(label.dataset.animInLayer);
+              let targetIndex = targetAnimIndex;
+              if (dropPosition === 'after') targetIndex++;
+              if (draggedAnimIndex < targetIndex) targetIndex--;
+              wouldChangePosition = draggedAnimIndex !== targetIndex;
+            }
+          }
+
+          if (!wouldChangePosition) return;
+
+          // Clear all indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          // Add indicator to both left label and right row
+          const rightRow = findCorrespondingRightRow(label);
+
+          if (isDropOnLayerHeader) {
+            label.classList.add('drag-over-bottom');
+            if (rightRow) rightRow.classList.add('drag-over-bottom');
+          } else if (draggedType === 'layer' && targetType === 'layer') {
+            const distanceFromTop = e.clientY - rect.top;
+            if (distanceFromTop <= 10) {
+              label.classList.add('drag-over-top');
+              if (rightRow) rightRow.classList.add('drag-over-top');
+            }
+          } else {
+            if (dropPosition === 'before') {
+              label.classList.add('drag-over-top');
+              if (rightRow) rightRow.classList.add('drag-over-top');
+            } else {
+              label.classList.add('drag-over-bottom');
+              if (rightRow) rightRow.classList.add('drag-over-bottom');
+            }
+          }
+        });
+
+        // Drop - perform the reorder
+        label.addEventListener('drop', (e) => {
+          e.preventDefault();
+
+          if (!draggedElement || draggedElement === label) return;
+
+          const targetType = label.dataset.dragType;
+          const targetLayerIndex = parseInt(label.dataset.layerIndex);
+          const targetAnimIndex = label.dataset.animInLayer ? parseInt(label.dataset.animInLayer) : null;
+
+          // Determine drop position
+          const rect = label.getBoundingClientRect();
+          const midpoint = rect.top + rect.height / 2;
+          const dropPosition = e.clientY < midpoint ? 'before' : 'after';
+
+          // For layer drops: only allow drops in top half (before)
+          if (draggedType === 'layer' && targetType === 'layer') {
+            if (dropPosition === 'after') return;
+            performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
+          }
+          // For dropping animations on layer headers
+          else if (draggedType === 'animation' && targetType === 'layer') {
+            const sourceLayer = specData.layers[draggedLayerIndex];
+            const targetLayer = specData.layers[targetLayerIndex];
+            const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
+            targetLayer.animations.splice(0, 0, anim);
+            renderTableView();
+          }
+          // For animation drops
+          else if (draggedType === 'animation' && targetType === 'animation') {
+            if (draggedLayerIndex === targetLayerIndex) {
+              performAnimationMove(draggedLayerIndex, draggedAnimIndex, targetAnimIndex, dropPosition);
+            } else {
+              const sourceLayer = specData.layers[draggedLayerIndex];
+              const targetLayer = specData.layers[targetLayerIndex];
+              const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
+
+              let insertIndex = targetAnimIndex;
+              if (dropPosition === 'after') insertIndex++;
+              targetLayer.animations.splice(insertIndex, 0, anim);
+              renderTableView();
+            }
+          }
+
+          // Clear all indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+        });
+      });
+    }
+
+    // Helper function to find the corresponding right row for a left label
+    function findCorrespondingRightRow(label) {
+      const rowType = label.getAttribute('data-row-type');
+      const layerIndex = label.getAttribute('data-layer-index');
+      const animIndex = label.getAttribute('data-anim-index');
+
+      let selector = `.timeline-track.table-row[data-row-type="${rowType}"][data-layer-index="${layerIndex}"]`;
+      if (animIndex !== null) {
+        selector += `[data-anim-index="${animIndex}"]`;
+      }
+
+      return document.querySelector(selector);
     }
 
     // Get the base HTML template for export (without the export button and JSZip)
@@ -4647,8 +4854,12 @@ ${cleanedScript}
       // Insert at new position
       specData.layers.splice(targetIndex, 0, layer);
 
-      // Re-render
-      renderTimeline();
+      // Re-render based on current view mode
+      if (viewMode === 'table') {
+        renderTableView();
+      } else {
+        renderTimeline();
+      }
 
       // Maintain selection if needed
       if (selectedAnimation !== null) {
@@ -4676,8 +4887,12 @@ ${cleanedScript}
       // Insert at new position
       layer.animations.splice(targetIndex, 0, anim);
 
-      // Re-render
-      renderTimeline();
+      // Re-render based on current view mode
+      if (viewMode === 'table') {
+        renderTableView();
+      } else {
+        renderTimeline();
+      }
 
       // Maintain selection if needed
       if (selectedAnimation !== null) {
