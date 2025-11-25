@@ -613,6 +613,17 @@
       position: relative;
     }
 
+    .timeline-bottom-track {
+      border-top: 1px solid #4a4a4a;
+      margin-top: 15px;
+      height: 15px;
+      border-bottom: none;
+    }
+
+    .timeline-bottom-track .table-cell {
+      border-right: none !important;
+    }
+
     .timeline-ruler {
       position: sticky;
       top: 0;
@@ -716,6 +727,18 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       color: #e0e0e0;
+    }
+
+    .timeline-label-text[contenteditable="true"] {
+      outline: 1px solid #3a3a3a;
+      outline-offset: 2px;
+      background: #252525;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      border-radius: 3px;
+      cursor: text;
+      overflow: visible;
+      white-space: normal;
     }
 
     .timeline-label:hover .timeline-label-text {
@@ -895,6 +918,21 @@
       box-sizing: border-box;
       user-select: text;
       cursor: text;
+    }
+
+    .table-cell.editable-cell[contenteditable="true"] {
+      cursor: text;
+      outline: none;
+    }
+
+    .table-cell.editable-cell[contenteditable="true"]:focus {
+      background: #252525;
+      outline: 1px solid #3a3a3a;
+      outline-offset: -1px;
+    }
+
+    .table-cell.editable-cell[contenteditable="true"]:hover:not(:focus) {
+      background: #222222;
     }
 
     .table-cell--desc {
@@ -2405,13 +2443,21 @@
           }
 
           html += `<div class="timeline-track table-row" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
-            <div class="table-cell table-cell--desc"><span class="table-desc-text">${description}</span></div>
-            <div class="table-cell table-cell--delay">${delay}</div>
-            <div class="table-cell table-cell--duration">${duration}</div>
-            <div class="table-cell table-cell--easing">${easingText}</div>
+            <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="description"><span class="table-desc-text">${description}</span></div>
+            <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="delay">${delay}</div>
+            <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="duration">${duration}</div>
+            <div class="table-cell table-cell--easing editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="easing">${easingText}</div>
           </div>`;
         });
       });
+
+      // Bottom divider for right column to match left column
+      html += `<div class="timeline-bottom-track table-row">
+        <div class="table-cell table-cell--desc"></div>
+        <div class="table-cell table-cell--delay"></div>
+        <div class="table-cell table-cell--duration"></div>
+        <div class="table-cell table-cell--easing"></div>
+      </div>`;
 
       html += `</div>`; // timeline-content-column
       html += `</div>`; // timeline-container
@@ -2425,6 +2471,7 @@
       setupTableDragAndDrop();
       setupTableAddButtonHandlers();
       setupTableAddButtonHoverZones();
+      setupTableEditableFields();
     }
 
     // Add hover event listeners to sync hover state between left and right columns in table view
@@ -2852,6 +2899,206 @@
           }, 50);
         });
       });
+    }
+
+    // Setup editable fields for table mode
+    function setupTableEditableFields() {
+      // Handle right column editable cells
+      const editableCells = document.querySelectorAll('.editable-cell[contenteditable="true"]');
+
+      editableCells.forEach(cell => {
+        // Store original value on focus
+        cell.addEventListener('focus', (e) => {
+          cell.dataset.originalValue = cell.textContent.trim();
+          // Select all text on focus
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        });
+
+        // Handle Enter key
+        cell.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            cell.blur();
+          } else if (e.key === 'Escape') {
+            // Restore original value
+            cell.textContent = cell.dataset.originalValue || '';
+            cell.blur();
+          }
+        });
+
+        // Save changes on blur
+        cell.addEventListener('blur', (e) => {
+          const row = cell.closest('.table-row');
+          const layerIndex = parseInt(row.dataset.layerIndex);
+          const animIndex = parseInt(row.dataset.animIndex);
+          const fieldName = cell.dataset.field;
+          let newValue = cell.textContent.trim();
+
+          // Get the animation
+          const layer = specData.layers[layerIndex];
+          if (!layer) return;
+          const anim = layer.animations[animIndex];
+          if (!anim) return;
+
+          // Apply validation and update based on field type
+          if (fieldName === 'description') {
+            // Update custom description
+            anim.description = newValue || undefined;
+          } else if (fieldName === 'delay') {
+            // Parse delay - remove "ms" suffix if present
+            newValue = newValue.replace(/ms$/i, '').trim();
+            const numValue = parseFloat(newValue);
+            if (!isNaN(numValue)) {
+              anim.timing.delay = numValue;
+            } else {
+              // Invalid - restore original
+              cell.textContent = cell.dataset.originalValue || '';
+              return;
+            }
+          } else if (fieldName === 'duration') {
+            // Parse duration - remove "ms" suffix if present
+            newValue = newValue.replace(/ms$/i, '').trim();
+            if (newValue === '-') {
+              // Keep as is for springs
+              return;
+            }
+            const numValue = parseFloat(newValue);
+            if (!isNaN(numValue)) {
+              anim.timing.duration = numValue;
+              anim.durationUserSet = true; // Mark as user-edited
+            } else {
+              // Invalid - restore original
+              cell.textContent = cell.dataset.originalValue || '';
+              return;
+            }
+          } else if (fieldName === 'easing') {
+            // Store custom easing as plain text
+            anim.customEasing = newValue || undefined;
+          }
+
+          // Refresh the view to show updates
+          renderTableView();
+        });
+      });
+
+      // Handle left column label editing with drag threshold
+      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"]');
+
+      leftLabels.forEach(label => {
+        const labelText = label.querySelector('.timeline-label-text');
+        if (!labelText) return;
+
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+        let isDragging = false;
+        let mouseDownTime = 0;
+
+        labelText.addEventListener('mousedown', (e) => {
+          // Don't interfere with + buttons
+          if (e.target.closest('.timeline-label-add-btn, .section-divider-add-btn')) return;
+
+          mouseDownX = e.clientX;
+          mouseDownY = e.clientY;
+          mouseDownTime = Date.now();
+          isDragging = false;
+        });
+
+        labelText.addEventListener('mousemove', (e) => {
+          if (mouseDownTime === 0) return;
+
+          const deltaX = Math.abs(e.clientX - mouseDownX);
+          const deltaY = Math.abs(e.clientY - mouseDownY);
+          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+          // If moved more than 5px, consider it a drag
+          if (distance > 5) {
+            isDragging = true;
+          }
+        });
+
+        labelText.addEventListener('mouseup', (e) => {
+          const clickDuration = Date.now() - mouseDownTime;
+          mouseDownTime = 0;
+
+          // If not dragging and was a quick click, enter edit mode
+          if (!isDragging && clickDuration < 300) {
+            e.stopPropagation();
+            e.preventDefault();
+            enterEditMode(label, labelText);
+          }
+
+          isDragging = false;
+        });
+      });
+
+      // Function to enter edit mode for left column labels
+      function enterEditMode(label, labelText) {
+        const originalText = labelText.textContent.trim();
+        const isLayerHeader = label.classList.contains('layer-header');
+        const layerIndex = parseInt(label.dataset.layerIndex);
+        const animIndex = isLayerHeader ? null : parseInt(label.dataset.animInLayer);
+
+        // Make the span contenteditable
+        labelText.contentEditable = true;
+        labelText.focus();
+
+        // Select all text
+        const range = document.createRange();
+        range.selectNodeContents(labelText);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Temporarily disable dragging
+        label.draggable = false;
+
+        // Handle Enter key
+        const handleKeyDown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            labelText.blur();
+          } else if (e.key === 'Escape') {
+            labelText.textContent = originalText;
+            labelText.blur();
+          }
+        };
+
+        // Save changes on blur
+        const handleBlur = () => {
+          const newText = labelText.textContent.trim();
+          labelText.contentEditable = false;
+          label.draggable = true;
+
+          // Remove event listeners
+          labelText.removeEventListener('keydown', handleKeyDown);
+          labelText.removeEventListener('blur', handleBlur);
+
+          // Update specData if text changed
+          if (newText && newText !== originalText) {
+            if (isLayerHeader) {
+              updateLayerField(layerIndex, 'layerName', newText);
+            } else {
+              // Calculate global animation index
+              let globalAnimIndex = 0;
+              for (let i = 0; i < layerIndex; i++) {
+                globalAnimIndex += specData.layers[i].animations.length;
+              }
+              globalAnimIndex += animIndex;
+              updateAnimationField(globalAnimIndex, 'property', newText);
+            }
+          } else if (!newText) {
+            // Restore original if empty
+            labelText.textContent = originalText;
+          }
+        };
+
+        labelText.addEventListener('keydown', handleKeyDown);
+        labelText.addEventListener('blur', handleBlur);
+      }
     }
 
     // Setup hover zones for add buttons in table mode
