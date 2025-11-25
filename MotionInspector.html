@@ -53,6 +53,26 @@
       color: #ffffff;
     }
 
+    h1[contenteditable="true"] {
+      cursor: text;
+      outline: none;
+      padding: 2px 8px;
+      margin: -2px -8px;
+      border-radius: 4px;
+    }
+
+    h1[contenteditable="true"]:hover {
+      background: #222222;
+      outline: 1px solid #3a3a3a;
+      outline-offset: 2px;
+    }
+
+    h1[contenteditable="true"]:focus {
+      background: #252525;
+      outline: 1px solid #4a90e2;
+      outline-offset: 2px;
+    }
+
     .controls {
       display: flex;
       gap: 12px;
@@ -1640,7 +1660,7 @@
 <body>
   <div class="container">
     <div class="header-section">
-      <h1>Motion Inspector</h1>
+      <h1 id="pageTitle" contenteditable="false">Motion Inspector</h1>
       <div class="controls">
         <input type="file" id="videoInput" accept="video/*" class="edit-only main-only">
         <div class="view-mode-control">
@@ -1718,6 +1738,12 @@
     function updateMode() {
       const mode = isEditMode ? 'edit' : 'read';
       document.body.setAttribute('data-mode', mode);
+
+      // Update page title editability
+      const pageTitle = document.getElementById('pageTitle');
+      if (pageTitle) {
+        pageTitle.contentEditable = isEditMode;
+      }
     }
 
     // Toggle between edit and read modes
@@ -1732,6 +1758,62 @@
 
     // Initialize mode on page load
     updateMode();
+
+    // Setup page title editing
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) {
+      // Store original value on focus
+      pageTitle.addEventListener('focus', (e) => {
+        pageTitle.dataset.originalValue = pageTitle.textContent.trim();
+        // Select all text on focus
+        const range = document.createRange();
+        range.selectNodeContents(pageTitle);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      });
+
+      // Handle Enter and Escape keys
+      pageTitle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          pageTitle.blur();
+        } else if (e.key === 'Escape') {
+          // Restore original value
+          pageTitle.textContent = pageTitle.dataset.originalValue || 'Motion Inspector';
+          pageTitle.blur();
+        }
+      });
+
+      // Save changes on blur
+      pageTitle.addEventListener('blur', (e) => {
+        let newTitle = pageTitle.textContent.trim();
+
+        // If empty, restore original
+        if (!newTitle) {
+          newTitle = pageTitle.dataset.originalValue || 'Motion Inspector';
+          pageTitle.textContent = newTitle;
+        }
+
+        // Update specData if we have it loaded
+        if (specData) {
+          specData.compName = newTitle;
+        }
+
+        // Update document title
+        document.title = newTitle;
+
+        // Clear selection when blurring
+        window.getSelection().removeAllRanges();
+      });
+
+      // Clear selection when clicking outside the title
+      document.addEventListener('mousedown', (e) => {
+        if (!pageTitle.contains(e.target)) {
+          window.getSelection().removeAllRanges();
+        }
+      });
+    }
 
     // Throttled video seek using RAF to prevent multiple competing seeks
     function scheduleVideoSeek(targetTime) {
@@ -2085,6 +2167,14 @@
         specData = data;
         groupAnimations(specData); // Group matching X/Y Position and Width/Height
         viewDuration = null; // Reset zoom level for new spec
+
+        // Update page title
+        const pageTitle = document.getElementById('pageTitle');
+        if (pageTitle && specData.compName) {
+          pageTitle.textContent = specData.compName;
+          document.title = specData.compName;
+        }
+
         renderTimeline();
       } catch (err) {
         alert('Failed to paste or parse JSON.\n\nError: ' + err.message + '\n\nCheck the browser console for more details.');
@@ -2946,8 +3036,11 @@
 
           // Apply validation and update based on field type
           if (fieldName === 'description') {
-            // Update custom description
+            // Update custom description - allow empty
             anim.description = newValue || undefined;
+            // Don't refresh view here, just update cell
+            cell.textContent = newValue || '';
+            return;
           } else if (fieldName === 'delay') {
             // Parse delay - remove "ms" suffix if present
             newValue = newValue.replace(/ms$/i, '').trim();
@@ -2962,18 +3055,22 @@
           } else if (fieldName === 'duration') {
             // Parse duration - remove "ms" suffix if present
             newValue = newValue.replace(/ms$/i, '').trim();
-            if (newValue === '-') {
-              // Keep as is for springs
-              return;
-            }
-            const numValue = parseFloat(newValue);
-            if (!isNaN(numValue)) {
-              anim.timing.duration = numValue;
-              anim.durationUserSet = true; // Mark as user-edited
+
+            // Allow empty or "-" for springs
+            if (newValue === '' || newValue === '-') {
+              // Clear user-set flag to allow spring auto-calculation
+              anim.durationUserSet = false;
+              // Don't return - let renderTableView() refresh the display
             } else {
-              // Invalid - restore original
-              cell.textContent = cell.dataset.originalValue || '';
-              return;
+              const numValue = parseFloat(newValue);
+              if (!isNaN(numValue)) {
+                anim.timing.duration = numValue;
+                anim.durationUserSet = true; // Mark as user-edited
+              } else {
+                // Invalid - restore original
+                cell.textContent = cell.dataset.originalValue || '';
+                return;
+              }
             }
           } else if (fieldName === 'easing') {
             // Store custom easing as plain text
@@ -3252,7 +3349,7 @@
 <body data-mode="read">
   <div class="container">
     <div class="header-section">
-      <h1>Motion Inspector</h1>
+      <h1 id="pageTitle" contenteditable="false">Motion Inspector</h1>
       <div class="controls">
         <div class="view-mode-control">
           <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
@@ -3307,6 +3404,13 @@ ${cleanedScript}
       specData = EMBEDDED_SPEC_DATA;
       groupAnimations(specData); // Group matching X/Y Position and Width/Height
       console.log('[EXPORT] specData loaded:', specData);
+
+      // Update page title
+      const pageTitle = document.getElementById('pageTitle');
+      if (pageTitle && specData.compName) {
+        pageTitle.textContent = specData.compName;
+        document.title = specData.compName;
+      }
 
       video.src = EMBEDDED_VIDEO_PATH;
       const videoContainer = document.getElementById('videoContainer');
