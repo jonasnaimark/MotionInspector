@@ -174,7 +174,7 @@
 
     .video-section {
       background: #242424;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 20px;
       display: flex;
       flex-direction: column;
@@ -319,7 +319,7 @@
 
     .timeline-section {
       background: #242424;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 20px;
       overflow: visible;
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -578,7 +578,7 @@
 
     .timeline-content-column {
       position: relative;
-      box-shadow: inset -6px -6px 14px -4px rgba(0, 0, 0, 0.5);
+      box-shadow: inset -6px -6px 14px -4px rgba(0, 0, 0, 0.25);
       background: #1a1a1a;
     }
 
@@ -648,6 +648,16 @@
     .timeline-row:hover .timeline-label,
     .timeline-row:hover .timeline-track {
       background: #282828;
+    }
+
+    /* Table mode hover effect */
+    body.table-view-active .timeline-label.table-hover {
+      background: #121212;
+    }
+
+    body.table-view-active .timeline-track.table-row.table-hover,
+    body.table-view-active .timeline-track.table-row.table-hover .table-cell {
+      background: #1e1e1e;
     }
 
     .timeline-label.layer-header {
@@ -854,7 +864,7 @@
 
     .table-row {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) 80px 80px var(--table-easing-width, 240px);
+      grid-template-columns: minmax(220px, 1fr) 80px 80px var(--table-easing-width, 200px);
       align-items: center;
       padding: 0 12px;
       padding-right: 0;
@@ -864,13 +874,13 @@
 
     .timeline-ruler.table-row {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) 80px 80px var(--table-easing-width, 240px);
+      grid-template-columns: minmax(220px, 1fr) 80px 80px var(--table-easing-width, 200px);
       padding-right: 0;
     }
 
     .timeline-track.table-row {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) 80px 80px var(--table-easing-width, 240px);
+      grid-template-columns: minmax(220px, 1fr) 80px 80px var(--table-easing-width, 200px);
       padding-right: 0;
       margin-right: 0;
     }
@@ -969,13 +979,13 @@
     }
 
     .timeline-track.table-row.table-row--layer.has-divider {
-      margin-top: 0;
+      margin-top: 15px;
       padding-top: 0;
       border-top: 1px solid #4a4a4a;
     }
 
     body.table-view-active .timeline-label.layer-header.has-divider {
-      margin-top: 0;
+      margin-top: 15px;
       padding-top: 0;
       border-top: 1px solid #4a4a4a;
     }
@@ -1005,8 +1015,8 @@
     }
 
     .table-gap-label {
-      height: 15px;
-      min-height: 15px;
+      height: 8px;
+      min-height: 8px;
       border-top: none;
       border-bottom: none;
       background: #0a0a0a;
@@ -1017,8 +1027,8 @@
     }
 
     .table-gap-row {
-      height: 15px;
-      min-height: 15px !important;
+      height: 8px;
+      min-height: 8px !important;
       border-top: 1px solid #1a1a1a;
       border-bottom: none !important;
     }
@@ -1468,14 +1478,14 @@
     }
 
     .spring-link {
-      color: #7db3ea;
+      color: #888;
       text-decoration: underline;
       cursor: pointer;
       transition: color 0.2s;
     }
 
     .spring-link:hover {
-      color: #a8d0f5;
+      color: #aaa;
     }
 
     .empty-state {
@@ -2123,7 +2133,7 @@
       const easingCells = contentColumn.querySelectorAll('.table-cell--easing');
       if (!easingCells.length) return;
 
-      let requiredWidth = 240;
+      let requiredWidth = 200;
 
       contentColumn.style.setProperty('--table-easing-width', 'max-content');
 
@@ -2134,7 +2144,7 @@
         }
       });
 
-      requiredWidth = Math.max(240, Math.min(requiredWidth, 520));
+      requiredWidth = Math.max(200, Math.min(requiredWidth, 520));
       contentColumn.style.setProperty('--table-easing-width', `${requiredWidth}px`);
       requestAnimationFrame(syncTableRowHeights);
     }
@@ -2147,6 +2157,7 @@
 
       if (!leftRows.length || leftRows.length !== rightRows.length) return;
 
+      // Clear all inline height styles to let CSS control them
       leftRows.forEach((row) => {
         row.style.removeProperty('height');
         row.style.removeProperty('min-height');
@@ -2164,11 +2175,7 @@
 
           const isGapRow = leftRow.classList.contains('table-gap-label') || rightRow.classList.contains('table-gap-row');
           if (isGapRow) {
-            const gapHeight = 15;
-            leftRow.style.height = `${gapHeight}px`;
-            leftRow.style.minHeight = `${gapHeight}px`;
-            rightRow.style.height = `${gapHeight}px`;
-            rightRow.style.minHeight = `${gapHeight}px`;
+            // Gap rows use CSS height (8px), no inline styles needed
             return;
           }
 
@@ -2208,19 +2215,16 @@
       specData.layers.forEach((layer, layerIndex) => {
         // Layer header label
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
-        html += `<div class="timeline-label layer-header${dividerClass}">
+        html += `<div class="timeline-label layer-header${dividerClass}" data-row-type="layer" data-layer-index="${layerIndex}">
           <span class="timeline-label-text">${layer.layerName}</span>
         </div>`;
 
         // Animation labels
-        layer.animations.forEach((anim) => {
-          html += `<div class="timeline-label indented">
+        layer.animations.forEach((anim, animIndex) => {
+          html += `<div class="timeline-label indented" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
             <span class="timeline-label-text">${anim.property}</span>
           </div>`;
         });
-        if (layerIndex < specData.layers.length - 1) {
-          html += `<div class="timeline-label table-gap-label"></div>`;
-        }
       });
 
       html += `</div>`; // timeline-labels-column
@@ -2248,7 +2252,7 @@
         </div>`;
 
         // Animation rows
-        layer.animations.forEach((anim) => {
+        layer.animations.forEach((anim, animIndex) => {
           const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description);
 
           // For Fit to Shape or other special animations, only show description
@@ -2305,22 +2309,13 @@
             }
           }
 
-          html += `<div class="timeline-track table-row" data-row-type="animation" data-layer-index="${layerIndex}">
-            <div class="table-cell table-cell--desc" title="${description}"><span class="table-desc-text">${description}</span></div>
+          html += `<div class="timeline-track table-row" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
+            <div class="table-cell table-cell--desc"><span class="table-desc-text">${description}</span></div>
             <div class="table-cell table-cell--delay">${delay}</div>
             <div class="table-cell table-cell--duration">${duration}</div>
             <div class="table-cell table-cell--easing">${easingText}</div>
           </div>`;
         });
-
-        if (layerIndex < specData.layers.length - 1) {
-          html += `<div class="timeline-track table-row table-gap-row">
-            <div class="table-cell table-cell--desc"></div>
-            <div class="table-cell table-cell--delay"></div>
-            <div class="table-cell table-cell--duration"></div>
-            <div class="table-cell table-cell--easing"></div>
-          </div>`;
-        }
       });
 
       html += `</div>`; // timeline-content-column
@@ -2331,6 +2326,83 @@
 
       updateTableEasingWidth();
       syncTableRowHeights();
+      addTableHoverListeners();
+    }
+
+    // Add hover event listeners to sync hover state between left and right columns in table view
+    function addTableHoverListeners() {
+      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[data-row-type]');
+      const rightRows = document.querySelectorAll('.timeline-content-column .timeline-track.table-row[data-row-type]');
+
+      // Add listeners to left column labels
+      leftLabels.forEach(leftLabel => {
+        const rowType = leftLabel.getAttribute('data-row-type');
+        const layerIndex = leftLabel.getAttribute('data-layer-index');
+        const animIndex = leftLabel.getAttribute('data-anim-index');
+
+        leftLabel.addEventListener('mouseenter', () => {
+          // Find matching right row
+          let selector = `.timeline-track.table-row[data-row-type="${rowType}"][data-layer-index="${layerIndex}"]`;
+          if (animIndex !== null) {
+            selector += `[data-anim-index="${animIndex}"]`;
+          }
+          const rightRow = document.querySelector(selector);
+
+          if (rightRow) {
+            leftLabel.classList.add('table-hover');
+            rightRow.classList.add('table-hover');
+          }
+        });
+
+        leftLabel.addEventListener('mouseleave', () => {
+          // Find matching right row
+          let selector = `.timeline-track.table-row[data-row-type="${rowType}"][data-layer-index="${layerIndex}"]`;
+          if (animIndex !== null) {
+            selector += `[data-anim-index="${animIndex}"]`;
+          }
+          const rightRow = document.querySelector(selector);
+
+          if (rightRow) {
+            leftLabel.classList.remove('table-hover');
+            rightRow.classList.remove('table-hover');
+          }
+        });
+      });
+
+      // Add listeners to right column rows
+      rightRows.forEach(rightRow => {
+        const rowType = rightRow.getAttribute('data-row-type');
+        const layerIndex = rightRow.getAttribute('data-layer-index');
+        const animIndex = rightRow.getAttribute('data-anim-index');
+
+        rightRow.addEventListener('mouseenter', () => {
+          // Find matching left label
+          let selector = `.timeline-label[data-row-type="${rowType}"][data-layer-index="${layerIndex}"]`;
+          if (animIndex !== null) {
+            selector += `[data-anim-index="${animIndex}"]`;
+          }
+          const leftLabel = document.querySelector(selector);
+
+          if (leftLabel) {
+            leftLabel.classList.add('table-hover');
+            rightRow.classList.add('table-hover');
+          }
+        });
+
+        rightRow.addEventListener('mouseleave', () => {
+          // Find matching left label
+          let selector = `.timeline-label[data-row-type="${rowType}"][data-layer-index="${layerIndex}"]`;
+          if (animIndex !== null) {
+            selector += `[data-anim-index="${animIndex}"]`;
+          }
+          const leftLabel = document.querySelector(selector);
+
+          if (leftLabel) {
+            leftLabel.classList.remove('table-hover');
+            rightRow.classList.remove('table-hover');
+          }
+        });
+      });
     }
 
     // Get the base HTML template for export (without the export button and JSZip)
