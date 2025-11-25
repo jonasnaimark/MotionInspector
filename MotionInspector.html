@@ -904,7 +904,7 @@
       padding-left: 0;
       padding-right: 12px;
       border-right: 1px solid #2a2a2a;
-      color: #b0b0b0;
+      color: #e0e0e0;
       white-space: normal;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -925,11 +925,11 @@
     .table-cell--delay,
     .table-cell--duration {
       border-right: 1px solid #2a2a2a;
-      color: #b0b0b0;
+      color: #e0e0e0;
     }
 
     .table-cell--easing {
-      color: #888;
+      color: #e0e0e0;
       font-size: 11px;
       font-family: monospace;
       white-space: nowrap;
@@ -961,7 +961,7 @@
     .table-row:not(.table-row--header) .table-desc-text {
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       font-size: 11px;
-      color: #888;
+      color: #e0e0e0;
     }
 
     .table-row:not(.table-row--header) .table-cell--delay,
@@ -969,7 +969,7 @@
     .table-row:not(.table-row--header) .table-cell--easing {
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       font-size: 11px;
-      color: #888;
+      color: #e0e0e0;
     }
 
     .timeline-track.table-row.table-row--layer {
@@ -1392,6 +1392,7 @@
       border: 1px solid transparent;
       border-radius: 4px;
       padding: 6px 8px;
+      margin-left: -8px;
       font-size: 13px;
       color: #ffffff;
       font-family: inherit;
@@ -1416,12 +1417,18 @@
       border: 1px solid transparent;
       border-radius: 4px;
       padding: 4px 6px;
+      margin-left: -6px;
       font-size: 12px;
       color: #ffffff;
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       outline: none;
       transition: border-color 0.2s, background-color 0.2s;
       box-sizing: border-box;
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      min-height: 24px;
+      resize: none;
     }
 
     .detail-value-input:hover {
@@ -1440,7 +1447,7 @@
 
     .detail-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: 0.8fr 0.8fr 2fr 0.8fr 0.8fr;
       gap: 20px;
       align-items: start;
     }
@@ -1478,14 +1485,14 @@
     }
 
     .spring-link {
-      color: #888;
+      color: #e0e0e0;
       text-decoration: underline;
       cursor: pointer;
       transition: color 0.2s;
     }
 
     .spring-link:hover {
-      color: #aaa;
+      color: #ffffff;
     }
 
     .empty-state {
@@ -2915,6 +2922,12 @@ ${cleanedScript}
             } else if (fieldName === 'easing') {
               // Update easing - allow any text value
               anim.customEasing = newValue;
+            } else if (fieldName === 'startValue') {
+              // Update start value - no validation
+              anim.customStartValue = newValue;
+            } else if (fieldName === 'endValue') {
+              // Update end value - no validation
+              anim.customEndValue = newValue;
             } else {
               anim[fieldName] = newValue;
             }
@@ -4663,14 +4676,14 @@ ${cleanedScript}
         if (isEditMode) {
           html += `
             <div class="detail-value">
-              <input
-                type="text"
+              <textarea
                 class="detail-value-input"
-                value="${easingText.replace(/"/g, '&quot;')}"
+                rows="1"
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'easing', this.value)"
-                onkeydown="if(event.key === 'Enter') { this.blur(); }"
-              />
+                oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                onkeydown="if(event.key === 'Enter' && !event.shiftKey) { this.blur(); }"
+              >${easingText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
             </div>
           `;
         } else {
@@ -4681,20 +4694,67 @@ ${cleanedScript}
 
       // Values (skip for Fit to Shape)
       if (!anim.isFitToShape && anim.values && anim.values.formatted) {
-        html += `
-          <div class="detail-item">
-            <div class="detail-label">Start Value</div>
-            <div class="detail-value">${formatDecimalValue(anim.values.formatted.startValue)}</div>
-          </div>
-          <div class="detail-item">
-            <div class="detail-label">End Value</div>
-            <div class="detail-value">${formatDecimalValue(anim.values.formatted.endValue)}</div>
-          </div>
-        `;
+        let startValue = anim.customStartValue !== undefined && anim.customStartValue !== null
+          ? anim.customStartValue
+          : formatDecimalValue(anim.values.formatted.startValue);
+        let endValue = anim.customEndValue !== undefined && anim.customEndValue !== null
+          ? anim.customEndValue
+          : formatDecimalValue(anim.values.formatted.endValue);
+
+        // Show "-" if empty
+        if (startValue === '') startValue = '-';
+        if (endValue === '') endValue = '-';
+
+        html += `<div class="detail-item">`;
+        html += `<div class="detail-label">Start Value</div>`;
+        if (isEditMode) {
+          html += `
+            <div class="detail-value">
+              <input
+                type="text"
+                class="detail-value-input"
+                value="${startValue.replace(/"/g, '&quot;')}"
+                onfocus="this.select()"
+                onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
+                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              />
+            </div>
+          `;
+        } else {
+          html += `<div class="detail-value">${startValue}</div>`;
+        }
+        html += `</div>`;
+
+        html += `<div class="detail-item">`;
+        html += `<div class="detail-label">End Value</div>`;
+        if (isEditMode) {
+          html += `
+            <div class="detail-value">
+              <input
+                type="text"
+                class="detail-value-input"
+                value="${endValue.replace(/"/g, '&quot;')}"
+                onfocus="this.select()"
+                onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
+                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              />
+            </div>
+          `;
+        } else {
+          html += `<div class="detail-value">${endValue}</div>`;
+        }
+        html += `</div>`;
       }
 
       html += `</div></div>`;
       detailPanel.innerHTML = html;
+
+      // Auto-resize all textareas to fit their content
+      const textareas = detailPanel.querySelectorAll('textarea.detail-value-input');
+      textareas.forEach(textarea => {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+      });
 
       // Update playhead position after info box is shown
       requestAnimationFrame(() => {
