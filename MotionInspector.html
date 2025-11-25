@@ -2530,6 +2530,10 @@
 
         hideEasingAutocomplete();
 
+        // Determine if this is a spring or curve preset
+        const springPresets = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
+        const isSpring = springPresets.includes(presetName);
+
         // Set the value and trigger save based on element type
         if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
           // For info box elements, extract animIndex from the onblur handler
@@ -2538,7 +2542,36 @@
           if (match) {
             const animIndex = parseInt(match[1]);
             console.log('Extracted animIndex:', animIndex);
-            // Directly call updateAnimationField
+
+            // Find the animation in specData
+            let currentIndex = 0;
+            for (let layerIndex = 0; layerIndex < specData.layers.length; layerIndex++) {
+              const layer = specData.layers[layerIndex];
+              for (let animIdx = 0; animIdx < layer.animations.length; animIdx++) {
+                if (currentIndex === animIndex) {
+                  const anim = layer.animations[animIdx];
+
+                  // Update duration based on preset type
+                  if (isSpring) {
+                    // Spring: set duration to "-"
+                    anim.timing.duration = '-';
+                    anim.durationUserSet = true;
+                  } else {
+                    // Curve: if duration is "-" or not set, use default 300ms
+                    if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
+                      anim.timing.duration = 300;
+                      anim.durationUserSet = true;
+                    }
+                    // If duration is already a number, keep it
+                  }
+
+                  break;
+                }
+                currentIndex++;
+              }
+            }
+
+            // Update easing field
             updateAnimationField(animIndex, 'easing', presetName);
           }
         } else {
@@ -2556,6 +2589,21 @@
             const anim = layer.animations[animIndex];
             if (anim) {
               anim.customEasing = presetName;
+
+              // Update duration based on preset type
+              if (isSpring) {
+                // Spring: set duration to "-"
+                anim.timing.duration = '-';
+                anim.durationUserSet = true;
+              } else {
+                // Curve: if duration is "-" or not set, use default 300ms
+                if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
+                  anim.timing.duration = 300;
+                  anim.durationUserSet = true;
+                }
+                // If duration is already a number, keep it
+              }
+
               console.log('Saved to specData:', presetName);
               renderTableView();
             }
