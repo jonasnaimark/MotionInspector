@@ -2261,6 +2261,8 @@
                       data-drag-type="layer"
                       data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
+          <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+          ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
         // Animation labels
@@ -2280,9 +2282,15 @@
                         data-drag-type="animation"
                         data-anim-in-layer="${animIndexInLayer}">
             <span class="timeline-label-text">${anim.property}</span>
+            <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
         });
       });
+
+      // Bottom section divider for adding new sections at the end
+      html += `<div class="timeline-bottom-divider">
+        <button class="section-divider-add-btn edit-only" draggable="false">+</button>
+      </div>`;
 
       html += `</div>`; // timeline-labels-column
 
@@ -2415,6 +2423,8 @@
       syncTableRowHeights();
       addTableHoverListeners();
       setupTableDragAndDrop();
+      setupTableAddButtonHandlers();
+      setupTableAddButtonHoverZones();
     }
 
     // Add hover event listeners to sync hover state between left and right columns in table view
@@ -2514,6 +2524,11 @@
           if (rightRow) {
             rightRow.classList.add('dragging');
           }
+
+          // Hide all add buttons during drag
+          document.querySelectorAll('.timeline-label-add-btn, .section-divider-add-btn').forEach(btn => {
+            btn.classList.remove('visible');
+          });
         });
 
         // Dragend - cleanup
@@ -2679,6 +2694,264 @@
       }
 
       return document.querySelector(selector);
+    }
+
+    // Setup add button click handlers for table mode
+    function setupTableAddButtonHandlers() {
+      // Set up + button handlers for adding parameters
+      const addButtons = document.querySelectorAll('.timeline-label-add-btn');
+      addButtons.forEach(btn => {
+        // Prevent drag when clicking the + button
+        btn.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+        });
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+
+          // Get the parent label to find which layer and position
+          const label = btn.closest('.timeline-label');
+          if (!label) return;
+
+          const layerIndex = parseInt(label.dataset.layerIndex);
+          const layer = specData.layers[layerIndex];
+          if (!layer) return;
+
+          // Determine insert position
+          let insertIndex;
+          if (label.classList.contains('layer-header')) {
+            // If clicking on header, add to end of layer
+            insertIndex = layer.animations.length;
+          } else {
+            // If clicking on animation row, add after it
+            const animInLayer = parseInt(label.dataset.animInLayer);
+            insertIndex = animInLayer + 1;
+          }
+
+          // Create new animation with default values
+          const newAnimation = {
+            property: "Add parameter",
+            description: "Add description",
+            timing: {
+              delay: 0,
+              duration: 300
+            },
+            easing: {
+              type: "-",
+              cubicBezier: ""
+            },
+            values: {
+              formatted: {
+                startValue: "-",
+                endValue: "-"
+              }
+            }
+          };
+
+          // Insert the new animation
+          layer.animations.splice(insertIndex, 0, newAnimation);
+
+          // Re-render table
+          renderTableView();
+
+          // Calculate the global animation index for the newly added animation
+          let globalAnimIndex = 0;
+          for (let i = 0; i < layerIndex; i++) {
+            globalAnimIndex += specData.layers[i].animations.length;
+          }
+          globalAnimIndex += insertIndex;
+
+          // Show the info box for the newly added animation
+          setTimeout(() => {
+            showAnimationDetails(globalAnimIndex);
+
+            // Add selected class to the new label
+            const newLabel = document.querySelector(`.timeline-label[data-layer-index="${layerIndex}"][data-anim-in-layer="${insertIndex}"]`);
+            if (newLabel) {
+              newLabel.classList.add('selected');
+            }
+          }, 50);
+        });
+      });
+
+      // Set up section divider button handlers
+      const sectionDividerButtons = document.querySelectorAll('.section-divider-add-btn');
+      sectionDividerButtons.forEach(btn => {
+        btn.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+        });
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+
+          // Determine insert position
+          let insertIndex;
+          const parentLabel = btn.closest('.timeline-label');
+          const isBottomDivider = btn.closest('.timeline-bottom-divider');
+
+          if (isBottomDivider) {
+            // Bottom divider - add to end
+            insertIndex = specData.layers.length;
+          } else if (parentLabel) {
+            // Section header button - insert before this layer
+            const layerIndex = parseInt(parentLabel.dataset.layerIndex);
+            insertIndex = layerIndex;
+          } else {
+            return;
+          }
+
+          // Create new layer with one default animation
+          const newLayer = {
+            layerName: "New section",
+            animations: [
+              {
+                property: "Add parameter",
+                description: "Add description",
+                timing: {
+                  delay: 0,
+                  duration: 300
+                },
+                easing: {
+                  type: "-",
+                  cubicBezier: ""
+                },
+                values: {
+                  formatted: {
+                    startValue: "-",
+                    endValue: "-"
+                  }
+                }
+              }
+            ]
+          };
+
+          // Insert the new layer
+          specData.layers.splice(insertIndex, 0, newLayer);
+
+          // Re-render table
+          renderTableView();
+
+          // Calculate the global animation index for the newly added parameter
+          let globalAnimIndex = 0;
+          for (let i = 0; i < insertIndex; i++) {
+            globalAnimIndex += specData.layers[i].animations.length;
+          }
+          // The new parameter is at index 0 in the new layer
+
+          // Show the info box for the newly added animation
+          setTimeout(() => {
+            showAnimationDetails(globalAnimIndex);
+
+            // Add selected class to the new layer header
+            const newLayerHeader = document.querySelector(`.timeline-label.layer-header[data-layer-index="${insertIndex}"]`);
+            if (newLayerHeader) {
+              newLayerHeader.classList.add('selected');
+            }
+          }, 50);
+        });
+      });
+    }
+
+    // Setup hover zones for add buttons in table mode
+    function setupTableAddButtonHoverZones() {
+      const labelsColumn = document.querySelector('.timeline-labels-column');
+      const labels = document.querySelectorAll('.timeline-label');
+      const bottomDivider = document.querySelector('.timeline-bottom-divider');
+
+      if (!labelsColumn) return;
+
+      labelsColumn.addEventListener('mousemove', (e) => {
+        const mouseY = e.clientY;
+
+        // Find all buttons and their distances
+        let closestButton = null;
+        let closestDistance = Infinity;
+
+        // Check each label's divider line
+        labels.forEach(label => {
+          const btn = label.querySelector('.timeline-label-add-btn');
+          const sectionBtn = label.querySelector('.section-divider-add-btn');
+          const rect = label.getBoundingClientRect();
+          const halfCellHeight = rect.height / 2;
+
+          // Check regular divider line (at bottom of cell)
+          if (btn) {
+            const dividerY = rect.bottom;
+            const distanceFromDivider = Math.abs(mouseY - dividerY);
+            if (distanceFromDivider <= halfCellHeight) {
+              if (distanceFromDivider < closestDistance) {
+                closestDistance = distanceFromDivider;
+                closestButton = btn;
+              }
+            }
+          }
+
+          // Check section divider line (at top of cell, for elements with has-divider)
+          if (sectionBtn) {
+            const sectionDividerY = rect.top; // Border-top is at element's top edge
+            const distanceFromSectionDivider = Math.abs(mouseY - sectionDividerY);
+            // Use a larger hover zone for section dividers (about 15px total margin-top / 2)
+            if (distanceFromSectionDivider <= 15) {
+              if (distanceFromSectionDivider < closestDistance) {
+                closestDistance = distanceFromSectionDivider;
+                closestButton = sectionBtn;
+              }
+            }
+          }
+        });
+
+        // Check bottom divider
+        if (bottomDivider) {
+          const bottomBtn = bottomDivider.querySelector('.section-divider-add-btn');
+          if (bottomBtn) {
+            const rect = bottomDivider.getBoundingClientRect();
+            const dividerY = rect.top;
+            const distanceFromDivider = Math.abs(mouseY - dividerY);
+            if (distanceFromDivider <= 15) {
+              if (distanceFromDivider < closestDistance) {
+                closestDistance = distanceFromDivider;
+                closestButton = bottomBtn;
+              }
+            }
+          }
+        }
+
+        // Hide all buttons first
+        labels.forEach(label => {
+          const btn = label.querySelector('.timeline-label-add-btn');
+          const sectionBtn = label.querySelector('.section-divider-add-btn');
+          if (btn) btn.classList.remove('visible');
+          if (sectionBtn) sectionBtn.classList.remove('visible');
+        });
+        if (bottomDivider) {
+          const bottomBtn = bottomDivider.querySelector('.section-divider-add-btn');
+          if (bottomBtn) bottomBtn.classList.remove('visible');
+        }
+
+        // Show only the closest button
+        if (closestButton) {
+          closestButton.classList.add('visible');
+        }
+      });
+
+      // Hide all buttons when mouse leaves the column
+      labelsColumn.addEventListener('mouseleave', () => {
+        // Hide all buttons when mouse leaves the column
+        labels.forEach(label => {
+          const btn = label.querySelector('.timeline-label-add-btn');
+          const sectionBtn = label.querySelector('.section-divider-add-btn');
+          if (btn) btn.classList.remove('visible');
+          if (sectionBtn) sectionBtn.classList.remove('visible');
+        });
+
+        // Hide bottom divider button
+        if (bottomDivider) {
+          const bottomBtn = bottomDivider.querySelector('.section-divider-add-btn');
+          if (bottomBtn) bottomBtn.classList.remove('visible');
+        }
+      });
     }
 
     // Get the base HTML template for export (without the export button and JSZip)
