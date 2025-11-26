@@ -2052,8 +2052,7 @@
         name: "Tab 1",
         specData: initialSpec,
         videoSrc: null,
-        uploadedVideoFile: null,
-        viewMode: 'timeline'
+        uploadedVideoFile: null
       }
     ];
     let currentTabIndex = 0; // Start with Tab 1 active
@@ -2076,11 +2075,6 @@
       return tabs[currentTabIndex].videoSrc;
     }
 
-    function getCurrentViewMode() {
-      if (currentTabIndex === -1) return 'timeline';
-      return tabs[currentTabIndex].viewMode;
-    }
-
     function setCurrentSpecData(data) {
       if (currentTabIndex === -1) return;
       tabs[currentTabIndex].specData = data;
@@ -2096,21 +2090,14 @@
       tabs[currentTabIndex].uploadedVideoFile = file;
     }
 
-    function setCurrentViewMode(mode) {
-      if (currentTabIndex === -1) return;
-      tabs[currentTabIndex].viewMode = mode;
-    }
-
     // Sync legacy variables with current tab
     function syncLegacyVariables() {
       if (currentTabIndex === -1) {
         specData = null;
         uploadedVideoFile = null;
-        viewMode = 'timeline';
       } else {
         specData = getCurrentSpecData();
         uploadedVideoFile = tabs[currentTabIndex].uploadedVideoFile;
-        viewMode = getCurrentViewMode();
       }
     }
 
@@ -2164,8 +2151,7 @@
         name: `Tab ${tabs.length + 1}`,
         specData: newTabSpec,
         videoSrc: null,
-        uploadedVideoFile: null,
-        viewMode: 'timeline'
+        uploadedVideoFile: null
       };
       groupAnimations(newTab.specData);
       tabs.push(newTab);
@@ -2373,8 +2359,8 @@
       // Don't render if no tabs exist
       if (currentTabIndex === -1) return;
 
-      const currentMode = getCurrentViewMode();
-      if (currentMode === 'table') {
+      // Use global viewMode
+      if (viewMode === 'table') {
         switchToTableView();
       } else {
         if (typeof renderTimeline === 'function') {
@@ -2386,7 +2372,7 @@
       document.querySelectorAll('.view-mode-btn').forEach(btn => {
         btn.classList.remove('selected');
       });
-      const selectedBtn = document.querySelector(`.view-mode-btn[data-view="${currentMode}"]`);
+      const selectedBtn = document.querySelector(`.view-mode-btn[data-view="${viewMode}"]`);
       if (selectedBtn) {
         selectedBtn.classList.add('selected');
       }
@@ -2573,8 +2559,7 @@
               name: `Tab 1`,
               specData: createDefaultSpec(),
               videoSrc: url,
-              uploadedVideoFile: file,
-              viewMode: 'timeline'
+              uploadedVideoFile: file
             };
             groupAnimations(newTab.specData);
             tabs.push(newTab);
@@ -2857,8 +2842,7 @@
             name: `Tab 1`,
             specData: data,
             videoSrc: null,
-            uploadedVideoFile: null,
-            viewMode: 'timeline'
+            uploadedVideoFile: null
           };
           groupAnimations(newTab.specData);
           tabs.push(newTab);
@@ -2911,9 +2895,8 @@
 
     // Switch between timeline and table view modes
     function switchToView(view) {
-      // Update current tab's view mode
-      setCurrentViewMode(view);
-      viewMode = view; // Also update legacy variable
+      // Update global view mode
+      viewMode = view;
 
       // Update button states
       document.querySelectorAll('.view-mode-btn').forEach(btn => {
@@ -4504,8 +4487,7 @@ ${cleanedScript}
             id: tab.id,
             name: tab.name,
             specData: tab.specData,
-            videoSrc: videoFileName ? `./${videoFileName}` : null,
-            viewMode: tab.viewMode
+            videoSrc: videoFileName ? `./${videoFileName}` : null
           };
         });
 
