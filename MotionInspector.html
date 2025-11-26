@@ -2212,13 +2212,50 @@
       // Reset zoom level
       viewDuration = null;
 
-      // Update video element
+      // Update video element (only if src changed to avoid reload flash)
       const videoElement = document.getElementById('videoPlayer');
       const videoSrc = getCurrentVideoSrc();
-      if (videoElement && videoSrc) {
-        videoElement.src = videoSrc;
-      } else if (videoElement) {
-        videoElement.src = '';
+      const videoWrapper = document.querySelector('.video-wrapper');
+      let videoSrcChanged = false;
+
+      if (videoElement) {
+        const currentSrc = videoElement.src;
+        const newSrc = videoSrc || '';
+
+        // Only update src if it actually changed
+        if (currentSrc !== newSrc) {
+          // Hide video wrapper during load to prevent dimension flash
+          if (videoWrapper) {
+            videoWrapper.style.visibility = 'hidden';
+          }
+
+          videoElement.src = newSrc;
+          videoSrcChanged = true;
+
+          // Show wrapper once new video is loaded
+          if (newSrc) {
+            const showVideo = () => {
+              if (videoWrapper) {
+                videoWrapper.style.visibility = 'visible';
+              }
+              updateVideoAlignment();
+              videoElement.removeEventListener('loadedmetadata', showVideo);
+            };
+            videoElement.addEventListener('loadedmetadata', showVideo, { once: true });
+          } else {
+            // No video, show wrapper immediately
+            if (videoWrapper) {
+              videoWrapper.style.visibility = 'visible';
+            }
+          }
+        } else if (videoSrc) {
+          // Same video - just reset to beginning without reload
+          videoElement.currentTime = 0;
+          // Update alignment immediately since it's the same video
+          if (videoElement.readyState >= 1) {
+            updateVideoAlignment();
+          }
+        }
       }
 
       // Update video container visibility
@@ -2595,7 +2632,7 @@
           // Check alignment after video loads
           setTimeout(() => {
             updateVideoAlignment();
-            if (getCurrentViewMode() === 'table') {
+            if (viewMode === 'table') {
               updateTableEasingWidth();
             }
           }, 100);
