@@ -139,7 +139,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease;
-      z-index: 1000;
+      z-index: 10000;
     }
 
     .btn-circular:hover::after {
@@ -152,6 +152,7 @@
       background: #2a2a2a;
       border-radius: 20px;
       padding: 4px;
+      gap: 4px;
       position: relative;
     }
 
@@ -4497,6 +4498,10 @@ ${cleanedScript}
         });
       }
 
+      // Set specData from current tab (required for renderTimeline)
+      specData = tabs[currentTabIndex].specData;
+      console.log('[EXPORT] Set specData from current tab:', specData);
+
       // Render tabs and timeline
       console.log('[EXPORT] About to render tabs and timeline');
       renderTabs();
@@ -4507,10 +4512,56 @@ ${cleanedScript}
         if (tabsContainer) {
           tabsContainer.style.display = 'none';
         }
+
+        // Reduce top spacing by 16px and keep header content centered
+        const headerSection = document.querySelector('.header-section');
+        if (headerSection) {
+          headerSection.style.paddingTop = '0px'; // Reduced from 4px to move content up
+          headerSection.style.marginBottom = '16px'; // Adjusted to maintain total reduction
+          headerSection.style.transform = 'translateY(-2px)'; // Move content up 2px more without affecting containers
+
+          // Change to grid layout to center toggle
+          headerSection.style.display = 'grid';
+          headerSection.style.gridTemplateColumns = '1fr auto 1fr';
+          headerSection.style.alignItems = 'center';
+
+          // Ensure header is above timeline container
+          headerSection.style.position = 'relative';
+          headerSection.style.zIndex = '100';
+        }
+
+        // Position controls and toggle
+        const controlsDiv = document.querySelector('.controls');
+        const toggle = document.querySelector('.view-mode-control');
+        const copyButton = document.querySelector('.btn-circular');
+
+        if (controlsDiv && toggle && copyButton) {
+          // Move toggle out of controls div and into center position
+          controlsDiv.removeChild(toggle);
+          headerSection.insertBefore(toggle, controlsDiv);
+
+          // Keep copy button in controls div on the right
+          controlsDiv.style.display = 'flex';
+          controlsDiv.style.justifyContent = 'flex-end';
+          controlsDiv.style.gap = '0';
+        }
+
+        // Adjust container heights for reduced top spacing (110px - 16px = 94px)
+        const videoSection = document.querySelector('.video-section');
+        if (videoSection) {
+          videoSection.style.height = 'calc(100vh - 94px)';
+          videoSection.style.maxHeight = 'calc(100vh - 94px)';
+        }
+
+        const videoElement = document.querySelector('video');
+        if (videoElement) {
+          videoElement.style.maxHeight = 'calc(100vh - 94px)';
+        }
+
         // Also adjust timeline wrapper height to match video section
         const timelineWrapper = document.querySelector('.timeline-wrapper');
         if (timelineWrapper) {
-          timelineWrapper.style.height = 'calc(100vh - 110px)';
+          timelineWrapper.style.height = 'calc(100vh - 94px)';
           timelineWrapper.style.marginTop = '0';
         }
       }
