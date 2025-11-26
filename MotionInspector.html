@@ -771,6 +771,15 @@
       background: #333;
     }
 
+    .tab.dragging {
+      opacity: 0.5;
+    }
+
+    .tab.drag-over {
+      border-left: 3px solid #4a9eff;
+      padding-left: 9px; /* Adjust for border width */
+    }
+
     .tab-name {
       flex: 1;
       color: #888;
@@ -2372,7 +2381,7 @@
         const isActive = index === currentTabIndex;
         const showCloseBtn = tabs.length > 1; // Only show close button when multiple tabs exist
         tabsHtml += `
-          <div class="tab ${isActive ? 'active' : ''}" data-tab-index="${index}">
+          <div class="tab ${isActive ? 'active' : ''}" data-tab-index="${index}" draggable="true">
             <span class="tab-name">${tab.name}</span>
             ${showCloseBtn ? `<button class="tab-close edit-only" onclick="event.stopPropagation(); deleteTab(${index})">×</button>` : ''}
           </div>
@@ -2449,6 +2458,73 @@
 
           tabName.addEventListener('blur', handleBlur);
           tabName.addEventListener('keydown', handleKeydown);
+        });
+      });
+
+      // Add HTML5 drag-and-drop for reordering tabs
+      let draggedTabIndex = null;
+
+      document.querySelectorAll('.tab').forEach(tab => {
+        const tabIndex = parseInt(tab.dataset.tabIndex);
+
+        tab.addEventListener('dragstart', (e) => {
+          // Don't allow dragging if editing tab name
+          const tabName = tab.querySelector('.tab-name');
+          if (tabName && tabName.getAttribute('contenteditable') === 'true') {
+            e.preventDefault();
+            return;
+          }
+
+          draggedTabIndex = tabIndex;
+          tab.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        tab.addEventListener('dragend', () => {
+          tab.classList.remove('dragging');
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('drag-over'));
+          draggedTabIndex = null;
+        });
+
+        tab.addEventListener('dragover', (e) => {
+          if (draggedTabIndex === null) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        });
+
+        tab.addEventListener('dragenter', (e) => {
+          if (draggedTabIndex === null || draggedTabIndex === tabIndex) return;
+          tab.classList.add('drag-over');
+        });
+
+        tab.addEventListener('dragleave', () => {
+          tab.classList.remove('drag-over');
+        });
+
+        tab.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (draggedTabIndex === null || draggedTabIndex === tabIndex) return;
+
+          tab.classList.remove('drag-over');
+
+          // Reorder tabs array
+          const draggedTab = tabs[draggedTabIndex];
+          tabs.splice(draggedTabIndex, 1);
+
+          // Adjust target index
+          const dropIndex = draggedTabIndex < tabIndex ? tabIndex - 1 : tabIndex;
+          tabs.splice(dropIndex, 0, draggedTab);
+
+          // Update currentTabIndex to follow the active tab
+          if (currentTabIndex === draggedTabIndex) {
+            currentTabIndex = dropIndex;
+          } else if (draggedTabIndex < currentTabIndex && dropIndex >= currentTabIndex) {
+            currentTabIndex--;
+          } else if (draggedTabIndex > currentTabIndex && dropIndex <= currentTabIndex) {
+            currentTabIndex++;
+          }
+
+          renderTabs();
         });
       });
     }
