@@ -306,8 +306,8 @@ Search for these patterns to find potential similar bugs:
 - Drag detection systems that interfere with click detection
 
 ### Commit Reference
-- **Fix commit:** TBD - "Fix bar jumping after text editing"
-- **Files:** `MotionInspector.html` lines ~6834, ~6927, ~6661
+- **Fix commit:** `2c90c03` - "Fix bar jumping after text editing - event timing race condition"
+- **Files:** `MotionInspector.html` lines ~6827, ~6900, ~6644
 - **Date:** Nov 26, 2025
 
 ---
