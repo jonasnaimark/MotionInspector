@@ -5664,29 +5664,56 @@ ${cleanedScript}
         bar.addEventListener('click', (e) => {
           e.stopPropagation();
           const animIndex = parseInt(bar.dataset.animIndex);
-          // Toggle: if clicking the same animation, close the info box
-          if (selectedAnimation === animIndex) {
-            document.getElementById('detailPanel').innerHTML = '';
+          // Remove selected class from all bars and labels
+          document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+          document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
+          // Add selected class to clicked bar
+          bar.classList.add('selected');
+          // Add selected class to corresponding label
+          const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
+          if (label) label.classList.add('selected');
+          showAnimationDetails(animIndex);
+        });
+      });
+
+      // Close info box when clicking on empty timeline area
+      const timelineContainer = document.querySelector('.timeline-container');
+      if (timelineContainer) {
+        timelineContainer.addEventListener('click', (e) => {
+          // Check if clicking on empty area (timeline track, grid, or container background)
+          // Use closest() to check the element and its parents
+          const clickedElement = e.target;
+
+          const isEmptyArea = clickedElement.classList.contains('timeline-track') ||
+                              clickedElement.classList.contains('timeline-content-column') ||
+                              clickedElement.classList.contains('timeline-container') ||
+                              clickedElement.classList.contains('timeline-grid-lines') ||
+                              clickedElement.classList.contains('timeline-bottom-track') ||
+                              clickedElement.closest('.timeline-track') !== null ||
+                              clickedElement.closest('.timeline-bottom-track') !== null ||
+                              clickedElement.closest('.timeline-content-column') !== null;
+
+          // Don't close if clicking on interactive elements
+          const isInteractive = clickedElement.closest('.timeline-bar') ||
+                                clickedElement.closest('.timeline-label') ||
+                                clickedElement.closest('button') ||
+                                clickedElement.closest('input') ||
+                                clickedElement.closest('.playhead');
+
+          if (isEmptyArea && !isInteractive) {
+            const detailPanel = document.getElementById('detailPanel');
+            if (detailPanel) {
+              detailPanel.innerHTML = '';
+            }
             selectedAnimation = null;
-            // Remove selected class from all bars and labels
             document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
             document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
             requestAnimationFrame(() => {
               updatePlayhead();
             });
-          } else {
-            // Remove selected class from all bars and labels
-            document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
-            document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
-            // Add selected class to clicked bar
-            bar.classList.add('selected');
-            // Add selected class to corresponding label
-            const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
-            if (label) label.classList.add('selected');
-            showAnimationDetails(animIndex);
           }
         });
-      });
+      }
 
       // Setup resize handles
       setupResizeHandles();
