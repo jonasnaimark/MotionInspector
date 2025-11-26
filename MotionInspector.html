@@ -774,6 +774,7 @@
     .tab.dragging {
       opacity: 0.5;
       cursor: grabbing !important;
+      z-index: 100; /* Appear above other tabs while dragging */
     }
 
     .tab.drag-over-left {
@@ -2497,6 +2498,9 @@
 
             if (!isDragging) return;
 
+            // Move the tab visually with the cursor
+            tab.style.transform = `translateX(${deltaX}px)`;
+
             // Find which tab we're hovering over based on X position
             const allTabs = document.querySelectorAll('.tab');
             let targetIndex = null;
@@ -2526,6 +2530,9 @@
 
           function onMouseUp(upEvent) {
             if (isDragging) {
+              // Reset visual transform
+              tab.style.transform = '';
+
               // Find drop position
               const allTabs = document.querySelectorAll('.tab');
               let targetIndex = null;
