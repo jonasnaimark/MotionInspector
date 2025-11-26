@@ -418,6 +418,77 @@
       background: #444;
     }
 
+    .video-description {
+      position: absolute;
+      top: 100%;
+      left: 10px;
+      right: 10px;
+      text-align: center;
+      margin-top: 7px;
+    }
+
+    .video-description-input {
+      width: 100%;
+      height: 22px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      font-family: 'Airbnb Cereal VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 300;
+      text-align: center;
+      padding: 2px 8px;
+      margin: 0;
+      resize: none;
+      outline: none;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      line-height: 18px;
+      border-radius: 4px;
+      cursor: text;
+      box-sizing: border-box;
+    }
+
+    .video-description-input::placeholder {
+      color: rgba(224, 224, 224, 0.5);
+    }
+
+    .video-description-input:hover {
+      background: #222222;
+      outline: 1px solid #3a3a3a;
+      outline-offset: 2px;
+    }
+
+    .video-description-input:hover::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .video-description-input:focus {
+      background: #252525;
+      outline: 1px solid #4a90e2;
+      outline-offset: 2px;
+    }
+
+    .video-description-input:focus::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    body[data-mode='read'] .video-description-input {
+      pointer-events: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: default;
+    }
+
+    body[data-mode='read'] .video-description-input:hover {
+      background: transparent;
+      outline: none;
+    }
+
+    body[data-mode='read'] .video-description:has(.video-description-input:placeholder-shown) {
+      display: none;
+    }
+
     .playback-controls {
       display: none;
     }
@@ -2063,6 +2134,9 @@
                 <span>Replace Video</span>
               </div>
             </div>
+            <div class="video-description">
+              <textarea id="videoDescription" class="video-description-input edit-only" placeholder="Add optional description" rows="1" oninput="saveDescription(this.value)" onfocus="this.select()"></textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -2128,7 +2202,8 @@
         name: "Tab 1",
         specData: initialSpec,
         videoSrc: null,
-        uploadedVideoFile: null
+        uploadedVideoFile: null,
+        description: ''
       }
     ];
     let currentTabIndex = 0; // Start with Tab 1 active
@@ -2175,6 +2250,26 @@
         specData = getCurrentSpecData();
         uploadedVideoFile = tabs[currentTabIndex].uploadedVideoFile;
       }
+    }
+
+    // Save description to current tab
+    function saveDescription(value) {
+      if (currentTabIndex === -1) return;
+      tabs[currentTabIndex].description = value;
+    }
+
+    // Load description from current tab
+    function loadDescription() {
+      const textarea = document.getElementById('videoDescription');
+      if (!textarea) return;
+      const currentTab = getCurrentTab();
+      textarea.value = currentTab ? (currentTab.description || '') : '';
+      // Don't auto-resize for single-line description field
+    }
+
+    // Auto-resize textarea to fit content (not used for description field)
+    function autoResizeTextarea(textarea) {
+      // Single-line textarea doesn't need auto-resize
     }
 
     // Maintain legacy references for backward compatibility
@@ -2229,7 +2324,8 @@
         name: `Tab ${tabs.length + 1}`,
         specData: newTabSpec,
         videoSrc: null,
-        uploadedVideoFile: null
+        uploadedVideoFile: null,
+        description: ''
       };
       groupAnimations(newTab.specData);
       tabs.push(newTab);
@@ -2366,6 +2462,9 @@
       if (typeof updatePlayhead === 'function') {
         updatePlayhead();
       }
+
+      // Load description for current tab
+      loadDescription();
     }
 
     // Rename a tab
@@ -2837,7 +2936,8 @@
               name: `Tab 1`,
               specData: createDefaultSpec(),
               videoSrc: url,
-              uploadedVideoFile: file
+              uploadedVideoFile: file,
+              description: ''
             };
             groupAnimations(newTab.specData);
             tabs.push(newTab);
@@ -3142,7 +3242,8 @@
             name: `Tab 1`,
             specData: data,
             videoSrc: null,
-            uploadedVideoFile: null
+            uploadedVideoFile: null,
+            description: ''
           };
           groupAnimations(newTab.specData);
           tabs.push(newTab);
@@ -4674,6 +4775,9 @@
                 <span>Replace Video</span>
               </div>
             </div>
+            <div class="video-description">
+              <textarea id="videoDescription" class="video-description-input edit-only" placeholder="Add optional description" rows="1" oninput="saveDescription(this.value)" onfocus="this.select()"></textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -4738,6 +4842,14 @@ ${cleanedScript}
           video.currentTime = 0;
           setTimeout(updateVideoAlignment, 100);
         });
+      }
+
+      // Load description for current tab
+      if (currentTab && currentTab.description) {
+        const descTextarea = document.getElementById('videoDescription');
+        if (descTextarea) {
+          descTextarea.value = currentTab.description;
+        }
       }
 
       // Set specData from current tab (required for renderTimeline)
@@ -4857,12 +4969,17 @@ ${cleanedScript}
             console.log(`[EXPORT] Added ${videoFileName} for tab ${tab.id}`);
           }
 
-          return {
+          const exportTab = {
             id: tab.id,
             name: tab.name,
             specData: tab.specData,
             videoSrc: videoFileName ? `./${videoFileName}` : null
           };
+          // Only include description if it's not empty
+          if (tab.description && tab.description.trim()) {
+            exportTab.description = tab.description;
+          }
+          return exportTab;
         });
 
         // Generate clean HTML template
