@@ -471,13 +471,25 @@
     }
 
     .video-description-input:focus::placeholder {
-      color: rgba(255, 255, 255, 0.4);
+      color: transparent;
     }
 
     body[data-mode='read'] .video-description-input {
-      pointer-events: none;
+      pointer-events: auto;
       color: rgba(255, 255, 255, 0.6);
-      cursor: default;
+      cursor: text;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    body[data-mode='read'] #pageTitle {
+      user-select: text;
+      -webkit-user-select: text;
+      cursor: text;
+    }
+
+    body[data-mode='read'] .video-description-input::placeholder {
+      color: transparent;
     }
 
     body[data-mode='read'] .video-description-input:hover {
@@ -2090,6 +2102,10 @@
       display: none !important;
     }
 
+    body[data-mode="read"] .export-only {
+      display: inline !important;
+    }
+
     /* Adjust grid layout in read mode when resize handle is hidden */
     body[data-mode="read"] .main-content {
       grid-template-columns: 448px 1fr;
@@ -2135,7 +2151,7 @@
               </div>
             </div>
             <div class="video-description">
-              <textarea id="videoDescription" class="video-description-input edit-only" placeholder="Add optional description" rows="1" oninput="saveDescription(this.value)" onfocus="this.select()"></textarea>
+              <textarea id="videoDescription" class="video-description-input" placeholder="Add optional description" rows="1" oninput="saveDescription(this.value)" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"></textarea>
             </div>
           </div>
         </div>
@@ -4776,7 +4792,7 @@
               </div>
             </div>
             <div class="video-description">
-              <textarea id="videoDescription" class="video-description-input edit-only" placeholder="Add optional description" rows="1" oninput="saveDescription(this.value)" onfocus="this.select()"></textarea>
+              <textarea id="videoDescription" class="video-description-input" placeholder="Add optional description" rows="1" oninput="saveDescription(this.value)" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"></textarea>
             </div>
           </div>
         </div>
