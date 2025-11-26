@@ -1,197 +1,153 @@
-# Container Padding & Video Sizing Guide
+# Container Padding & Spacing Guide
 
 ## Overview
-This guide explains how to adjust the padding/margins around the video and timeline containers while keeping everything properly sized and aligned.
-
-## Key Concept
-The video height is calculated in **TWO places** that must stay in sync:
-1. **CSS** - Sets the max-height constraint
-2. **JavaScript** - Dynamically sizes the video wrapper on load
-
-If these don't match, the video will briefly show at the correct size then "snap" to a different size.
+This guide explains how to quickly adjust the top/bottom spacing around the video and timeline containers.
 
 ---
 
-## The Core Calculation
+## Current Configuration
 
-### Base Values
-- **Top bar height**: `96px` (header + controls)
-- **Container padding**: `2 × padding value` (top + bottom)
+**Top spacing (header to containers):** Controlled by header padding-top + margin-bottom
+- Current: `4px` (padding-top) + `28px` (margin-bottom) = `32px` total
+- Location: `.header-section` (~line 40, 44)
 
-### Formula
-```
-Available height for content = window.innerHeight - top bar height - container padding
-                            = window.innerHeight - 96px - (2 × padding)
-```
+**Bottom spacing (containers to viewport bottom):** Controlled by container height calculations
+- Current value: `110px` (in 7 locations)
 
-**Example**: With `10px` padding:
-```
-Available height = window.innerHeight - 96px - 20px
-                = window.innerHeight - 116px
-```
+**Side padding (inside containers):** `16px`
+- Video section padding: `16px`
+- Timeline section padding: `16px`
 
 ---
 
-## How to Change Container Padding
+## Quick Adjustments
 
-Let's say you want to change the padding from `10px` to `16px`.
+### Adjust Top Spacing
 
-### Step 1: Update Container Padding (CSS)
+**To increase/decrease the gap between header and containers:**
 
-**File**: `MotionInspector.html`
-
-**Video container** (~line 238):
+Change `.header-section` padding-top and/or margin-bottom (~line 40, 44)
 ```css
-.video-section {
-  background: #242424;
-  border-radius: 8px;
-  padding: 16px;  /* ← Change this */
-  /* ... */
+.header-section {
+  padding: 4px 20px 0 20px;  /* padding-top affects vertical centering */
+  margin-bottom: 28px;        /* margin-bottom affects gap to containers */
 }
 ```
 
-**Timeline container** (~line 391):
-```css
-.timeline-section {
-  background: #242424;
-  border-radius: 8px;
-  padding: 16px;  /* ← Change this */
-  /* ... */
-}
-```
-
-### Step 2: Calculate New Value
-```
-New value = 96 + (2 × new padding)
-         = 96 + (2 × 16)
-         = 96 + 32
-         = 128
-```
-
-### Step 3: Update CSS max-height (~line 286)
-```css
-video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-height: calc(100vh - 128px);  /* ← Update this */
-  /* ... */
-}
-```
-
-### Step 4: Update JavaScript height calculation (~line 2508)
-```javascript
-const viewportMaxHeight = Math.max(0, window.innerHeight - 128);  // ← Update this
-```
-
-### Step 5: Update Tab Alignment (~line 691)
-The tabs need to align with the timeline content, so adjust their left padding to match:
-```css
-.tabs-bar {
-  /* ... */
-  padding-left: 20px;  /* ← Adjust to align with new container padding */
-}
-```
-
-**Rule of thumb**: Tab padding should be `container padding + 4px` to account for borders.
-- Container padding `10px` → Tab padding `14px`
-- Container padding `16px` → Tab padding `20px`
+**Example:** Want header centered in 40px total space?
+- Change to: `padding: 10px 20px 0 20px` and `margin-bottom: 30px`
 
 ---
 
-## Quick Reference Table
+### Adjust Bottom Spacing
 
-| Container Padding | Calculation | CSS max-height | JS viewportMaxHeight | Tab padding-left |
-|-------------------|-------------|----------------|----------------------|------------------|
-| `10px` | 96 + 20 = 116 | `calc(100vh - 116px)` | `window.innerHeight - 116` | `14px` |
-| `12px` | 96 + 24 = 120 | `calc(100vh - 120px)` | `window.innerHeight - 120` | `16px` |
-| `16px` | 96 + 32 = 128 | `calc(100vh - 128px)` | `window.innerHeight - 128` | `20px` |
-| `20px` | 96 + 40 = 136 | `calc(100vh - 136px)` | `window.innerHeight - 136` | `24px` |
+**To increase/decrease the gap at the bottom of the viewport:**
+
+Change the height calculation value in **7 locations**. Current value: `110px`
+
+**🔑 KEY RULE (Think "subtract from viewport"):**
+- **SMALLER number** (e.g., 100px) → Containers grow TALLER → SMALLER bottom gap
+- **LARGER number** (e.g., 120px) → Containers stay SHORTER → LARGER bottom gap
+
+**Examples:**
+- Want **LESS bottom gap** (containers closer to bottom)? Change `110px` → `105px` (subtract 5)
+- Want **MORE bottom gap** (more space at bottom)? Change `110px` → `115px` (add 5)
 
 ---
 
-## Locations in Code
+## All Locations to Update (Search & Replace)
+
+When adjusting bottom spacing, update these **6 locations**:
 
 ### CSS (in `<style>` block)
-1. **Video section padding**: ~line 241
-2. **Timeline section padding**: ~line 394
-3. **Video max-height**: ~line 286
-4. **Tabs alignment**: ~line 691
+
+**1. Video section height** (~line 247)
+```css
+height: calc(100vh - 114px);
+```
+
+**2. Video section max-height** (~line 248)
+```css
+max-height: calc(100vh - 114px);
+```
+
+**3. Video section empty state min-height** (~line 252)
+```css
+min-height: calc(100vh - 114px);
+```
+
+**4. Video element max-height** (~line 286)
+```css
+max-height: calc(100vh - 114px);
+```
+
+**5. Timeline wrapper height** (~line 386)
+```css
+height: calc(100vh - 114px + 25px);
+```
+
+**6. Timeline section empty state min-height** (~line 406)
+```css
+min-height: calc(100vh - 114px);
+```
 
 ### JavaScript (in `<script>` block)
-1. **Video height calculation**: ~line 2508
-   - Search for: `viewportMaxHeight = Math.max(0, window.innerHeight`
+
+**7. Video height calculation** (~line 2540)
+```javascript
+const viewportMaxHeight = Math.max(0, window.innerHeight - 114);
+```
+
+---
+
+## Search & Replace Method (Fastest!)
+
+To change bottom spacing from `114px` to a new value (e.g., `120px`):
+
+1. **CSS:** Search `100vh - 114` → Replace with `100vh - 120`
+2. **JavaScript:** Search `innerHeight - 114` → Replace with `innerHeight - 120`
+
+This updates all locations at once!
+
+---
+
+## Common Adjustments
+
+| Goal | Top Spacing | Bottom Value | Notes |
+|------|-------------|--------------|-------|
+| **Current setup** | `36px` | `114px` | Balanced, 16px-ish gaps |
+| More space at top | `46px` | `114px` | Adds 10px to top |
+| Less space at top | `26px` | `114px` | Removes 10px from top |
+| Larger bottom gap | `36px` | `104px` | Adds ~10px to bottom |
+| Smaller bottom gap | `36px` | `124px` | Removes ~10px from bottom |
+| Original tight spacing | `20px` | `128px` | Pre-adjustment state |
+
+---
+
+## Why These Numbers?
+
+The `114px` calculation accounts for:
+- Header height + original margin: ~96px
+- Extra margin added to top: ~16px (36px - 20px)
+- Fine-tuned adjustment: ~2px
+
+Total removed from viewport: 114px
+Remaining space = containers can grow to fill (100vh - 114px)
 
 ---
 
 ## Verification Checklist
 
-After making changes, verify:
-- [ ] Video section padding matches timeline section padding
-- [ ] CSS `max-height` uses correct calculation
-- [ ] JavaScript `viewportMaxHeight` uses same number as CSS
-- [ ] Tabs are aligned with timeline content (padding-left adjusted)
+After making changes:
+- [ ] All 6 CSS locations use same value
+- [ ] JavaScript calculation matches CSS value
 - [ ] Video loads at correct size without "snapping"
-- [ ] Top/bottom gaps around video match timeline gaps
+- [ ] Top gap looks right
+- [ ] Bottom gap matches side gaps (visually)
+- [ ] Containers don't touch viewport edges
 
 ---
 
-## Why This Matters
+## Pro Tip
 
-**Problem**: The video dimensions are set dynamically by JavaScript when the video loads. If the JavaScript calculation doesn't match the CSS max-height, the video will:
-1. Initially render at the CSS max-height (correct)
-2. Then JavaScript runs and recalculates (incorrect)
-3. Video "snaps" to the wrong size
-
-**Solution**: Keep CSS and JavaScript in sync using the same calculated value.
-
----
-
-## Common Mistakes
-
-❌ **Only updating CSS max-height**
-- Video will snap to wrong size after loading
-
-❌ **Using different padding for video vs timeline**
-- Visual inconsistency, uneven spacing
-
-❌ **Forgetting to update tab alignment**
-- Tabs won't align with timeline content
-
-❌ **Math error in calculation**
-- Remember: `2 × padding` for top + bottom
-
-✅ **Update all 4 locations with correct calculated values**
-
----
-
-## Example: Changing from 10px to 16px
-
-```css
-/* 1. Video section */
-.video-section {
-  padding: 16px;  /* was: 10px */
-}
-
-/* 2. Timeline section */
-.timeline-section {
-  padding: 16px;  /* was: 10px */
-}
-
-/* 3. Video max-height (96 + 32 = 128) */
-video {
-  max-height: calc(100vh - 128px);  /* was: calc(100vh - 116px) */
-}
-
-/* 4. Tab alignment */
-.tabs-bar {
-  padding-left: 20px;  /* was: 14px */
-}
-```
-
-```javascript
-// 5. JavaScript video height
-const viewportMaxHeight = Math.max(0, window.innerHeight - 128);  // was: 116
-```
-
-Done! All values are now in sync.
+If video "snaps" or jumps after loading, CSS and JavaScript values are out of sync. Check line ~2540 in JavaScript matches your CSS values.
