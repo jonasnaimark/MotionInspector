@@ -2289,7 +2289,7 @@
         tabsHtml += `
           <div class="tab ${isActive ? 'active' : ''}" data-tab-index="${index}">
             <span class="tab-name">${tab.name}</span>
-            ${showCloseBtn ? `<button class="tab-close" onclick="event.stopPropagation(); deleteTab(${index})">×</button>` : ''}
+            ${showCloseBtn ? `<button class="tab-close edit-only" onclick="event.stopPropagation(); deleteTab(${index})">×</button>` : ''}
           </div>
         `;
       });
@@ -2297,7 +2297,7 @@
       // Add + button if under limit
       if (tabs.length < MAX_TABS) {
         const initialClass = tabs.length === 0 ? 'initial' : '';
-        addBtnHtml = `<button class="tab-add-btn ${initialClass}" onclick="createNewTab()">+</button>`;
+        addBtnHtml = `<button class="tab-add-btn edit-only ${initialClass}" onclick="createNewTab()">+</button>`;
       }
 
       // Always wrap tabs in tabs-bar-left for consistent layout
@@ -4303,7 +4303,7 @@
     }
 
     // Get the base HTML template for export (without the export button and JSZip)
-    function getExportTemplate(videoFileName, specDataJson, videoSectionWidth = 400) {
+    function getExportTemplate(videoFileName, tabsJson, videoSectionWidth = 400) {
       console.log('[GET_EXPORT_TEMPLATE] videoSectionWidth:', videoSectionWidth);
 
       // Get all the styles from this page
@@ -4404,41 +4404,55 @@
   <script>
 ${cleanedScript}
     // Auto-load embedded data
-    const EMBEDDED_SPEC_DATA = ${specDataJson};
-    const EMBEDDED_VIDEO_PATH = './${videoFileName}';
+    const EMBEDDED_TABS = ${tabsJson};
 
     window.addEventListener('DOMContentLoaded', () => {
       console.log('[EXPORT] DOMContentLoaded fired');
       console.log('[EXPORT] isEditMode:', isEditMode);
       console.log('[EXPORT] body data-mode:', document.body.getAttribute('data-mode'));
 
-      specData = EMBEDDED_SPEC_DATA;
-      groupAnimations(specData); // Group matching X/Y Position and Width/Height
-      console.log('[EXPORT] specData loaded:', specData);
+      // Load tabs array
+      tabs = EMBEDDED_TABS;
+      currentTabIndex = 0;
+      nextTabId = tabs.length > 0 ? Math.max(...tabs.map(t => t.id)) + 1 : 1;
 
-      // Update page title
-      const pageTitle = document.getElementById('pageTitle');
-      if (pageTitle && specData.compName) {
-        pageTitle.textContent = specData.compName;
-        document.title = specData.compName;
-      }
-
-      video.src = EMBEDDED_VIDEO_PATH;
-      const videoContainer = document.getElementById('videoContainer');
-      if (videoContainer) {
-        videoContainer.classList.add('has-video');
-      }
-
-      // Render timeline immediately
-      console.log('[EXPORT] About to render timeline');
-      renderTimeline();
-      console.log('[EXPORT] Timeline rendered');
-
-      video.addEventListener('loadedmetadata', () => {
-        videoDuration = video.duration * 1000;
-        video.currentTime = 0;
-        setTimeout(updateVideoAlignment, 100);
+      // Group animations for all tabs
+      tabs.forEach(tab => {
+        if (tab.specData) {
+          groupAnimations(tab.specData);
+        }
       });
+      console.log('[EXPORT] Tabs loaded:', tabs);
+
+      // Update page title (always use Tab 1's title)
+      const pageTitle = document.getElementById('pageTitle');
+      const tab1Spec = tabs.length > 0 ? tabs[0].specData : null;
+      if (pageTitle && tab1Spec && tab1Spec.compName) {
+        pageTitle.textContent = tab1Spec.compName;
+        document.title = tab1Spec.compName;
+      }
+
+      // Load video for current tab
+      const currentTab = tabs[currentTabIndex];
+      if (currentTab && currentTab.videoSrc) {
+        video.src = currentTab.videoSrc;
+        const videoContainer = document.getElementById('videoContainer');
+        if (videoContainer) {
+          videoContainer.classList.add('has-video');
+        }
+
+        video.addEventListener('loadedmetadata', () => {
+          videoDuration = video.duration * 1000;
+          video.currentTime = 0;
+          setTimeout(updateVideoAlignment, 100);
+        });
+      }
+
+      // Render tabs and timeline
+      console.log('[EXPORT] About to render tabs and timeline');
+      renderTabs();
+      renderTimeline();
+      console.log('[EXPORT] Tabs and timeline rendered');
     });
   <\/script>
 </body>
@@ -4450,37 +4464,60 @@ ${cleanedScript}
 
     // Export everything as a zip file
     async function exportZip() {
-      if (!specData) {
+      if (!tabs || tabs.length === 0) {
         alert('Please paste a spec first (📋 Paste Spec button)');
         return;
       }
-      if (!uploadedVideoFile) {
+
+      // Check if at least one tab has a video
+      const hasAnyVideo = tabs.some(tab => tab.uploadedVideoFile);
+      if (!hasAnyVideo) {
         alert('Please upload a video first (Upload Video button)');
         return;
       }
 
       try {
-        // Get video file extension
-        const videoFileName = uploadedVideoFile.name;
-        const videoExt = videoFileName.substring(videoFileName.lastIndexOf('.'));
-        const videoFileNameInZip = `video${videoExt}`;
-
         // Get current video section width
         const videoSection = document.querySelector('.video-section');
         const videoSectionWidth = videoSection ? videoSection.offsetWidth : 400;
         console.log('[EXPORT] Video section width:', videoSectionWidth);
 
+        // Create zip file
+        const zip = new JSZip();
+
+        // Prepare tabs for export and add videos to zip
+        const exportTabs = tabs.map((tab, index) => {
+          let videoFileName = null;
+
+          if (tab.uploadedVideoFile) {
+            // Get video file extension
+            const originalName = tab.uploadedVideoFile.name;
+            const videoExt = originalName.substring(originalName.lastIndexOf('.'));
+            videoFileName = `video_tab${tab.id}${videoExt}`;
+
+            // Add video to zip
+            zip.file(videoFileName, tab.uploadedVideoFile);
+            console.log(`[EXPORT] Added ${videoFileName} for tab ${tab.id}`);
+          }
+
+          return {
+            id: tab.id,
+            name: tab.name,
+            specData: tab.specData,
+            videoSrc: videoFileName ? `./${videoFileName}` : null,
+            viewMode: tab.viewMode
+          };
+        });
+
         // Generate clean HTML template
-        const exportHtml = getExportTemplate(videoFileNameInZip, JSON.stringify(specData), videoSectionWidth);
+        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), videoSectionWidth);
         console.log('[EXPORT] Generated HTML length:', exportHtml.length);
 
         // Create download link with spec name
-        const specName = specData.compName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const specName = tabs[0].specData.compName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
-        // Create zip file
-        const zip = new JSZip();
+        // Add HTML to zip
         zip.file(`${specName}.html`, exportHtml);
-        zip.file(videoFileNameInZip, uploadedVideoFile);
 
         // Generate zip and download
         const zipBlob = await zip.generateAsync({ type: 'blob' });
