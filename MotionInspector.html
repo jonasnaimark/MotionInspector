@@ -749,7 +749,7 @@
       border: none;
       border-bottom: 1px solid #383838;
       border-radius: 6px 6px 0 0;
-      cursor: pointer;
+      cursor: grab;
       transition: background 0.15s ease, box-shadow 0.15s ease;
       min-width: 100px;
       max-width: 200px;
@@ -773,11 +773,17 @@
 
     .tab.dragging {
       opacity: 0.5;
+      cursor: grabbing !important;
     }
 
-    .tab.drag-over {
+    .tab.drag-over-left {
       border-left: 3px solid #4a9eff;
       padding-left: 9px; /* Adjust for border width */
+    }
+
+    .tab.drag-over-right {
+      border-right: 3px solid #4a9eff;
+      padding-right: 9px; /* Adjust for border width */
     }
 
     .tab-name {
@@ -787,7 +793,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      cursor: pointer;
+      cursor: grab;
       user-select: none;
       outline: none;
       padding: 2px 4px;
@@ -2381,7 +2387,7 @@
         const isActive = index === currentTabIndex;
         const showCloseBtn = tabs.length > 1; // Only show close button when multiple tabs exist
         tabsHtml += `
-          <div class="tab ${isActive ? 'active' : ''}" data-tab-index="${index}" draggable="true">
+          <div class="tab ${isActive ? 'active' : ''}" data-tab-index="${index}">
             <span class="tab-name">${tab.name}</span>
             ${showCloseBtn ? `<button class="tab-close edit-only" onclick="event.stopPropagation(); deleteTab(${index})">×</button>` : ''}
           </div>
@@ -2461,70 +2467,110 @@
         });
       });
 
-      // Add HTML5 drag-and-drop for reordering tabs
-      let draggedTabIndex = null;
-
+      // Add horizontal-only drag for reordering tabs (similar to color bar dragging)
       document.querySelectorAll('.tab').forEach(tab => {
         const tabIndex = parseInt(tab.dataset.tabIndex);
 
-        tab.addEventListener('dragstart', (e) => {
+        tab.addEventListener('mousedown', (e) => {
+          // Don't allow dragging if clicking close button
+          if (e.target.classList.contains('tab-close')) return;
+
           // Don't allow dragging if editing tab name
           const tabName = tab.querySelector('.tab-name');
-          if (tabName && tabName.getAttribute('contenteditable') === 'true') {
-            e.preventDefault();
-            return;
+          if (tabName && tabName.getAttribute('contenteditable') === 'true') return;
+
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const threshold = 5; // pixels to move before starting drag
+          let isDragging = false;
+          let draggedTabIndex = tabIndex;
+
+          function onMouseMove(moveEvent) {
+            const deltaX = moveEvent.clientX - startX;
+            const deltaY = moveEvent.clientY - startY;
+
+            // Determine if we should start dragging (horizontal movement past threshold)
+            if (!isDragging && Math.abs(deltaX) > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+              isDragging = true;
+              tab.classList.add('dragging');
+            }
+
+            if (!isDragging) return;
+
+            // Find which tab we're hovering over based on X position
+            const allTabs = document.querySelectorAll('.tab');
+            let targetIndex = null;
+
+            allTabs.forEach((t, idx) => {
+              const rect = t.getBoundingClientRect();
+              const midpoint = rect.left + rect.width / 2;
+
+              if (moveEvent.clientX >= rect.left && moveEvent.clientX <= rect.right) {
+                // Determine if we should insert before or after based on cursor position
+                targetIndex = moveEvent.clientX < midpoint ? idx : idx + 1;
+              }
+            });
+
+            // Remove all drag-over classes
+            allTabs.forEach(t => t.classList.remove('drag-over-left', 'drag-over-right'));
+
+            // Add visual indicator (blue line showing where tab will be inserted)
+            if (targetIndex !== null && targetIndex !== draggedTabIndex && targetIndex !== draggedTabIndex + 1) {
+              if (targetIndex < allTabs.length) {
+                allTabs[targetIndex].classList.add('drag-over-left');
+              } else if (targetIndex === allTabs.length && allTabs.length > 0) {
+                allTabs[allTabs.length - 1].classList.add('drag-over-right');
+              }
+            }
           }
 
-          draggedTabIndex = tabIndex;
-          tab.classList.add('dragging');
-          e.dataTransfer.effectAllowed = 'move';
-        });
+          function onMouseUp(upEvent) {
+            if (isDragging) {
+              // Find drop position
+              const allTabs = document.querySelectorAll('.tab');
+              let targetIndex = null;
 
-        tab.addEventListener('dragend', () => {
-          tab.classList.remove('dragging');
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('drag-over'));
-          draggedTabIndex = null;
-        });
+              allTabs.forEach((t, idx) => {
+                const rect = t.getBoundingClientRect();
+                const midpoint = rect.left + rect.width / 2;
 
-        tab.addEventListener('dragover', (e) => {
-          if (draggedTabIndex === null) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-        });
+                if (upEvent.clientX >= rect.left && upEvent.clientX <= rect.right) {
+                  targetIndex = upEvent.clientX < midpoint ? idx : idx + 1;
+                }
+              });
 
-        tab.addEventListener('dragenter', (e) => {
-          if (draggedTabIndex === null || draggedTabIndex === tabIndex) return;
-          tab.classList.add('drag-over');
-        });
+              // Reorder tabs if we have a valid target
+              if (targetIndex !== null && targetIndex !== draggedTabIndex && targetIndex !== draggedTabIndex + 1) {
+                const draggedTab = tabs[draggedTabIndex];
+                tabs.splice(draggedTabIndex, 1);
 
-        tab.addEventListener('dragleave', () => {
-          tab.classList.remove('drag-over');
-        });
+                // Adjust target index if removing from before it
+                const insertIndex = targetIndex > draggedTabIndex ? targetIndex - 1 : targetIndex;
+                tabs.splice(insertIndex, 0, draggedTab);
 
-        tab.addEventListener('drop', (e) => {
-          e.preventDefault();
-          if (draggedTabIndex === null || draggedTabIndex === tabIndex) return;
+                // Update currentTabIndex to follow the active tab
+                if (currentTabIndex === draggedTabIndex) {
+                  currentTabIndex = insertIndex;
+                } else if (draggedTabIndex < currentTabIndex && insertIndex >= currentTabIndex) {
+                  currentTabIndex--;
+                } else if (draggedTabIndex > currentTabIndex && insertIndex <= currentTabIndex) {
+                  currentTabIndex++;
+                }
 
-          tab.classList.remove('drag-over');
+                renderTabs();
+              } else {
+                // Clean up without reordering
+                tab.classList.remove('dragging');
+                allTabs.forEach(t => t.classList.remove('drag-over-left', 'drag-over-right'));
+              }
+            }
 
-          // Reorder tabs array
-          const draggedTab = tabs[draggedTabIndex];
-          tabs.splice(draggedTabIndex, 1);
-
-          // Adjust target index
-          const dropIndex = draggedTabIndex < tabIndex ? tabIndex - 1 : tabIndex;
-          tabs.splice(dropIndex, 0, draggedTab);
-
-          // Update currentTabIndex to follow the active tab
-          if (currentTabIndex === draggedTabIndex) {
-            currentTabIndex = dropIndex;
-          } else if (draggedTabIndex < currentTabIndex && dropIndex >= currentTabIndex) {
-            currentTabIndex--;
-          } else if (draggedTabIndex > currentTabIndex && dropIndex <= currentTabIndex) {
-            currentTabIndex++;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
           }
 
-          renderTabs();
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
         });
       });
     }
