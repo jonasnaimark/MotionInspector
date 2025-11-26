@@ -2504,14 +2504,24 @@
             // Find which tab we're hovering over based on X position
             const allTabs = document.querySelectorAll('.tab');
             let targetIndex = null;
+            let closestDistance = Infinity;
 
+            // Find the closest insertion point based on cursor X position
             allTabs.forEach((t, idx) => {
               const rect = t.getBoundingClientRect();
-              const midpoint = rect.left + rect.width / 2;
 
-              if (moveEvent.clientX >= rect.left && moveEvent.clientX <= rect.right) {
-                // Determine if we should insert before or after based on cursor position
-                targetIndex = moveEvent.clientX < midpoint ? idx : idx + 1;
+              // Check distance to left edge (insert before this tab)
+              const distToLeft = Math.abs(moveEvent.clientX - rect.left);
+              if (distToLeft < closestDistance) {
+                closestDistance = distToLeft;
+                targetIndex = idx;
+              }
+
+              // Check distance to right edge (insert after this tab)
+              const distToRight = Math.abs(moveEvent.clientX - rect.right);
+              if (distToRight < closestDistance) {
+                closestDistance = distToRight;
+                targetIndex = idx + 1;
               }
             });
 
@@ -2533,16 +2543,27 @@
               // Reset visual transform
               tab.style.transform = '';
 
-              // Find drop position
+              // Find drop position using same logic as mousemove
               const allTabs = document.querySelectorAll('.tab');
               let targetIndex = null;
+              let closestDistance = Infinity;
 
+              // Find the closest insertion point based on cursor X position
               allTabs.forEach((t, idx) => {
                 const rect = t.getBoundingClientRect();
-                const midpoint = rect.left + rect.width / 2;
 
-                if (upEvent.clientX >= rect.left && upEvent.clientX <= rect.right) {
-                  targetIndex = upEvent.clientX < midpoint ? idx : idx + 1;
+                // Check distance to left edge (insert before this tab)
+                const distToLeft = Math.abs(upEvent.clientX - rect.left);
+                if (distToLeft < closestDistance) {
+                  closestDistance = distToLeft;
+                  targetIndex = idx;
+                }
+
+                // Check distance to right edge (insert after this tab)
+                const distToRight = Math.abs(upEvent.clientX - rect.right);
+                if (distToRight < closestDistance) {
+                  closestDistance = distToRight;
+                  targetIndex = idx + 1;
                 }
               });
 
