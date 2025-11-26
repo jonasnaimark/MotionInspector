@@ -2153,10 +2153,16 @@
       }
 
       // Add a new tab
+      const newTabSpec = createDefaultSpec();
+      // Copy Tab 1's title to maintain global title across all tabs
+      if (tabs.length > 0 && tabs[0].specData && tabs[0].specData.compName) {
+        newTabSpec.compName = tabs[0].specData.compName;
+      }
+
       const newTab = {
         id: nextTabId++,
         name: `Tab ${tabs.length + 1}`,
-        specData: createDefaultSpec(),
+        specData: newTabSpec,
         videoSrc: null,
         uploadedVideoFile: null,
         viewMode: 'timeline'
@@ -2240,12 +2246,12 @@
         if (videoContainer) videoContainer.classList.remove('has-video');
       }
 
-      // Update page title
+      // Update page title (always use Tab 1's title)
       const pageTitle = document.getElementById('pageTitle');
-      const currentSpec = getCurrentSpecData();
-      if (pageTitle && currentSpec && currentSpec.compName) {
-        pageTitle.textContent = currentSpec.compName;
-        document.title = currentSpec.compName;
+      const tab1Spec = tabs.length > 0 ? tabs[0].specData : null;
+      if (pageTitle && tab1Spec && tab1Spec.compName) {
+        pageTitle.textContent = tab1Spec.compName;
+        document.title = tab1Spec.compName;
       } else if (pageTitle) {
         pageTitle.textContent = 'Motion Inspector';
         document.title = 'Motion Inspector';
@@ -2453,11 +2459,12 @@
           pageTitle.textContent = newTitle;
         }
 
-        // Update specData if we have it loaded
-        const currentSpec = getCurrentSpecData();
-        if (currentSpec) {
-          currentSpec.compName = newTitle;
-        }
+        // Update ALL tabs' compName to maintain global title
+        tabs.forEach(tab => {
+          if (tab.specData) {
+            tab.specData.compName = newTitle;
+          }
+        });
         if (specData) {
           specData.compName = newTitle;
         }
@@ -2866,11 +2873,17 @@
 
         viewDuration = null; // Reset zoom level for new spec
 
-        // Update page title
+        // Update page title only if pasting into Tab 1 (global title)
         const pageTitle = document.getElementById('pageTitle');
-        if (pageTitle && data.compName) {
+        if (pageTitle && data.compName && currentTabIndex === 0) {
           pageTitle.textContent = data.compName;
           document.title = data.compName;
+          // Update ALL tabs' compName to maintain global title
+          tabs.forEach(tab => {
+            if (tab.specData) {
+              tab.specData.compName = data.compName;
+            }
+          });
         }
 
         renderTimeline();
