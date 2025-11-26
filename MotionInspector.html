@@ -6482,6 +6482,10 @@ ${cleanedScript}
           const textEl = bar.querySelector('.timeline-bar-text.edit-only');
           if (textEl && document.activeElement === textEl) return;
 
+          // Don't start dragging if ANY bar text is currently being edited
+          const editingText = document.querySelector('.timeline-bar-text.edit-only[data-editing="true"]');
+          if (editingText) return;
+
           const animIndex = parseInt(bar.dataset.animIndex);
           const startX = e.clientX;
           const startY = e.clientY;
