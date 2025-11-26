@@ -2179,6 +2179,7 @@
     let viewMode = 'timeline'; // 'timeline' or 'table'
     let savedVideoSectionWidth = null;
     let isBarTextBeingEdited = false; // Flag to prevent bar dragging during text editing
+    let videoSectionWidthRatio = null; // Ratio of video section width to total width (0-1)
 
     // Hide main-only buttons in exported files
     if (isExportMode) {
@@ -2733,6 +2734,24 @@
 
     // Update alignment on window resize
     window.addEventListener('resize', () => {
+      // Maintain column ratio if one has been set
+      if (videoSectionWidthRatio !== null) {
+        const mainContent = document.querySelector('.main-content');
+        const containerWidth = mainContent.offsetWidth;
+        const handleWidth = 20;
+        const minWidth = 448;
+
+        // Calculate new width based on ratio
+        let newWidth = containerWidth * videoSectionWidthRatio;
+
+        // Clamp to min/max
+        const maxWidth = (containerWidth - handleWidth) / 2;
+        newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+
+        // Apply new width
+        mainContent.style.gridTemplateColumns = `${newWidth}px 20px 1fr`;
+      }
+
       updateVideoAlignment();
       if (viewMode === 'table') {
         requestAnimationFrame(updateTableEasingWidth);
@@ -2768,6 +2787,9 @@
 
         // Clamp width between min and max
         const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+
+        // Save the ratio for maintaining proportions on window resize
+        videoSectionWidthRatio = clampedWidth / containerWidth;
 
         // Update grid column
         mainContent.style.gridTemplateColumns = `${clampedWidth}px 20px 1fr`;
