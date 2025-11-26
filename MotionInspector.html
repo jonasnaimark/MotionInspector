@@ -237,12 +237,12 @@
 
     .video-section {
       background: #242424;
-      border-radius: 10px;
-      padding: 20px;
+      border-radius: 8px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 15px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      gap: 0;
+      border: 1px solid #383838;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       height: calc(100vh - 96px);
       max-height: calc(100vh - 96px);
@@ -283,7 +283,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      max-height: calc(100vh - 140px);
+      max-height: calc(100vh - 128px);
       border-radius: inherit;
       background: transparent;
       object-fit: contain;
@@ -380,17 +380,26 @@
       display: none;
     }
 
+    .timeline-wrapper {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 96px + 25px); /* Add tab height to total height */
+      position: relative;
+      margin-top: -25px; /* Pull up by tab height so tabs poke above baseline */
+    }
+
     .timeline-section {
       background: #242424;
-      border-radius: 10px;
-      padding: 20px;
+      border-radius: 8px;
+      padding: 16px;
       overflow: visible;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid #383838;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       position: relative;
       display: flex;
       flex-direction: column;
-      height: calc(100vh - 96px);
+      flex: 1;
+      min-height: 0;
     }
 
     .timeline-section:has(#timelineContent:empty) {
@@ -666,12 +675,141 @@
       color: #ffb38a;
     }
 
+    /* ===== TABS STYLING ===== */
+    .tabs-container {
+      position: relative;
+      z-index: 100;
+      margin-bottom: -1px; /* Overlap border with timeline-section */
+    }
+
+    .tabs-bar {
+      display: flex;
+      gap: 4px;
+      background: transparent;
+      align-items: flex-end;
+      position: relative;
+      padding-left: 24px; /* Align tabs with timeline content */
+    }
+
+    .tabs-bar-left {
+      display: flex;
+      gap: 4px;
+      align-items: flex-end;
+    }
+
+    .tab {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      background: #2a2a2a;
+      border: none;
+      border-bottom: 1px solid #383838;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+      min-width: 70px;
+      max-width: 200px;
+      z-index: 1;
+      height: 26px;
+      box-sizing: border-box;
+      box-shadow: inset 0 -4px 6px -3px rgba(0, 0, 0, 0.25);
+    }
+
+    .tab.active {
+      background: #242424;
+      border: 1px solid #383838;
+      border-bottom-color: #242424;
+      z-index: 10;
+      box-shadow: none;
+    }
+
+    .tab:hover:not(.active) {
+      background: #333;
+    }
+
+    .tab-name {
+      flex: 1;
+      color: #888;
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      user-select: none;
+      outline: none;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .tab-name[contenteditable="true"] {
+      user-select: text;
+      background: rgba(255, 255, 255, 0.1);
+      cursor: text;
+    }
+
+    .tab.active .tab-name {
+      color: #d0d0d0;
+    }
+
+    .tab-close {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      padding: 0;
+      flex-shrink: 0;
+      margin-left: 16px;
+      margin-right: -6px;
+    }
+
+    .tab-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .tab-add-btn {
+      position: relative;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-width: auto;
+      height: 26px;
+      width: 26px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      margin-left: 0;
+      top: -1px;
+    }
+
+    .tab-add-btn:hover {
+      color: #fff;
+    }
+    /* ===== END TABS STYLING ===== */
+
     /* DevTools-style timeline */
     .timeline-container {
       display: grid;
       grid-template-columns: 180px 1fr;
       gap: 0;
-      border-radius: 8px;
+      border-radius: 6px;
       overflow-y: auto;
       overflow-x: hidden;
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -693,7 +831,7 @@
 
     .timeline-container::-webkit-scrollbar-track {
       background: #1a1a1a;
-      border-radius: 0 8px 8px 0;
+      border-radius: 0 6px 6px 0;
     }
 
     .timeline-container::-webkit-scrollbar-thumb {
@@ -1855,14 +1993,129 @@
 
       <div class="resize-handle edit-only" id="resizeHandle"></div>
 
-      <div class="timeline-section">
-        <div id="timelineContent"></div>
+      <div class="timeline-wrapper">
+        <div class="tabs-container">
+          <div class="tabs-bar">
+            <!-- Tabs will be rendered here by JavaScript -->
+          </div>
+        </div>
+        <div class="timeline-section">
+          <div id="timelineContent"></div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    let specData = null;
+    // ===== TABS DATA STRUCTURE =====
+    // Create default spec template
+    function createDefaultSpec() {
+      return {
+        compName: "Motion Inspector",
+        workArea: {
+          duration: 2000
+        },
+        layers: [
+          {
+            layerName: "Section 1",
+            animations: [
+              {
+                property: "Add parameter",
+                description: "Add description",
+                timing: {
+                  delay: 0,
+                  duration: 300
+                },
+                easing: {
+                  type: "-",
+                  cubicBezier: ""
+                },
+                values: {
+                  formatted: {
+                    startValue: "-",
+                    endValue: "-"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    // Initialize with Tab 1
+    const initialSpec = createDefaultSpec();
+    groupAnimations(initialSpec);
+    let tabs = [
+      {
+        id: 1,
+        name: "Tab 1",
+        specData: initialSpec,
+        videoSrc: null,
+        uploadedVideoFile: null,
+        viewMode: 'timeline'
+      }
+    ];
+    let currentTabIndex = 0; // Start with Tab 1 active
+    let nextTabId = 2;
+    const MAX_TABS = 6;
+
+    // Helper functions to get current tab data
+    function getCurrentTab() {
+      if (currentTabIndex === -1) return null;
+      return tabs[currentTabIndex];
+    }
+
+    function getCurrentSpecData() {
+      if (currentTabIndex === -1) return null;
+      return tabs[currentTabIndex].specData;
+    }
+
+    function getCurrentVideoSrc() {
+      if (currentTabIndex === -1) return null;
+      return tabs[currentTabIndex].videoSrc;
+    }
+
+    function getCurrentViewMode() {
+      if (currentTabIndex === -1) return 'timeline';
+      return tabs[currentTabIndex].viewMode;
+    }
+
+    function setCurrentSpecData(data) {
+      if (currentTabIndex === -1) return;
+      tabs[currentTabIndex].specData = data;
+    }
+
+    function setCurrentVideoSrc(src) {
+      if (currentTabIndex === -1) return;
+      tabs[currentTabIndex].videoSrc = src;
+    }
+
+    function setCurrentUploadedVideoFile(file) {
+      if (currentTabIndex === -1) return;
+      tabs[currentTabIndex].uploadedVideoFile = file;
+    }
+
+    function setCurrentViewMode(mode) {
+      if (currentTabIndex === -1) return;
+      tabs[currentTabIndex].viewMode = mode;
+    }
+
+    // Sync legacy variables with current tab
+    function syncLegacyVariables() {
+      if (currentTabIndex === -1) {
+        specData = null;
+        uploadedVideoFile = null;
+        viewMode = 'timeline';
+      } else {
+        specData = getCurrentSpecData();
+        uploadedVideoFile = tabs[currentTabIndex].uploadedVideoFile;
+        viewMode = getCurrentViewMode();
+      }
+    }
+
+    // Maintain legacy references for backward compatibility
+    let specData = initialSpec; // Start with Tab 1's spec
     let uploadedVideoFile = null;
     let videoDuration = 0;
     let isDraggingPlayhead = false;
@@ -1890,6 +2143,251 @@
 
     const video = document.getElementById('videoPlayer');
 
+    // ===== TAB MANAGEMENT FUNCTIONS =====
+
+    // Create a new tab
+    function createNewTab() {
+      if (tabs.length >= MAX_TABS) {
+        alert(`Maximum of ${MAX_TABS} tabs allowed`);
+        return;
+      }
+
+      // Add a new tab
+      const newTab = {
+        id: nextTabId++,
+        name: `Tab ${tabs.length + 1}`,
+        specData: createDefaultSpec(),
+        videoSrc: null,
+        uploadedVideoFile: null,
+        viewMode: 'timeline'
+      };
+      groupAnimations(newTab.specData);
+      tabs.push(newTab);
+      switchTab(tabs.length - 1); // Switch to new tab
+
+      renderTabs();
+    }
+
+    // Delete a tab
+    function deleteTab(index) {
+      // Can't delete the last tab
+      if (tabs.length === 1) {
+        alert("Cannot delete the last tab");
+        return;
+      }
+
+      const tab = tabs[index];
+      if (!confirm(`Delete "${tab.name}"?`)) {
+        return;
+      }
+
+      tabs.splice(index, 1);
+
+      // If deleting current tab, switch to first tab
+      if (index === currentTabIndex) {
+        currentTabIndex = 0;
+        switchTab(0);
+      } else if (index < currentTabIndex) {
+        // Adjust current index if tab before it was deleted
+        currentTabIndex--;
+      }
+
+      renderTabs();
+    }
+
+    // Switch to a different tab
+    function switchTab(index) {
+      if (index === currentTabIndex) return;
+
+      // Close info box
+      const detailPanel = document.getElementById('detailPanel');
+      if (detailPanel) {
+        detailPanel.innerHTML = '';
+      }
+      selectedAnimation = null;
+      document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
+
+      // Switch tab
+      currentTabIndex = index;
+
+      // Sync legacy variables
+      syncLegacyVariables();
+
+      // Reset playhead to 0
+      currentTime = 0;
+
+      // Reset zoom level
+      viewDuration = null;
+
+      // Update video element
+      const videoElement = document.getElementById('videoPlayer');
+      const videoSrc = getCurrentVideoSrc();
+      if (videoElement && videoSrc) {
+        videoElement.src = videoSrc;
+      } else if (videoElement) {
+        videoElement.src = '';
+      }
+
+      // Update video container visibility
+      const emptyState = document.getElementById('videoEmptyState');
+      const videoContainer = document.getElementById('videoContainer');
+      if (videoSrc) {
+        if (emptyState) emptyState.classList.add('hidden');
+        if (videoContainer) videoContainer.classList.add('has-video');
+      } else {
+        if (emptyState) emptyState.classList.remove('hidden');
+        if (videoContainer) videoContainer.classList.remove('has-video');
+      }
+
+      // Update page title
+      const pageTitle = document.getElementById('pageTitle');
+      const currentSpec = getCurrentSpecData();
+      if (pageTitle && currentSpec && currentSpec.compName) {
+        pageTitle.textContent = currentSpec.compName;
+        document.title = currentSpec.compName;
+      } else if (pageTitle) {
+        pageTitle.textContent = 'Motion Inspector';
+        document.title = 'Motion Inspector';
+      }
+
+      // Re-render appropriate view
+      refreshActiveView();
+      renderTabs();
+
+      // Update playhead position
+      if (typeof updatePlayhead === 'function') {
+        updatePlayhead();
+      }
+    }
+
+    // Rename a tab
+    function renameTab(index, newName) {
+      if (newName.trim() === '') return;
+      tabs[index].name = newName.trim();
+      renderTabs();
+    }
+
+    // Render the tabs bar
+    function renderTabs() {
+      const tabsBar = document.querySelector('.tabs-bar');
+      if (!tabsBar) return;
+
+      let tabsHtml = '';
+      let addBtnHtml = '';
+
+      // Render existing tabs
+      tabs.forEach((tab, index) => {
+        const isActive = index === currentTabIndex;
+        const showCloseBtn = tabs.length > 1; // Only show close button when multiple tabs exist
+        tabsHtml += `
+          <div class="tab ${isActive ? 'active' : ''}" data-tab-index="${index}">
+            <span class="tab-name">${tab.name}</span>
+            ${showCloseBtn ? `<button class="tab-close" onclick="event.stopPropagation(); deleteTab(${index})">×</button>` : ''}
+          </div>
+        `;
+      });
+
+      // Add + button if under limit
+      if (tabs.length < MAX_TABS) {
+        const initialClass = tabs.length === 0 ? 'initial' : '';
+        addBtnHtml = `<button class="tab-add-btn ${initialClass}" onclick="createNewTab()">+</button>`;
+      }
+
+      // Always wrap tabs in tabs-bar-left for consistent layout
+      tabsBar.innerHTML = `<div class="tabs-bar-left">${tabsHtml}</div>${addBtnHtml}`;
+
+      // Add click listeners for tab switching
+      document.querySelectorAll('.tab').forEach(tab => {
+        const tabIndex = parseInt(tab.dataset.tabIndex);
+        tab.addEventListener('click', (e) => {
+          // Don't switch if clicking close button or editing name
+          if (e.target.classList.contains('tab-close') ||
+              e.target.classList.contains('tab-name') && e.target.getAttribute('contenteditable') === 'true') {
+            return;
+          }
+          switchTab(tabIndex);
+        });
+      });
+
+      // Add double-click listeners for renaming
+      document.querySelectorAll('.tab-name').forEach(tabName => {
+        const tab = tabName.closest('.tab');
+        const tabIndex = parseInt(tab.dataset.tabIndex);
+
+        tabName.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          const originalName = tabs[tabIndex].name;
+
+          // Make editable
+          tabName.setAttribute('contenteditable', 'true');
+          tabName.focus();
+
+          // Select all text
+          const range = document.createRange();
+          range.selectNodeContents(tabName);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+
+          // Handle blur (when user clicks away)
+          const handleBlur = () => {
+            tabName.setAttribute('contenteditable', 'false');
+            const newName = tabName.textContent.trim();
+            if (newName === '' || newName === originalName) {
+              tabName.textContent = originalName;
+            } else {
+              renameTab(tabIndex, newName);
+            }
+            tabName.removeEventListener('blur', handleBlur);
+          };
+
+          // Handle Enter key (finish editing)
+          const handleKeydown = (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              tabName.blur();
+              tabName.removeEventListener('keydown', handleKeydown);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              tabName.textContent = originalName;
+              tabName.blur();
+              tabName.removeEventListener('keydown', handleKeydown);
+            }
+          };
+
+          tabName.addEventListener('blur', handleBlur);
+          tabName.addEventListener('keydown', handleKeydown);
+        });
+      });
+    }
+
+    // Helper to refresh the active view (timeline or table)
+    function refreshActiveView() {
+      // Don't render if no tabs exist
+      if (currentTabIndex === -1) return;
+
+      const currentMode = getCurrentViewMode();
+      if (currentMode === 'table') {
+        switchToTableView();
+      } else {
+        if (typeof renderTimeline === 'function') {
+          renderTimeline();
+        }
+      }
+
+      // Update view mode buttons
+      document.querySelectorAll('.view-mode-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      const selectedBtn = document.querySelector(`.view-mode-btn[data-view="${currentMode}"]`);
+      if (selectedBtn) {
+        selectedBtn.classList.add('selected');
+      }
+    }
+
+    // ===== END TAB MANAGEMENT FUNCTIONS =====
+
     // Update the UI mode (edit vs read)
     function updateMode() {
       const mode = isEditMode ? 'edit' : 'read';
@@ -1914,6 +2412,10 @@
 
     // Initialize mode on page load
     updateMode();
+
+    // Initialize tabs
+    syncLegacyVariables();
+    renderTabs();
 
     // Setup page title editing
     const pageTitle = document.getElementById('pageTitle');
@@ -1952,6 +2454,10 @@
         }
 
         // Update specData if we have it loaded
+        const currentSpec = getCurrentSpecData();
+        if (currentSpec) {
+          currentSpec.compName = newTitle;
+        }
         if (specData) {
           specData.compName = newTitle;
         }
@@ -2001,7 +2507,7 @@
       const aspectRatio = video.videoWidth / video.videoHeight;
       if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return;
 
-      const viewportMaxHeight = Math.max(0, window.innerHeight - 140);
+      const viewportMaxHeight = Math.max(0, window.innerHeight - 128);
       const containerHeight = videoContainer.clientHeight;
       const heightLimits = [];
 
@@ -2051,8 +2557,30 @@
       videoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-          uploadedVideoFile = file; // Store for export
           const url = URL.createObjectURL(file);
+
+          // If no tabs exist, create the first tab
+          if (tabs.length === 0) {
+            const newTab = {
+              id: nextTabId++,
+              name: `Tab 1`,
+              specData: createDefaultSpec(),
+              videoSrc: url,
+              uploadedVideoFile: file,
+              viewMode: 'timeline'
+            };
+            groupAnimations(newTab.specData);
+            tabs.push(newTab);
+            currentTabIndex = 0;
+            syncLegacyVariables();
+            renderTabs();
+          } else {
+            // Store for current tab
+            setCurrentUploadedVideoFile(file);
+            uploadedVideoFile = file; // Also update legacy variable
+            setCurrentVideoSrc(url);
+          }
+
           video.src = url;
 
           // Hide empty state and show video container when video is loaded
@@ -2069,13 +2597,13 @@
             videoDuration = video.duration * 1000; // Convert to ms
             // Ensure video starts at exactly 0
             video.currentTime = 0;
-            if (specData) {
+            if (getCurrentSpecData()) {
               renderTimeline();
           }
           // Check alignment after video loads
           setTimeout(() => {
             updateVideoAlignment();
-            if (viewMode === 'table') {
+            if (getCurrentViewMode() === 'table') {
               updateTableEasingWidth();
             }
           }, 100);
@@ -2314,18 +2842,39 @@
         const text = await navigator.clipboard.readText();
         console.log('Clipboard text:', text);
         const data = JSON.parse(text);
-        specData = data;
-        groupAnimations(specData); // Group matching X/Y Position and Width/Height
+
+        // If no tabs exist, create the first tab
+        if (tabs.length === 0) {
+          const newTab = {
+            id: nextTabId++,
+            name: `Tab 1`,
+            specData: data,
+            videoSrc: null,
+            uploadedVideoFile: null,
+            viewMode: 'timeline'
+          };
+          groupAnimations(newTab.specData);
+          tabs.push(newTab);
+          currentTabIndex = 0;
+          syncLegacyVariables();
+        } else {
+          // Update current tab's spec
+          setCurrentSpecData(data);
+          specData = data; // Also update legacy variable
+          groupAnimations(getCurrentSpecData()); // Group matching X/Y Position and Width/Height
+        }
+
         viewDuration = null; // Reset zoom level for new spec
 
         // Update page title
         const pageTitle = document.getElementById('pageTitle');
-        if (pageTitle && specData.compName) {
-          pageTitle.textContent = specData.compName;
-          document.title = specData.compName;
+        if (pageTitle && data.compName) {
+          pageTitle.textContent = data.compName;
+          document.title = data.compName;
         }
 
         renderTimeline();
+        renderTabs(); // Update tabs display
       } catch (err) {
         alert('Failed to paste or parse JSON.\n\nError: ' + err.message + '\n\nCheck the browser console for more details.');
         console.error('Parse error:', err);
@@ -2336,7 +2885,9 @@
     // Copy spec JSON to clipboard (for exported files)
     async function copySpecJson() {
       try {
-        const jsonString = JSON.stringify(specData, null, 2);
+        // Export only current tab's spec
+        const currentSpec = getCurrentSpecData();
+        const jsonString = JSON.stringify(currentSpec, null, 2);
         await navigator.clipboard.writeText(jsonString);
         alert('Spec JSON copied to clipboard!\n\nYou can paste this into MotionInspector.html to edit.');
       } catch (err) {
@@ -2347,8 +2898,9 @@
 
     // Switch between timeline and table view modes
     function switchToView(view) {
-      // Update view mode state
-      viewMode = view;
+      // Update current tab's view mode
+      setCurrentViewMode(view);
+      viewMode = view; // Also update legacy variable
 
       // Update button states
       document.querySelectorAll('.view-mode-btn').forEach(btn => {
@@ -3823,8 +4375,15 @@
 
       <div class="resize-handle edit-only" id="resizeHandle"></div>
 
-      <div class="timeline-section">
-        <div id="timelineContent"></div>
+      <div class="timeline-wrapper">
+        <div class="tabs-container">
+          <div class="tabs-bar">
+            <!-- Tabs will be rendered here by JavaScript -->
+          </div>
+        </div>
+        <div class="timeline-section">
+          <div id="timelineContent"></div>
+        </div>
       </div>
     </div>
   </div>
