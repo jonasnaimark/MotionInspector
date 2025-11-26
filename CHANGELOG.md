@@ -39,6 +39,13 @@ All notable changes to Motion Inspector will be documented in this file.
 - **Duration deletion persistence**: Clearing duration field now properly refreshes view
   - Removed premature return that prevented table re-render
   - Springs maintain dash display, other animations show updated values
+- **Bar jumping after text editing**: Fixed race condition where bars moved after editing text
+  - Root cause: Document-level drag handlers fired before edit mode flag was set
+  - Bar's mousedown set up document listeners before text determined it was a click
+  - Fix: Set `isBarTextBeingEdited` flag immediately in text's mouseup handler
+  - Clear flag on next mousedown instead of setTimeout to avoid timing issues
+  - Bar's onMouseUp now checks flag and aborts drag if text editing was initiated
+  - See TROUBLESHOOTING.md for detailed event timing analysis
 
 ### Technical Details
 - Contenteditable cells use `data-field` attributes for field identification

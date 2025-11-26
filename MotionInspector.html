@@ -2178,6 +2178,7 @@
     let videoSeekScheduled = false;
     let viewMode = 'timeline'; // 'timeline' or 'table'
     let savedVideoSectionWidth = null;
+    let isBarTextBeingEdited = false; // Flag to prevent bar dragging during text editing
 
     // Hide main-only buttons in exported files
     if (isExportMode) {
@@ -6484,7 +6485,7 @@ ${cleanedScript}
 
           // Don't start dragging if ANY bar text is currently being edited
           const editingText = document.querySelector('.timeline-bar-text.edit-only[data-editing="true"]');
-          if (editingText) return;
+          if (editingText || isBarTextBeingEdited) return;
 
           const animIndex = parseInt(bar.dataset.animIndex);
           const startX = e.clientX;
@@ -6528,7 +6529,7 @@ ${cleanedScript}
           function onMouseMove(moveEvent) {
             // Check if text is being edited - if so, abort dragging
             const textEl = bar.querySelector('.timeline-bar-text.edit-only');
-            if (textEl && textEl.dataset.editing === 'true') {
+            if ((textEl && textEl.dataset.editing === 'true') || isBarTextBeingEdited) {
               // Clean up and exit
               document.removeEventListener('mousemove', onMouseMove);
               document.removeEventListener('mouseup', onMouseUp);
@@ -6640,6 +6641,13 @@ ${cleanedScript}
           }
 
           function onMouseUp(upEvent) {
+            // If text editing was initiated, abort the drag operation
+            if (isBarTextBeingEdited) {
+              document.removeEventListener('mousemove', onMouseMove);
+              document.removeEventListener('mouseup', onMouseUp);
+              return;
+            }
+
             // If we dragged, prevent the click event from firing
             if (isDragging) {
               const preventClick = (e) => {
@@ -6814,6 +6822,10 @@ ${cleanedScript}
 
           // If not dragging and was a quick click, enter edit mode
           if (!isDragging && clickDuration < 300) {
+            // Set flag IMMEDIATELY before entering edit mode to prevent bar dragging
+            // This must happen before the document-level mouseup handler runs
+            isBarTextBeingEdited = true;
+
             e.stopPropagation();
             e.preventDefault();
             enterEditMode(textEl);
@@ -6825,6 +6837,7 @@ ${cleanedScript}
         // Enter edit mode function
         function enterEditMode(element) {
           isEditing = true;
+          isBarTextBeingEdited = true; // Set global flag
           const originalText = element.textContent.trim();
 
           // Mark as editing with data attribute so bar dragging can detect it
@@ -6883,6 +6896,13 @@ ${cleanedScript}
             // Clear editing flag
             element.dataset.editing = 'false';
             isEditing = false;
+
+            // Clear global flag on the next mousedown to ensure all mouseup events have been processed
+            const clearFlagOnNextMouseDown = () => {
+              isBarTextBeingEdited = false;
+              document.removeEventListener('mousedown', clearFlagOnNextMouseDown, true);
+            };
+            document.addEventListener('mousedown', clearFlagOnNextMouseDown, true);
 
             const animIndex = parseInt(element.dataset.animIndex);
 
