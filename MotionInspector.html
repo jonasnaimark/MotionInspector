@@ -266,6 +266,7 @@
 
     .video-section {
       background: #000;
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 10px;
       display: flex;
       flex-direction: column;
@@ -1474,6 +1475,24 @@
     .timeline-bar-text {
       position: relative;
       z-index: 5;
+    }
+
+    .timeline-bar-text[contenteditable="true"] {
+      cursor: grab;
+      outline: none;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .timeline-bar-text[contenteditable="true"]:focus {
+      cursor: text;
+      user-select: text;
+      outline: 1px solid #4a90e2;
+      outline-offset: 2px;
+      background: #252525;
+      border-radius: 3px;
+      padding: 2px 4px;
+      margin: -2px -4px;
     }
 
     /* Resize handles */
@@ -4177,6 +4196,12 @@
         });
       });
 
+      // Setup label editing
+      setupLabelEditing();
+    }
+
+    // Setup label editing for both timeline and table modes
+    function setupLabelEditing() {
       // Handle left column label editing with drag threshold
       const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"]');
 
@@ -4277,7 +4302,7 @@
               // Calculate global animation index
               let globalAnimIndex = 0;
               for (let i = 0; i < layerIndex; i++) {
-                globalAnimIndex += specData.layers[i].animations.length;
+                globalAnimIndex += getCurrentSpecData().layers[i].animations.length;
               }
               globalAnimIndex += animIndex;
               updateAnimationField(globalAnimIndex, 'property', newText);
@@ -5605,7 +5630,8 @@ ${cleanedScript}
                  style="${customStyle}"
                  data-anim-index="${animIndex}"
                  data-is-spring="${isSpring}">
-              <span class="timeline-bar-text">${description}</span>
+              <span class="timeline-bar-text edit-only" contenteditable="true" data-anim-index="${animIndex}">${description}</span>
+              <span class="timeline-bar-text export-only">${description}</span>
               <div class="timeline-bar-resize-handle left" data-handle="left"></div>
               ${!isSpring ? '<div class="timeline-bar-resize-handle right" data-handle="right"></div>' : ''}
             </div>
@@ -5668,6 +5694,9 @@ ${cleanedScript}
       // Setup bar dragging (for moving timeline position or reordering)
       setupBarDragging();
 
+      // Setup bar text editing
+      setupBarTextEditing();
+
       updatePlayhead();
 
       // Detect text overflow and add fade class
@@ -5681,6 +5710,9 @@ ${cleanedScript}
 
       // Setup param action button hover handlers
       setupParamActionButtonHoverHandlers();
+
+      // Setup label editing
+      setupLabelEditing();
     }
 
     // Detect which bars have overflowing text and add fade class
@@ -6419,6 +6451,10 @@ ${cleanedScript}
           // Don't interfere with resize handles
           if (e.target.classList.contains('timeline-bar-resize-handle')) return;
 
+          // Don't interfere with text that's currently being edited (focused)
+          const textEl = bar.querySelector('.timeline-bar-text.edit-only');
+          if (textEl && document.activeElement === textEl) return;
+
           const animIndex = parseInt(bar.dataset.animIndex);
           const startX = e.clientX;
           const startY = e.clientY;
@@ -6459,6 +6495,15 @@ ${cleanedScript}
           }
 
           function onMouseMove(moveEvent) {
+            // Check if text is being edited - if so, abort dragging
+            const textEl = bar.querySelector('.timeline-bar-text.edit-only');
+            if (textEl && textEl.dataset.editing === 'true') {
+              // Clean up and exit
+              document.removeEventListener('mousemove', onMouseMove);
+              document.removeEventListener('mouseup', onMouseUp);
+              return;
+            }
+
             const deltaX = moveEvent.clientX - startX;
             const deltaY = moveEvent.clientY - startY;
 
@@ -6674,6 +6719,166 @@ ${cleanedScript}
           document.addEventListener('mousemove', onMouseMove);
           document.addEventListener('mouseup', onMouseUp);
         });
+      });
+    }
+
+    // Setup bar text editing
+    function setupBarTextEditing() {
+      const textElements = document.querySelectorAll('.timeline-bar-text.edit-only[contenteditable="true"]');
+
+      textElements.forEach(textEl => {
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+        let isDragging = false;
+        let mouseDownTime = 0;
+        let isEditing = false;
+
+        textEl.addEventListener('mousedown', (e) => {
+          // If already editing, stop propagation to prevent bar dragging
+          if (isEditing) {
+            e.stopPropagation();
+            return;
+          }
+
+          // Prevent default text selection behavior
+          e.preventDefault();
+
+          // Track mouse position for drag detection
+          mouseDownX = e.clientX;
+          mouseDownY = e.clientY;
+          mouseDownTime = Date.now();
+          isDragging = false;
+
+          // Don't stop propagation - let the bar handle it for potential dragging
+        });
+
+        textEl.addEventListener('mousemove', (e) => {
+          // If editing, block all mouse events
+          if (isEditing) {
+            e.stopPropagation();
+            return;
+          }
+
+          if (mouseDownTime === 0) return;
+
+          const deltaX = Math.abs(e.clientX - mouseDownX);
+          const deltaY = Math.abs(e.clientY - mouseDownY);
+          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+          // If moved more than 5px, consider it a drag
+          if (distance > 5) {
+            isDragging = true;
+          }
+        });
+
+        textEl.addEventListener('mouseup', (e) => {
+          // If editing, block all mouse events
+          if (isEditing) {
+            e.stopPropagation();
+            return;
+          }
+
+          const clickDuration = Date.now() - mouseDownTime;
+          mouseDownTime = 0;
+
+          // If not dragging and was a quick click, enter edit mode
+          if (!isDragging && clickDuration < 300) {
+            e.stopPropagation();
+            e.preventDefault();
+            enterEditMode(textEl);
+          }
+
+          isDragging = false;
+        });
+
+        // Enter edit mode function
+        function enterEditMode(element) {
+          isEditing = true;
+          const originalText = element.textContent.trim();
+
+          // Mark as editing with data attribute so bar dragging can detect it
+          element.dataset.editing = 'true';
+
+          // Focus the element
+          element.focus();
+
+          // Select all text
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+
+          // Block mouse events while editing
+          const blockMouseEvents = (e) => {
+            e.stopPropagation();
+          };
+          element.addEventListener('mousedown', blockMouseEvents, true);
+          element.addEventListener('mousemove', blockMouseEvents, true);
+          element.addEventListener('mouseup', blockMouseEvents, true);
+
+          // Handle Enter and Escape keys
+          const handleKeyDown = (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              element.blur();
+            } else if (e.key === 'Escape') {
+              element.textContent = originalText;
+              element.blur();
+            }
+          };
+
+          // Prevent multi-line paste
+          const handlePaste = (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            // Replace any line breaks with spaces
+            const singleLineText = text.replace(/[\r\n]+/g, ' ');
+            document.execCommand('insertText', false, singleLineText);
+          };
+
+          // Save changes on blur
+          const handleBlur = () => {
+            const newText = element.textContent.trim();
+
+            // Remove event listeners
+            element.removeEventListener('keydown', handleKeyDown);
+            element.removeEventListener('paste', handlePaste);
+            element.removeEventListener('blur', handleBlur);
+            element.removeEventListener('mousedown', blockMouseEvents, true);
+            element.removeEventListener('mousemove', blockMouseEvents, true);
+            element.removeEventListener('mouseup', blockMouseEvents, true);
+
+            // Clear editing flag
+            element.dataset.editing = 'false';
+            isEditing = false;
+
+            const animIndex = parseInt(element.dataset.animIndex);
+
+            if (newText === '') {
+              // Don't allow empty text, restore original
+              let currentIndex = 0;
+              for (const layer of getCurrentSpecData().layers) {
+                for (const anim of layer.animations) {
+                  if (currentIndex === animIndex) {
+                    element.textContent = anim.description || anim.property;
+                    return;
+                  }
+                  currentIndex++;
+                }
+              }
+              return;
+            }
+
+            // Update the animation's customDescription using the helper function
+            // This will refresh all views and update the info box
+            updateAnimationField(animIndex, 'customDescription', newText);
+          };
+
+          element.addEventListener('keydown', handleKeyDown);
+          element.addEventListener('paste', handlePaste);
+          element.addEventListener('blur', handleBlur);
+        }
       });
     }
 
