@@ -919,6 +919,12 @@
       z-index: 100; /* Appear above other tabs while dragging */
     }
 
+    /* In read/export mode, tabs aren't draggable */
+    body[data-mode="read"] .tab,
+    body[data-mode="read"] .tab-name {
+      cursor: pointer;
+    }
+
     .tab.drag-over-left {
       border-left: 3px solid #4a9eff;
       padding-left: 9px; /* Adjust for border width */
@@ -2963,6 +2969,9 @@
         tab.addEventListener('mousedown', (e) => {
           // Don't allow dragging if clicking close button
           if (e.target.classList.contains('tab-close')) return;
+
+          // Don't allow tab reordering in read/export mode
+          if (!isEditMode) return;
 
           // Don't allow dragging if editing tab name
           const tabName = tab.querySelector('.tab-name');
