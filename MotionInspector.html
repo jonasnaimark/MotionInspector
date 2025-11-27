@@ -2253,6 +2253,51 @@
 
   <script>
     // ===== TABS DATA STRUCTURE =====
+
+    // Generate unique video ID
+    function generateVideoId() {
+      return 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Get current video's ID (returns null if no video)
+    function getCurrentVideoId() {
+      const tab = getCurrentTab();
+      if (!tab || !tab.videos || tab.videos.length === 0) return null;
+      const video = tab.videos[tab.currentVideoIndex || 0];
+      return video ? video.id : null;
+    }
+
+    // Get animation color for a specific video
+    function getAnimationColorForVideo(anim, videoId) {
+      if (!anim || !videoId) return null;
+      if (anim.customColorPerVideo && anim.customColorPerVideo[videoId]) {
+        return anim.customColorPerVideo[videoId];
+      }
+      return null;
+    }
+
+    // Set animation color for a specific video
+    function setAnimationColorForVideo(anim, videoId, color) {
+      if (!anim || !videoId) return;
+      if (!anim.customColorPerVideo) {
+        anim.customColorPerVideo = {};
+      }
+      anim.customColorPerVideo[videoId] = color;
+    }
+
+    // Copy all animation colors from one video to another
+    function copyColorsToVideo(specData, fromVideoId, toVideoId) {
+      if (!specData || !specData.layers || !fromVideoId || !toVideoId) return;
+      specData.layers.forEach(layer => {
+        layer.animations.forEach(anim => {
+          const color = getAnimationColorForVideo(anim, fromVideoId);
+          if (color) {
+            setAnimationColorForVideo(anim, toVideoId, color);
+          }
+        });
+      });
+    }
+
     // Create default spec template
     function createDefaultSpec() {
       return {
@@ -2341,7 +2386,7 @@
       const tab = tabs[currentTabIndex];
       if (!tab.videos || tab.videos.length === 0) {
         // Create first video entry
-        tab.videos = [{ src: src, file: null, description: '' }];
+        tab.videos = [{ id: generateVideoId(), src: src, file: null, description: '' }];
         tab.currentVideoIndex = 0;
       } else {
         tab.videos[tab.currentVideoIndex].src = src;
@@ -2353,7 +2398,7 @@
       const tab = tabs[currentTabIndex];
       if (!tab.videos || tab.videos.length === 0) {
         // Create first video entry
-        tab.videos = [{ src: null, file: file, description: '' }];
+        tab.videos = [{ id: generateVideoId(), src: null, file: file, description: '' }];
         tab.currentVideoIndex = 0;
       } else {
         tab.videos[tab.currentVideoIndex].file = file;
@@ -2431,6 +2476,9 @@
       updateVideoNavigation();
       updateVideoOverlayButtons();
       syncLegacyVariables();
+
+      // Re-render timeline/table to show per-video colors
+      refreshActiveView();
     }
 
     // Update navigation arrow states
@@ -2549,7 +2597,13 @@
 
         // Add new video to array
         if (!tab.videos) tab.videos = [];
-        tab.videos.push({ src: url, file: file, description: '' });
+        const currentVideoId = getCurrentVideoId();
+        const newVideoId = generateVideoId();
+        tab.videos.push({ id: newVideoId, src: url, file: file, description: '' });
+        // Copy colors from current video to new video
+        if (currentVideoId) {
+          copyColorsToVideo(getCurrentSpecData(), currentVideoId, newVideoId);
+        }
         tab.currentVideoIndex = tab.videos.length - 1;
 
         // Update video player
@@ -3367,7 +3421,7 @@
               id: nextTabId++,
               name: `Tab 1`,
               specData: createDefaultSpec(),
-              videos: [{ src: url, file: file, description: '' }],
+              videos: [{ id: generateVideoId(), src: url, file: file, description: '' }],
               currentVideoIndex: 0
             };
             groupAnimations(newTab.specData);
@@ -5572,6 +5626,7 @@ ${cleanedScript}
                 console.log(`[EXPORT] Added ${videoFileName} for tab ${tab.id}`);
 
                 const exportVideo = {
+                  id: video.id || generateVideoId(),
                   src: `./${videoFileName}`
                 };
                 // Only include description if it's not empty
@@ -6504,16 +6559,18 @@ ${cleanedScript}
 
           const colorClass = getPropertyColorClass(anim.property);
 
-          // Build inline style for custom colors
+          // Build inline style for custom colors (per-video)
+          const currentVideoId = getCurrentVideoId();
+          const animCustomColor = getAnimationColorForVideo(anim, currentVideoId);
           let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
-          if (anim.customColor) {
+          if (animCustomColor) {
             if (anim.easing.type === 'spring') {
               // Spring gradient with custom color
-              const rgb = anim.customColor.match(/\w\w/g).map(x => parseInt(x, 16));
-              customStyle += ` background: linear-gradient(90deg, ${anim.customColor} 0%, ${anim.customColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
+              const rgb = animCustomColor.match(/\w\w/g).map(x => parseInt(x, 16));
+              customStyle += ` background: linear-gradient(90deg, ${animCustomColor} 0%, ${animCustomColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
             } else {
               // Solid custom color
-              customStyle += ` background: ${anim.customColor};`;
+              customStyle += ` background: ${animCustomColor};`;
             }
           }
 
@@ -8048,7 +8105,8 @@ ${cleanedScript}
       }
 
       if (targetAnim) {
-        targetAnim.customColor = color;
+        const videoId = getCurrentVideoId();
+        setAnimationColorForVideo(targetAnim, videoId, color);
         renderTimeline();
 
         // Re-show the info box with updated color
@@ -8104,7 +8162,9 @@ ${cleanedScript}
       // Get the color for this animation type (use custom color if set)
       const colorClass = getPropertyColorClass(anim.property);
       const defaultBarColor = getPropertyColor(colorClass);
-      const barColor = anim.customColor || defaultBarColor;
+      const videoId = getCurrentVideoId();
+      const customColor = getAnimationColorForVideo(anim, videoId);
+      const barColor = customColor || defaultBarColor;
       const brightColor = brightenColor(barColor);
 
       // Define available colors for picker (sorted cool to warm)
