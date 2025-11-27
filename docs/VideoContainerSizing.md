@@ -204,12 +204,50 @@ videoSectionWidthRatio = videoWidth / containerWidth;
 
 ---
 
+### Fix 4: Table/Timeline Toggle Loses User's Intended Ratio
+
+**Problem**: When user sets 50/50 split, resizes browser thin, switches to table view, then back to timeline view, the layout doesn't restore to 50/50—it stays at minimum width.
+
+**Cause**: The original code saved the current pixel width when entering table view:
+```javascript
+savedVideoSectionWidth = videoSection.offsetWidth;
+```
+When browser is thin, the video section is constrained to minimum width (e.g., 280px). This pixel value was saved, and when restoring on a wide browser, 280px is tiny.
+
+A first attempt to save the ratio based on current pixels also failed:
+```javascript
+savedVideoSectionWidth = videoSection.offsetWidth / containerWidth;
+```
+This still captured the constrained minimum, not the user's intended 50/50.
+
+**Fix**: Save `videoSectionWidthRatio` directly (the user's intended ratio), not the current pixel-based calculation:
+```javascript
+// When entering table view:
+if (videoSectionWidthRatio !== null) {
+  savedVideoSectionWidth = videoSectionWidthRatio; // User's intent
+} else {
+  savedVideoSectionWidth = null; // No manual resize, restore to minimum
+}
+
+// When returning to timeline view:
+if (savedVideoSectionWidth !== null) {
+  restoredWidth = containerWidth * savedVideoSectionWidth;
+  restoredWidth = Math.max(minWidth, restoredWidth);
+} else {
+  restoredWidth = minWidth;
+}
+```
+
+**Lesson**: When browser constraints (like minimum width) affect the actual displayed size, save the user's *intended* ratio (`videoSectionWidthRatio`) rather than calculating from current pixels. The intended ratio persists even when the display is constrained.
+
+---
+
 ## Key Variables for Resize Logic
 
 | Variable | Purpose |
 |----------|---------|
-| `videoSectionWidthRatio` | Stores ratio (0-1) of video width to container width. Used by resize handler to maintain proportions. |
-| `savedVideoSectionWidth` | Pixel width saved when entering table view, restored when returning to timeline. |
+| `videoSectionWidthRatio` | Stores user's intended ratio (0-1) of video width to container width. Set when user drags resize handle. Persists even when display is constrained to minimum. |
+| `savedVideoSectionWidth` | Ratio (0-1) saved when entering table view, restored when returning to timeline. Now stores the ratio, not pixel width. `null` means restore to minimum. |
 | `viewMode` | Current view ('timeline' or 'table'). Resize handler behaves differently per mode. |
 | `isEditMode` | Edit mode uses 3-column grid (with handle), read mode uses 2-column + gap. |
 

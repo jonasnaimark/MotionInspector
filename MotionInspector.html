@@ -3772,18 +3772,22 @@
     function switchToTableView() {
       console.log('[TABLE] Switching to table view');
       document.body.classList.add('table-view-active');
-      const videoSection = document.querySelector('.video-section');
       const mainContent = document.querySelector('.main-content');
       const timelineContent = document.getElementById('timelineContent');
 
       console.log('[TABLE] timelineContent:', timelineContent);
 
-      // Save current video section width
-      savedVideoSectionWidth = videoSection.offsetWidth;
-      console.log('[TABLE] Saved video section width:', savedVideoSectionWidth);
+      // Save the user's intended ratio (videoSectionWidthRatio) if they manually resized
+      // This preserves their intent even if browser is currently thin and video is at minimum
+      if (videoSectionWidthRatio !== null) {
+        savedVideoSectionWidth = videoSectionWidthRatio;
+        console.log('[TABLE] Saved video section ratio:', savedVideoSectionWidth);
+      } else {
+        savedVideoSectionWidth = null; // No user resize, will restore to minimum
+        console.log('[TABLE] No user ratio set, will restore to minimum');
+      }
 
       // Set video section to minimum width
-      // Check if in edit mode (has resize handle) or read mode (no resize handle)
       const minWidth = getVideoSectionMinWidth();
       if (isEditMode) {
         mainContent.style.gridTemplateColumns = `${minWidth}px 20px 1fr`;
@@ -3813,19 +3817,31 @@
       const timelineContent = document.getElementById('timelineContent');
 
       // Restore video section width
-      if (savedVideoSectionWidth) {
-        // Check if in edit mode (has resize handle) or read mode (no resize handle)
-        if (isEditMode) {
-          mainContent.style.gridTemplateColumns = `${savedVideoSectionWidth}px 20px 1fr`;
-        } else {
-          mainContent.style.gridTemplateColumns = `${savedVideoSectionWidth}px 1fr`;
-        }
-        // Update the ratio so resize handler continues to work
-        const containerWidth = mainContent.offsetWidth;
-        if (containerWidth > 0) {
-          videoSectionWidthRatio = savedVideoSectionWidth / containerWidth;
-        }
-        console.log('[TABLE] Restored video section width:', savedVideoSectionWidth, 'ratio:', videoSectionWidthRatio);
+      const containerWidth = mainContent.offsetWidth;
+      const minWidth = getVideoSectionMinWidth();
+      let restoredWidth;
+
+      if (savedVideoSectionWidth !== null) {
+        // savedVideoSectionWidth is a ratio (0-1), calculate pixel width
+        restoredWidth = containerWidth * savedVideoSectionWidth;
+        // Ensure it respects minimum width
+        restoredWidth = Math.max(minWidth, restoredWidth);
+        console.log('[TABLE] Restored video section width:', restoredWidth, 'from ratio:', savedVideoSectionWidth);
+      } else {
+        // Was at minimum before, restore to minimum
+        restoredWidth = minWidth;
+        console.log('[TABLE] Restored video section to minimum:', restoredWidth);
+      }
+
+      // Check if in edit mode (has resize handle) or read mode (no resize handle)
+      if (isEditMode) {
+        mainContent.style.gridTemplateColumns = `${restoredWidth}px 20px 1fr`;
+      } else {
+        mainContent.style.gridTemplateColumns = `${restoredWidth}px 1fr`;
+      }
+      // Update the ratio so resize handler continues to work
+      if (containerWidth > 0) {
+        videoSectionWidthRatio = restoredWidth / containerWidth;
       }
 
       // Clear table content
