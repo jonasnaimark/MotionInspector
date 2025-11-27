@@ -278,6 +278,7 @@
       min-width: 448px;
       padding: 48px;
       box-sizing: border-box;
+      position: relative;
     }
 
     .video-section:not(:has(video[src])) {
@@ -296,6 +297,7 @@
       justify-content: center;
       width: 100%;
       height: 100%;
+      position: relative;
     }
 
     .video-container.has-video.width-constrained {
@@ -327,19 +329,20 @@
 
     .video-overlay {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      width: calc(100% - 20px);
-      height: calc(100% - 20px);
+      top: 11px;
+      left: 11px;
+      width: calc(100% - 22px);
+      height: calc(100% - 22px);
       background: rgba(0, 0, 0, 0);
-      border-radius: 37px;
+      border-radius: 36px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 16px;
       opacity: 0;
       transition: all 0.1s ease;
       pointer-events: none;
-      cursor: pointer;
       z-index: 2;
     }
 
@@ -349,29 +352,77 @@
       pointer-events: auto;
     }
 
-    .video-replace-btn {
+    .video-overlay-btn {
       padding: 8px 16px;
       border-radius: 8px;
-      background: #333;
+      background: #222;
       color: #e0e0e0;
-      border: 1px solid #555;
+      border: 1px solid #444;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      pointer-events: none;
-      line-height: 1.5;
-      min-height: 38px;
+      min-width: 176px;
+      min-height: 40px;
       box-sizing: border-box;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     }
 
-    .video-overlay:hover .video-replace-btn {
-      background: #444;
-      border-color: #666;
+    .video-overlay-btn:hover {
+      background: #333;
+      border-color: #555;
+    }
+
+    .video-nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(40, 40, 40, 0.9);
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 18px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 3px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+
+    .video-nav-arrow.visible {
+      display: flex;
+    }
+
+    .video-nav-arrow:hover:not(.disabled) {
+      background: rgba(60, 60, 60, 0.95);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .video-nav-arrow.visible.disabled {
+      display: flex;
+      opacity: 0.3;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .video-nav-arrow.left {
+      left: 23px;
+      transform: translateY(-50%);
+      padding-right: 2px;
+    }
+
+    .video-nav-arrow.right {
+      right: 23px;
+      transform: translateY(-50%);
+      padding-left: 2px;
     }
 
     .video-empty-state {
@@ -381,7 +432,7 @@
       justify-content: center;
       width: 300px;
       height: 600px;
-      border: 2px dashed rgba(255, 255, 255, 0.1);
+      border: 2px dashed rgba(255, 255, 255, 0.18);
       border-radius: 10px;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -401,21 +452,26 @@
     .video-empty-state-btn {
       padding: 8px 16px;
       border-radius: 8px;
-      background: #333;
+      background: #222;
       color: #e0e0e0;
-      border: 1px solid #555;
+      border: 1px solid #444;
       font-size: 13px;
       font-weight: 500;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       transition: all 0.2s ease;
       position: relative;
       z-index: 1;
+      min-height: 40px;
+      box-sizing: border-box;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     }
 
     .video-empty-state:hover .video-empty-state-btn {
-      background: #444;
+      background: #333;
+      border-color: #555;
     }
 
     .video-description {
@@ -2135,6 +2191,8 @@
 
     <div class="main-content">
       <div class="video-section">
+        <div class="video-nav-arrow left" id="videoNavLeft" onclick="switchVideo(-1)">‹</div>
+        <div class="video-nav-arrow right" id="videoNavRight" onclick="switchVideo(1)">›</div>
         <div id="videoEmptyState" class="video-empty-state edit-only" onclick="document.getElementById('videoInput').click()">
           <div class="video-empty-state-btn">
             <span>📁</span>
@@ -2144,10 +2202,18 @@
         <div id="videoContainer" class="video-container">
           <div class="video-wrapper">
             <video id="videoPlayer"></video>
-            <div class="video-overlay edit-only" onclick="document.getElementById('videoInput').click()">
-              <div class="video-replace-btn">
+            <div class="video-overlay edit-only" id="videoOverlay">
+              <div class="video-overlay-btn" id="replaceVideoBtn" onclick="document.getElementById('videoInput').click()">
                 <span>📁</span>
                 <span>Replace Video</span>
+              </div>
+              <div class="video-overlay-btn" id="addAnotherVideoBtn" onclick="addAnotherVideo()">
+                <span style="filter: brightness(10);">➕</span>
+                <span>Add Another Video</span>
+              </div>
+              <div class="video-overlay-btn" id="deleteVideoBtn" onclick="deleteVideo()" style="display: none;">
+                <span>🗑</span>
+                <span>Delete Video</span>
               </div>
             </div>
             <div class="video-description">
@@ -2217,14 +2283,14 @@
         id: 1,
         name: "Tab 1",
         specData: initialSpec,
-        videoSrc: null,
-        uploadedVideoFile: null,
-        description: ''
+        videos: [], // Array of { src, file, description }
+        currentVideoIndex: 0
       }
     ];
     let currentTabIndex = 0; // Start with Tab 1 active
     let nextTabId = 2;
     const MAX_TABS = 6;
+    const MAX_VIDEOS_PER_TAB = 2;
 
     // Helper functions to get current tab data
     function getCurrentTab() {
@@ -2239,7 +2305,17 @@
 
     function getCurrentVideoSrc() {
       if (currentTabIndex === -1) return null;
-      return tabs[currentTabIndex].videoSrc;
+      const tab = tabs[currentTabIndex];
+      if (!tab.videos || tab.videos.length === 0) return null;
+      const video = tab.videos[tab.currentVideoIndex];
+      return video ? video.src : null;
+    }
+
+    function getCurrentVideo() {
+      if (currentTabIndex === -1) return null;
+      const tab = tabs[currentTabIndex];
+      if (!tab.videos || tab.videos.length === 0) return null;
+      return tab.videos[tab.currentVideoIndex];
     }
 
     function setCurrentSpecData(data) {
@@ -2249,12 +2325,26 @@
 
     function setCurrentVideoSrc(src) {
       if (currentTabIndex === -1) return;
-      tabs[currentTabIndex].videoSrc = src;
+      const tab = tabs[currentTabIndex];
+      if (!tab.videos || tab.videos.length === 0) {
+        // Create first video entry
+        tab.videos = [{ src: src, file: null, description: '' }];
+        tab.currentVideoIndex = 0;
+      } else {
+        tab.videos[tab.currentVideoIndex].src = src;
+      }
     }
 
     function setCurrentUploadedVideoFile(file) {
       if (currentTabIndex === -1) return;
-      tabs[currentTabIndex].uploadedVideoFile = file;
+      const tab = tabs[currentTabIndex];
+      if (!tab.videos || tab.videos.length === 0) {
+        // Create first video entry
+        tab.videos = [{ src: null, file: file, description: '' }];
+        tab.currentVideoIndex = 0;
+      } else {
+        tab.videos[tab.currentVideoIndex].file = file;
+      }
     }
 
     // Sync legacy variables with current tab
@@ -2264,23 +2354,198 @@
         uploadedVideoFile = null;
       } else {
         specData = getCurrentSpecData();
-        uploadedVideoFile = tabs[currentTabIndex].uploadedVideoFile;
+        const currentVideo = getCurrentVideo();
+        uploadedVideoFile = currentVideo ? currentVideo.file : null;
       }
     }
 
-    // Save description to current tab
+    // Save description to current video
     function saveDescription(value) {
       if (currentTabIndex === -1) return;
-      tabs[currentTabIndex].description = value;
+      const tab = tabs[currentTabIndex];
+      if (!tab.videos || tab.videos.length === 0) return;
+      tab.videos[tab.currentVideoIndex].description = value;
     }
 
-    // Load description from current tab
+    // Load description from current video
     function loadDescription() {
       const textarea = document.getElementById('videoDescription');
       if (!textarea) return;
-      const currentTab = getCurrentTab();
-      textarea.value = currentTab ? (currentTab.description || '') : '';
+      const currentVideo = getCurrentVideo();
+      textarea.value = currentVideo ? (currentVideo.description || '') : '';
       // Don't auto-resize for single-line description field
+    }
+
+    // Switch between videos in current tab
+    function switchVideo(direction) {
+      if (currentTabIndex === -1) return;
+      const tab = tabs[currentTabIndex];
+      if (!tab.videos || tab.videos.length <= 1) return;
+
+      const newIndex = tab.currentVideoIndex + direction;
+      if (newIndex < 0 || newIndex >= tab.videos.length) return;
+
+      const videoElement = document.getElementById('videoPlayer');
+      const newVideo = tab.videos[newIndex];
+
+      if (videoElement && newVideo) {
+        // Capture current frame as poster to prevent black flash during load
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = videoElement.videoWidth;
+          canvas.height = videoElement.videoHeight;
+          canvas.getContext('2d').drawImage(videoElement, 0, 0);
+          videoElement.poster = canvas.toDataURL('image/jpeg');
+        } catch (e) { /* ignore */ }
+
+        // Load new video, clear poster once ready
+        tab.currentVideoIndex = newIndex;
+        videoElement.src = newVideo.src;
+        videoElement.currentTime = 0;
+        videoElement.oncanplay = () => { videoElement.poster = ''; };
+      }
+
+      loadDescription();
+      updateVideoNavigation();
+      updateVideoOverlayButtons();
+      syncLegacyVariables();
+    }
+
+    // Update navigation arrow states
+    function updateVideoNavigation() {
+      const leftArrow = document.getElementById('videoNavLeft');
+      const rightArrow = document.getElementById('videoNavRight');
+      if (!leftArrow || !rightArrow) return;
+
+      const tab = getCurrentTab();
+      if (!tab || !tab.videos || tab.videos.length <= 1) {
+        // Hide arrows if only one or no videos
+        leftArrow.classList.remove('visible');
+        rightArrow.classList.remove('visible');
+        return;
+      }
+
+      // Show arrows
+      leftArrow.classList.add('visible');
+      rightArrow.classList.add('visible');
+
+      // Update disabled states
+      if (tab.currentVideoIndex === 0) {
+        leftArrow.classList.add('disabled');
+      } else {
+        leftArrow.classList.remove('disabled');
+      }
+
+      if (tab.currentVideoIndex >= tab.videos.length - 1) {
+        rightArrow.classList.add('disabled');
+      } else {
+        rightArrow.classList.remove('disabled');
+      }
+    }
+
+    // Update overlay buttons based on video count
+    function updateVideoOverlayButtons() {
+      const addBtn = document.getElementById('addAnotherVideoBtn');
+      const deleteBtn = document.getElementById('deleteVideoBtn');
+      if (!addBtn || !deleteBtn) return;
+
+      const tab = getCurrentTab();
+      const videoCount = tab && tab.videos ? tab.videos.length : 0;
+
+      if (videoCount >= MAX_VIDEOS_PER_TAB) {
+        // At max videos - show delete, hide add
+        addBtn.style.display = 'none';
+        deleteBtn.style.display = 'flex';
+      } else {
+        // Can add more - show add, hide delete
+        addBtn.style.display = 'flex';
+        deleteBtn.style.display = 'none';
+      }
+    }
+
+    // Add another video to current tab
+    function addAnotherVideo() {
+      if (currentTabIndex === -1) return;
+      const tab = tabs[currentTabIndex];
+
+      if (tab.videos && tab.videos.length >= MAX_VIDEOS_PER_TAB) {
+        alert(`Maximum of ${MAX_VIDEOS_PER_TAB} videos per tab allowed`);
+        return;
+      }
+
+      // Create a hidden file input for the new video
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'video/*';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const url = URL.createObjectURL(file);
+
+        // Add new video to array
+        if (!tab.videos) tab.videos = [];
+        tab.videos.push({ src: url, file: file, description: '' });
+        tab.currentVideoIndex = tab.videos.length - 1;
+
+        // Update video player
+        const videoElement = document.getElementById('videoPlayer');
+        if (videoElement) {
+          videoElement.src = url;
+          videoElement.currentTime = 0;
+        }
+
+        // Update description field
+        loadDescription();
+
+        // Update navigation and buttons
+        updateVideoNavigation();
+        updateVideoOverlayButtons();
+
+        syncLegacyVariables();
+      };
+      input.click();
+    }
+
+    // Delete current video from tab
+    function deleteVideo() {
+      if (currentTabIndex === -1) return;
+      const tab = tabs[currentTabIndex];
+
+      if (!tab.videos || tab.videos.length <= 1) {
+        // Can't delete the only video - would need to use replace instead
+        return;
+      }
+
+      // Confirm deletion
+      if (!confirm('Are you sure you want to delete this video?')) {
+        return;
+      }
+
+      // Remove current video
+      tab.videos.splice(tab.currentVideoIndex, 1);
+
+      // Adjust index if needed
+      if (tab.currentVideoIndex >= tab.videos.length) {
+        tab.currentVideoIndex = tab.videos.length - 1;
+      }
+
+      // Update video player
+      const videoElement = document.getElementById('videoPlayer');
+      const video = tab.videos[tab.currentVideoIndex];
+      if (videoElement && video) {
+        videoElement.src = video.src || '';
+        videoElement.currentTime = 0;
+      }
+
+      // Update description field
+      loadDescription();
+
+      // Update navigation and buttons
+      updateVideoNavigation();
+      updateVideoOverlayButtons();
+
+      syncLegacyVariables();
     }
 
     // Auto-resize textarea to fit content (not used for description field)
@@ -2339,9 +2604,8 @@
         id: nextTabId++,
         name: `Tab ${tabs.length + 1}`,
         specData: newTabSpec,
-        videoSrc: null,
-        uploadedVideoFile: null,
-        description: ''
+        videos: [],
+        currentVideoIndex: 0
       };
       groupAnimations(newTab.specData);
       tabs.push(newTab);
@@ -2479,8 +2743,12 @@
         updatePlayhead();
       }
 
-      // Load description for current tab
+      // Load description for current video
       loadDescription();
+
+      // Update video navigation arrows and overlay buttons
+      updateVideoNavigation();
+      updateVideoOverlayButtons();
     }
 
     // Rename a tab
@@ -2870,7 +3138,7 @@
       // Use smaller bezel and rounding for square/landscape videos
       const bezelPadding = isSquareOrWider ? 10 : 16; // 5px or 8px padding on each side
       const videoBorderRadius = isSquareOrWider ? 8 : 37;
-      const bezelBorderRadius = isSquareOrWider ? 13 : 46;
+      const bezelBorderRadius = isSquareOrWider ? 12 : 45;
 
       // Adjust video section padding for landscape videos
       const videoSection = document.querySelector('.video-section');
@@ -2951,9 +3219,8 @@
               id: nextTabId++,
               name: `Tab 1`,
               specData: createDefaultSpec(),
-              videoSrc: url,
-              uploadedVideoFile: file,
-              description: ''
+              videos: [{ src: url, file: file, description: '' }],
+              currentVideoIndex: 0
             };
             groupAnimations(newTab.specData);
             tabs.push(newTab);
@@ -2961,11 +3228,15 @@
             syncLegacyVariables();
             renderTabs();
           } else {
-            // Store for current tab
+            // Store for current tab (replaces current video)
             setCurrentUploadedVideoFile(file);
             uploadedVideoFile = file; // Also update legacy variable
             setCurrentVideoSrc(url);
           }
+
+          // Update navigation arrows and overlay buttons
+          updateVideoNavigation();
+          updateVideoOverlayButtons();
 
           video.src = url;
 
@@ -3257,9 +3528,8 @@
             id: nextTabId++,
             name: `Tab 1`,
             specData: data,
-            videoSrc: null,
-            uploadedVideoFile: null,
-            description: ''
+            videos: [],
+            currentVideoIndex: 0
           };
           groupAnimations(newTab.specData);
           tabs.push(newTab);
@@ -4776,6 +5046,8 @@
 
     <div class="main-content">
       <div class="video-section">
+        <div class="video-nav-arrow left" id="videoNavLeft" onclick="switchVideo(-1)">‹</div>
+        <div class="video-nav-arrow right" id="videoNavRight" onclick="switchVideo(1)">›</div>
         <div id="videoEmptyState" class="video-empty-state edit-only" style="display: none;">
           <div class="video-empty-state-btn">
             <span>📁</span>
@@ -4785,10 +5057,14 @@
         <div id="videoContainer" class="video-container">
           <div class="video-wrapper">
             <video id="videoPlayer"></video>
-            <div class="video-overlay edit-only" onclick="document.getElementById('videoInput').click()">
-              <div class="video-replace-btn">
+            <div class="video-overlay edit-only">
+              <div class="video-overlay-btn" onclick="document.getElementById('videoInput').click()">
                 <span>📁</span>
                 <span>Replace Video</span>
+              </div>
+              <div class="video-overlay-btn" onclick="addAnotherVideo()">
+                <span style="filter: brightness(10);">➕</span>
+                <span>Add Another Video</span>
               </div>
             </div>
             <div class="video-description">
@@ -4846,8 +5122,11 @@ ${cleanedScript}
 
       // Load video for current tab
       const currentTab = tabs[currentTabIndex];
-      if (currentTab && currentTab.videoSrc) {
-        video.src = currentTab.videoSrc;
+      const currentVideo = currentTab && currentTab.videos && currentTab.videos.length > 0
+        ? currentTab.videos[currentTab.currentVideoIndex || 0]
+        : null;
+      if (currentVideo && currentVideo.src) {
+        video.src = currentVideo.src;
         const videoContainer = document.getElementById('videoContainer');
         if (videoContainer) {
           videoContainer.classList.add('has-video');
@@ -4860,12 +5139,17 @@ ${cleanedScript}
         });
       }
 
-      // Load description for current tab
-      if (currentTab && currentTab.description) {
+      // Load description for current video
+      if (currentVideo && currentVideo.description) {
         const descTextarea = document.getElementById('videoDescription');
         if (descTextarea) {
-          descTextarea.value = currentTab.description;
+          descTextarea.value = currentVideo.description;
         }
+      }
+
+      // Update video navigation for read mode (if multiple videos)
+      if (typeof updateVideoNavigation === 'function') {
+        updateVideoNavigation();
       }
 
       // Set specData from current tab (required for renderTimeline)
@@ -4955,7 +5239,7 @@ ${cleanedScript}
       }
 
       // Check if at least one tab has a video
-      const hasAnyVideo = tabs.some(tab => tab.uploadedVideoFile);
+      const hasAnyVideo = tabs.some(tab => tab.videos && tab.videos.some(v => v.file));
       if (!hasAnyVideo) {
         alert('Please upload a video first (Upload Video button)');
         return;
@@ -4972,29 +5256,40 @@ ${cleanedScript}
 
         // Prepare tabs for export and add videos to zip
         const exportTabs = tabs.map((tab, index) => {
-          let videoFileName = null;
+          // Export all videos for this tab
+          const exportVideos = [];
 
-          if (tab.uploadedVideoFile) {
-            // Get video file extension
-            const originalName = tab.uploadedVideoFile.name;
-            const videoExt = originalName.substring(originalName.lastIndexOf('.'));
-            videoFileName = `video_tab${tab.id}${videoExt}`;
+          if (tab.videos && tab.videos.length > 0) {
+            tab.videos.forEach((video, videoIndex) => {
+              if (video.file) {
+                // Get video file extension
+                const originalName = video.file.name;
+                const videoExt = originalName.substring(originalName.lastIndexOf('.'));
+                const videoFileName = `video_tab${tab.id}_${videoIndex + 1}${videoExt}`;
 
-            // Add video to zip
-            zip.file(videoFileName, tab.uploadedVideoFile);
-            console.log(`[EXPORT] Added ${videoFileName} for tab ${tab.id}`);
+                // Add video to zip
+                zip.file(videoFileName, video.file);
+                console.log(`[EXPORT] Added ${videoFileName} for tab ${tab.id}`);
+
+                const exportVideo = {
+                  src: `./${videoFileName}`
+                };
+                // Only include description if it's not empty
+                if (video.description && video.description.trim()) {
+                  exportVideo.description = video.description;
+                }
+                exportVideos.push(exportVideo);
+              }
+            });
           }
 
           const exportTab = {
             id: tab.id,
             name: tab.name,
             specData: tab.specData,
-            videoSrc: videoFileName ? `./${videoFileName}` : null
+            videos: exportVideos,
+            currentVideoIndex: tab.currentVideoIndex || 0
           };
-          // Only include description if it's not empty
-          if (tab.description && tab.description.trim()) {
-            exportTab.description = tab.description;
-          }
           return exportTab;
         });
 
@@ -5003,7 +5298,7 @@ ${cleanedScript}
         console.log('[EXPORT] Generated HTML length:', exportHtml.length);
 
         // Create download link with spec name
-        const specName = tabs[0].specData.compName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const specName = tabs[0].specData.compName;
 
         // Add HTML to zip
         zip.file(`${specName}.html`, exportHtml);
