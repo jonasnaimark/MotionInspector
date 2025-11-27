@@ -346,7 +346,9 @@
       z-index: 2;
     }
 
-    .video-wrapper:hover .video-overlay {
+    /* Only show overlay when hovering video or overlay itself, not description */
+    .video-wrapper:has(video:hover) .video-overlay,
+    .video-wrapper:has(.video-overlay:hover) .video-overlay {
       background: rgba(0, 0, 0, 0.8);
       opacity: 1;
       pointer-events: auto;
