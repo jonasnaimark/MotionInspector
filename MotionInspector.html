@@ -416,13 +416,13 @@
     .video-nav-arrow.left {
       left: 24px;
       transform: translate(-50%, -50%);
-      padding-right: 2px;
+      padding-right: 3px;
     }
 
     .video-nav-arrow.right {
       right: 24px;
       transform: translate(50%, -50%);
-      padding-left: 2px;
+      padding-left: 3px;
     }
 
     .video-empty-state {
@@ -430,10 +430,12 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 300px;
-      height: 600px;
+      aspect-ratio: 393 / 852;
+      height: calc(100vh - 240px);
+      max-height: 75%;
+      max-width: 80%;
       border: 2px dashed rgba(255, 255, 255, 0.18);
-      border-radius: 10px;
+      border-radius: 37px;
       cursor: pointer;
       transition: all 0.2s ease;
       position: relative;
@@ -5034,22 +5036,28 @@
     }
 
     // Get the base HTML template for export (without the export button and JSZip)
-    function getExportTemplate(videoFileName, tabsJson, videoSectionWidth = 400) {
-      console.log('[GET_EXPORT_TEMPLATE] videoSectionWidth:', videoSectionWidth);
+    function getExportTemplate(videoFileName, tabsJson, videoSectionRatio = 0.5) {
+      console.log('[GET_EXPORT_TEMPLATE] videoSectionRatio:', videoSectionRatio);
 
       // Get all the styles from this page
       const styleElement = document.querySelector('style');
       const styles = styleElement ? styleElement.textContent : '';
       console.log('[GET_EXPORT_TEMPLATE] Styles length:', styles.length);
 
-      // Build custom CSS for the exported file with the video section width
+      // Calculate fr values from ratio to preserve the user's chosen split
+      // Use 100 as base for precision (e.g., 50/50 = 50fr 50fr, 30/70 = 30fr 70fr)
+      const videoFr = Math.round(videoSectionRatio * 100);
+      const timelineFr = 100 - videoFr;
+
+      // Build custom CSS for the exported file with ratio-based sizing
+      // Uses minmax to respect minimum width while preserving the ratio
       const customCSS = `
-    /* Preserve exported video section width */
+    /* Preserve video section ratio for exported files */
     body[data-mode='read'] .main-content {
-      grid-template-columns: ${videoSectionWidth}px 1fr;
+      grid-template-columns: minmax(max(280px, min(55vh, 45vw)), ${videoFr}fr) ${timelineFr}fr;
     }
     body[data-mode='edit'] .main-content {
-      grid-template-columns: ${videoSectionWidth}px 20px 1fr;
+      grid-template-columns: minmax(max(280px, min(55vh, 45vw)), ${videoFr}fr) 20px ${timelineFr}fr;
     }`;
       console.log('[GET_EXPORT_TEMPLATE] customCSS:', customCSS);
 
@@ -5301,10 +5309,13 @@ ${cleanedScript}
       }
 
       try {
-        // Get current video section width
+        // Get current video section ratio (proportion of total width)
         const videoSection = document.querySelector('.video-section');
+        const mainContent = document.querySelector('.main-content');
         const videoSectionWidth = videoSection ? videoSection.offsetWidth : getVideoSectionMinWidth();
-        console.log('[EXPORT] Video section width:', videoSectionWidth);
+        const totalWidth = mainContent ? mainContent.offsetWidth : window.innerWidth;
+        const videoSectionRatio = videoSectionWidth / totalWidth;
+        console.log('[EXPORT] Video section width:', videoSectionWidth, 'ratio:', videoSectionRatio);
 
         // Create zip file
         const zip = new JSZip();
@@ -5343,13 +5354,13 @@ ${cleanedScript}
             name: tab.name,
             specData: tab.specData,
             videos: exportVideos,
-            currentVideoIndex: tab.currentVideoIndex || 0
+            currentVideoIndex: 0  // Always start with first video when opening exported file
           };
           return exportTab;
         });
 
         // Generate clean HTML template
-        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), videoSectionWidth);
+        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), videoSectionRatio);
         console.log('[EXPORT] Generated HTML length:', exportHtml.length);
 
         // Create download link with spec name

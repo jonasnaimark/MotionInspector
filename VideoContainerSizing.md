@@ -67,11 +67,27 @@ Decrease the `vw` value (e.g., `45vw` → `40vw`, and `0.45` → `0.40` in JS)
 ### Change the absolute minimum
 Update `280px` in CSS and `280` in JS
 
-## Pitfall Warning
+## Export Template (5th location)
 
+The export template in `getExportTemplate()` (line ~5039) generates custom CSS that preserves the user's chosen layout ratio while respecting the minimum width:
+
+```javascript
+grid-template-columns: minmax(max(280px, min(55vh, 45vw)), ${videoFr}fr) ${timelineFr}fr;
+```
+
+**If you change the minimum width formula**, also update the minmax in `getExportTemplate()`.
+
+The export captures the ratio (not pixel width) so it scales properly on different screen sizes.
+
+## Pitfall Warnings
+
+### 1. CSS vs JavaScript sync
 If you only update the JavaScript, the **initial page load** will still use the CSS values. The JS function is only called when:
 - Dragging the resize handle
 - Window resize events
 - Switching to table view
 
-Always update all 4 locations to keep them in sync.
+### 2. Export template
+If you only update the 4 main locations but forget the export template, exported files will have mismatched sizing.
+
+Always update all 5 locations to keep them in sync.
