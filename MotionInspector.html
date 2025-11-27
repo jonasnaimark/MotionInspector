@@ -385,7 +385,7 @@
       height: 32px;
       border-radius: 50%;
       background: rgba(40, 40, 40, 0.9);
-      border: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       color: rgba(255, 255, 255, 0.7);
       font-size: 18px;
       display: none;
@@ -393,7 +393,7 @@
       justify-content: center;
       padding-bottom: 3px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background 0.2s ease, color 0.2s ease;
       z-index: 10;
     }
 
@@ -408,20 +408,20 @@
 
     .video-nav-arrow.visible.disabled {
       display: flex;
-      opacity: 0.3;
+      color: rgba(255, 255, 255, 0.2);
       cursor: default;
       pointer-events: none;
     }
 
     .video-nav-arrow.left {
-      left: 23px;
-      transform: translateY(-50%);
+      left: 24px;
+      transform: translate(-50%, -50%);
       padding-right: 2px;
     }
 
     .video-nav-arrow.right {
-      right: 23px;
-      transform: translateY(-50%);
+      right: 24px;
+      transform: translate(50%, -50%);
       padding-left: 2px;
     }
 
@@ -2402,7 +2402,11 @@
         tab.currentVideoIndex = newIndex;
         videoElement.src = newVideo.src;
         videoElement.currentTime = 0;
-        videoElement.oncanplay = () => { videoElement.poster = ''; };
+        videoElement.oncanplay = () => {
+          videoElement.poster = '';
+          // Reposition arrows after video loads (aspect ratio may have changed)
+          setTimeout(positionVideoNavArrows, 10);
+        };
       }
 
       loadDescription();
@@ -2441,6 +2445,48 @@
       } else {
         rightArrow.classList.remove('disabled');
       }
+
+      // Position arrows centered in gaps
+      positionVideoNavArrows();
+    }
+
+    // Position arrows centered between bezel and container edge
+    function positionVideoNavArrows() {
+      const leftArrow = document.getElementById('videoNavLeft');
+      const rightArrow = document.getElementById('videoNavRight');
+      const videoSection = document.querySelector('.video-section');
+      const videoWrapper = document.querySelector('.video-wrapper');
+
+      if (!leftArrow || !rightArrow || !videoSection || !videoWrapper) return;
+
+      const sectionRect = videoSection.getBoundingClientRect();
+      const wrapperRect = videoWrapper.getBoundingClientRect();
+
+      // Calculate gap on each side
+      const leftGap = wrapperRect.left - sectionRect.left;
+      const rightGap = sectionRect.right - wrapperRect.right;
+
+      // Position arrows at center of each gap
+      leftArrow.style.left = (leftGap / 2) + 'px';
+      rightArrow.style.right = (rightGap / 2) + 'px';
+    }
+
+    // Watch for bezel size changes and reposition arrows automatically
+    const videoWrapperObserver = new ResizeObserver(() => {
+      positionVideoNavArrows();
+    });
+    const videoWrapper = document.querySelector('.video-wrapper');
+    if (videoWrapper) {
+      videoWrapperObserver.observe(videoWrapper);
+    }
+
+    // Also watch the video section for size changes
+    const videoSectionObserver = new ResizeObserver(() => {
+      positionVideoNavArrows();
+    });
+    const videoSection = document.querySelector('.video-section');
+    if (videoSection) {
+      videoSectionObserver.observe(videoSection);
     }
 
     // Update overlay buttons based on video count
@@ -3290,6 +3336,7 @@
       }
 
       updateVideoAlignment();
+      positionVideoNavArrows();
       if (viewMode === 'table') {
         requestAnimationFrame(updateTableEasingWidth);
       }
@@ -3335,6 +3382,7 @@
         requestAnimationFrame(() => {
           updatePlayhead();
           updateVideoAlignment();
+          positionVideoNavArrows();
           if (viewMode === 'table') {
             updateTableEasingWidth();
           }
@@ -3348,6 +3396,7 @@
           document.body.style.cursor = '';
           document.body.style.userSelect = '';
           updateVideoAlignment();
+          positionVideoNavArrows();
           if (viewMode === 'table') {
             updateTableEasingWidth();
           }
