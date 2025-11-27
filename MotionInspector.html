@@ -431,9 +431,9 @@
       align-items: center;
       justify-content: center;
       aspect-ratio: 393 / 852;
-      height: calc(100vh - 240px);
-      max-height: 75%;
-      max-width: 80%;
+      height: calc(100vh - 180px);
+      max-height: 85%;
+      max-width: 90%;
       border: 2px dashed rgba(255, 255, 255, 0.18);
       border-radius: 37px;
       cursor: pointer;
@@ -3324,12 +3324,21 @@
 
     // Update alignment on window resize
     window.addEventListener('resize', () => {
-      // Maintain column ratio if one has been set
-      if (videoSectionWidthRatio !== null) {
-        const mainContent = document.querySelector('.main-content');
+      const mainContent = document.querySelector('.main-content');
+      const minWidth = getVideoSectionMinWidth();
+
+      if (viewMode === 'table') {
+        // In table view, always keep video section at minWidth
+        if (isEditMode) {
+          mainContent.style.gridTemplateColumns = `${minWidth}px 20px 1fr`;
+        } else {
+          mainContent.style.gridTemplateColumns = `${minWidth}px 1fr`;
+        }
+        requestAnimationFrame(updateTableEasingWidth);
+      } else if (videoSectionWidthRatio !== null) {
+        // In timeline view, maintain column ratio if one has been set
         const containerWidth = mainContent.offsetWidth;
         const handleWidth = 20;
-        const minWidth = getVideoSectionMinWidth();
 
         // Calculate new width based on ratio
         let newWidth = containerWidth * videoSectionWidthRatio;
@@ -3339,14 +3348,15 @@
         newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
 
         // Apply new width
-        mainContent.style.gridTemplateColumns = `${newWidth}px 20px 1fr`;
+        if (isEditMode) {
+          mainContent.style.gridTemplateColumns = `${newWidth}px 20px 1fr`;
+        } else {
+          mainContent.style.gridTemplateColumns = `${newWidth}px 1fr`;
+        }
       }
 
       updateVideoAlignment();
       positionVideoNavArrows();
-      if (viewMode === 'table') {
-        requestAnimationFrame(updateTableEasingWidth);
-      }
     });
 
     // Resize handle functionality
@@ -3710,7 +3720,12 @@
         } else {
           mainContent.style.gridTemplateColumns = `${savedVideoSectionWidth}px 1fr`;
         }
-        console.log('[TABLE] Restored video section width:', savedVideoSectionWidth);
+        // Update the ratio so resize handler continues to work
+        const containerWidth = mainContent.offsetWidth;
+        if (containerWidth > 0) {
+          videoSectionWidthRatio = savedVideoSectionWidth / containerWidth;
+        }
+        console.log('[TABLE] Restored video section width:', savedVideoSectionWidth, 'ratio:', videoSectionWidthRatio);
       }
 
       // Clear table content
@@ -5055,6 +5070,7 @@
     /* Preserve video section ratio for exported files */
     body[data-mode='read'] .main-content {
       grid-template-columns: minmax(max(280px, min(55vh, 45vw)), ${videoFr}fr) ${timelineFr}fr;
+      gap: 20px;
     }
     body[data-mode='edit'] .main-content {
       grid-template-columns: minmax(max(280px, min(55vh, 45vw)), ${videoFr}fr) 20px ${timelineFr}fr;
@@ -5156,11 +5172,33 @@
 ${cleanedScript}
     // Auto-load embedded data
     const EMBEDDED_TABS = ${tabsJson};
+    const EXPORT_VIDEO_RATIO = ${videoSectionRatio};
 
     window.addEventListener('DOMContentLoaded', () => {
       console.log('[EXPORT] DOMContentLoaded fired');
       console.log('[EXPORT] isEditMode:', isEditMode);
       console.log('[EXPORT] body data-mode:', document.body.getAttribute('data-mode'));
+
+      // Initialize grid with pixel values based on exported ratio
+      // This prevents the fr-unit CSS from causing initial layout mismatch
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent && EXPORT_VIDEO_RATIO) {
+        const containerWidth = mainContent.offsetWidth;
+        const minWidth = getVideoSectionMinWidth();
+        const gapWidth = 20; // gap between columns in read mode
+        const availableWidth = containerWidth - gapWidth;
+        let videoWidth = availableWidth * EXPORT_VIDEO_RATIO;
+
+        // Clamp to minimum
+        videoWidth = Math.max(minWidth, videoWidth);
+
+        // Set the grid with pixel value (read mode uses 2 columns + gap)
+        mainContent.style.gridTemplateColumns = videoWidth + 'px 1fr';
+
+        // Initialize the ratio for resize handler
+        videoSectionWidthRatio = videoWidth / containerWidth;
+        console.log('[EXPORT] Initialized grid with videoWidth:', videoWidth, 'ratio:', videoSectionWidthRatio);
+      }
 
       // Load tabs array
       tabs = EMBEDDED_TABS;
@@ -5309,13 +5347,15 @@ ${cleanedScript}
       }
 
       try {
-        // Get current video section ratio (proportion of total width)
+        // Get current video section ratio (proportion of content width, excluding resize handle)
         const videoSection = document.querySelector('.video-section');
         const mainContent = document.querySelector('.main-content');
         const videoSectionWidth = videoSection ? videoSection.offsetWidth : getVideoSectionMinWidth();
         const totalWidth = mainContent ? mainContent.offsetWidth : window.innerWidth;
-        const videoSectionRatio = videoSectionWidth / totalWidth;
-        console.log('[EXPORT] Video section width:', videoSectionWidth, 'ratio:', videoSectionRatio);
+        const handleWidth = 20; // resize handle width in edit mode
+        const contentWidth = totalWidth - handleWidth; // width available for video + timeline
+        const videoSectionRatio = videoSectionWidth / contentWidth;
+        console.log('[EXPORT] Video section width:', videoSectionWidth, 'content width:', contentWidth, 'ratio:', videoSectionRatio);
 
         // Create zip file
         const zip = new JSZip();
