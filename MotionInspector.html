@@ -1474,6 +1474,8 @@
 
     .table-cell--easing .num {
       color: #6DB3E8;
+      display: inline;
+      white-space: pre;
     }
 
     .table-row--header .table-cell {
@@ -3942,7 +3944,11 @@
     // Helper function to wrap numbers in spans for styling
     function wrapNumbers(text) {
       // Match numbers (including decimals and negatives)
-      return text.replace(/(-?\d+\.?\d*)/g, '<span class="num">$1</span>');
+      let result = text.replace(/(-?\d+\.?\d*)/g, '<span class="num">$1</span>');
+      // Replace spaces after colons with &nbsp; to preserve them in HTML rendering
+      // This ensures "Stiffness: 80" keeps the space after the colon
+      result = result.replace(/:\s/g, ':&nbsp;');
+      return result;
     }
 
     // Helper function to format easing preset names (springs and curves) with hyperlinks
@@ -4378,6 +4384,36 @@
       setupTableAddButtonHoverZones();
       setupParamActionButtonHoverHandlers();
       setupTableEditableFields();
+      setupEasingCellCopyHandler();
+    }
+
+    // Setup copy handler for easing cells to ensure clean text (works in both edit and read mode)
+    function setupEasingCellCopyHandler() {
+      const easingCells = document.querySelectorAll('.table-cell--easing');
+      easingCells.forEach(cell => {
+        // Remove existing handler to avoid duplicates
+        cell.removeEventListener('copy', handleEasingCellCopy);
+        cell.addEventListener('copy', handleEasingCellCopy);
+      });
+    }
+
+    function handleEasingCellCopy(e) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+
+      // Get the selected text, clean it up
+      let text = selection.toString();
+      // Replace multiple whitespace (including non-breaking spaces U+00A0) with single space
+      text = text.replace(/[\s\u00A0]+/g, ' ');
+      // Clean up any space before commas (can occur from inline element boundaries)
+      text = text.replace(/ +,/g, ',');
+      // Trim
+      text = text.trim();
+
+      if (text) {
+        e.preventDefault();
+        e.clipboardData.setData('text/plain', text);
+      }
     }
 
     // Setup hover handlers for param action buttons to show only one at a time
@@ -4883,6 +4919,14 @@
         if (cell.dataset.field === 'easing') {
           cell.addEventListener('input', (e) => {
             showEasingAutocomplete(cell, cell.textContent.trim());
+          });
+
+          // Handle paste to ensure plain text with preserved spaces
+          cell.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            // Insert plain text at cursor position
+            document.execCommand('insertText', false, text);
           });
         }
 
@@ -8670,40 +8714,9 @@ ${cleanedScript}
       refreshActiveView();
     }
 
-    // Initialize with default spec
-    specData = {
-      compName: "Motion Inspector",
-      workArea: {
-        duration: 2000
-      },
-      layers: [
-        {
-          layerName: "Section 1",
-          animations: [
-            {
-              property: "Add parameter",
-              description: "Add description",
-              timing: {
-                delay: 0,
-                duration: 300
-              },
-              easing: {
-                type: "-",
-                cubicBezier: ""
-              },
-              values: {
-                formatted: {
-                  startValue: "-",
-                  endValue: "-"
-                }
-              }
-            }
-          ]
-        }
-      ]
-    };
-
     // Render the default timeline
+    // Note: specData is already initialized via syncLegacyVariables() which sets it to tabs[0].specData
+    // Don't reassign specData here as it would break the connection to tabs[0].specData
     renderTimeline();
   </script>
 </body>
