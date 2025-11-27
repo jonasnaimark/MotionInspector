@@ -2391,24 +2391,29 @@
       const newVideo = tab.videos[newIndex];
 
       if (videoElement && newVideo) {
-        // Capture current frame as poster to prevent black flash during load
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = videoElement.videoWidth;
-          canvas.height = videoElement.videoHeight;
-          canvas.getContext('2d').drawImage(videoElement, 0, 0);
-          videoElement.poster = canvas.toDataURL('image/jpeg');
-        } catch (e) { /* ignore */ }
-
-        // Load new video, clear poster once ready
         tab.currentVideoIndex = newIndex;
         videoElement.src = newVideo.src;
-        videoElement.currentTime = 0;
-        videoElement.oncanplay = () => {
-          videoElement.poster = '';
-          // Reposition arrows after video loads (aspect ratio may have changed)
-          setTimeout(positionVideoNavArrows, 10);
+
+        const onVideoReady = () => {
+          videoElement.currentTime = 0;
+          // Triple RAF to ensure layout is fully updated after potential padding change
+          requestAnimationFrame(() => {
+            updateVideoAlignment();
+            positionVideoNavArrows();
+            requestAnimationFrame(() => {
+              updateVideoAlignment();
+              requestAnimationFrame(() => {
+                updateVideoAlignment();
+              });
+            });
+          });
         };
+
+        if (videoElement.readyState >= 1) {
+          onVideoReady();
+        } else {
+          videoElement.addEventListener('loadedmetadata', onVideoReady, { once: true });
+        }
       }
 
       loadDescription();
@@ -2540,7 +2545,26 @@
         const videoElement = document.getElementById('videoPlayer');
         if (videoElement) {
           videoElement.src = url;
-          videoElement.currentTime = 0;
+
+          const onVideoLoaded = () => {
+            videoElement.currentTime = 0;
+            // Triple RAF to ensure layout is fully updated after potential padding change
+            requestAnimationFrame(() => {
+              updateVideoAlignment();
+              requestAnimationFrame(() => {
+                updateVideoAlignment();
+                requestAnimationFrame(() => {
+                  updateVideoAlignment();
+                });
+              });
+            });
+          };
+
+          if (videoElement.readyState >= 1) {
+            onVideoLoaded();
+          } else {
+            videoElement.addEventListener('loadedmetadata', onVideoLoaded, { once: true });
+          }
         }
 
         // Update description field
@@ -2580,10 +2604,29 @@
 
       // Update video player
       const videoElement = document.getElementById('videoPlayer');
-      const video = tab.videos[tab.currentVideoIndex];
-      if (videoElement && video) {
-        videoElement.src = video.src || '';
-        videoElement.currentTime = 0;
+      const newVideo = tab.videos[tab.currentVideoIndex];
+      if (videoElement && newVideo) {
+        videoElement.src = newVideo.src || '';
+
+        const onVideoReady = () => {
+          videoElement.currentTime = 0;
+          requestAnimationFrame(() => {
+            updateVideoAlignment();
+            positionVideoNavArrows();
+            requestAnimationFrame(() => {
+              updateVideoAlignment();
+              requestAnimationFrame(() => {
+                updateVideoAlignment();
+              });
+            });
+          });
+        };
+
+        if (videoElement.readyState >= 1) {
+          onVideoReady();
+        } else {
+          videoElement.addEventListener('loadedmetadata', onVideoReady, { once: true });
+        }
       }
 
       // Update description field
@@ -2740,10 +2783,23 @@
               if (videoWrapper) {
                 videoWrapper.style.visibility = 'visible';
               }
-              updateVideoAlignment();
-              videoElement.removeEventListener('loadedmetadata', showVideo);
+              // Triple RAF to ensure layout is fully updated after potential padding change
+              requestAnimationFrame(() => {
+                updateVideoAlignment();
+                requestAnimationFrame(() => {
+                  updateVideoAlignment();
+                  requestAnimationFrame(() => {
+                    updateVideoAlignment();
+                  });
+                });
+              });
             };
-            videoElement.addEventListener('loadedmetadata', showVideo, { once: true });
+            // Check if video metadata is already loaded (cached video)
+            if (videoElement.readyState >= 1) {
+              showVideo();
+            } else {
+              videoElement.addEventListener('loadedmetadata', showVideo, { once: true });
+            }
           } else {
             // No video, show wrapper immediately
             if (videoWrapper) {
@@ -3172,13 +3228,26 @@
       const videoContainer = document.getElementById('videoContainer');
       const videoWrapper = document.querySelector('.video-wrapper');
       const videoOverlay = document.querySelector('.video-overlay');
-      if (!videoContainer || !videoWrapper || !video || !video.videoWidth) return;
+
+      console.log('[VIDEO_ALIGN] Called, videoWidth:', video?.videoWidth, 'videoHeight:', video?.videoHeight);
+      console.log('[VIDEO_ALIGN] container:', videoContainer?.clientWidth, 'x', videoContainer?.clientHeight);
+
+      if (!videoContainer || !videoWrapper || !video || !video.videoWidth) {
+        console.log('[VIDEO_ALIGN] Early return - missing:', !videoContainer ? 'container' : '', !videoWrapper ? 'wrapper' : '', !video ? 'video' : '', !video?.videoWidth ? 'videoWidth' : '');
+        return;
+      }
 
       const containerWidth = videoContainer.clientWidth;
-      if (containerWidth <= 0) return;
+      if (containerWidth <= 0) {
+        console.log('[VIDEO_ALIGN] Early return - containerWidth <= 0');
+        return;
+      }
 
       const aspectRatio = video.videoWidth / video.videoHeight;
-      if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return;
+      if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+        console.log('[VIDEO_ALIGN] Early return - bad aspectRatio:', aspectRatio);
+        return;
+      }
 
       // Detect if video is square or landscape (wider)
       const isSquareOrWider = aspectRatio >= 1;
@@ -3204,20 +3273,28 @@
       if (viewportMaxHeight > 0) heightLimits.push(viewportMaxHeight);
       if (containerHeight > 0) heightLimits.push(containerHeight);
 
+      console.log('[VIDEO_ALIGN] viewportMaxHeight:', viewportMaxHeight, 'containerHeight:', containerHeight, 'heightLimits:', heightLimits);
+
       // Start with max available width for the video (excluding bezel)
       let videoWidth = containerWidth - bezelPadding;
       let videoHeight = videoWidth / aspectRatio;
+
+      console.log('[VIDEO_ALIGN] Initial calc - videoWidth:', videoWidth, 'videoHeight:', videoHeight);
 
       // Check if height constraint is exceeded
       if (heightLimits.length) {
         const maxAllowedHeight = Math.min(...heightLimits);
         if (videoHeight > maxAllowedHeight) {
+          console.log('[VIDEO_ALIGN] Height constrained! maxAllowedHeight:', maxAllowedHeight);
           videoHeight = maxAllowedHeight;
           videoWidth = videoHeight * aspectRatio;
         }
       }
 
+      console.log('[VIDEO_ALIGN] Final dimensions - videoWidth:', videoWidth, 'videoHeight:', videoHeight);
+
       if (!Number.isFinite(videoWidth) || !Number.isFinite(videoHeight) || videoWidth <= 0 || videoHeight <= 0) {
+        console.log('[VIDEO_ALIGN] Early return - invalid dimensions');
         return;
       }
 
@@ -3307,23 +3384,36 @@
             videoContainer.classList.add('has-video');
           }
 
-          video.addEventListener('loadedmetadata', () => {
+          const onMetadataLoaded = () => {
             videoDuration = video.duration * 1000; // Convert to ms
             // Ensure video starts at exactly 0
             video.currentTime = 0;
             if (getCurrentSpecData()) {
               renderTimeline();
-          }
-          // Check alignment after video loads
-          setTimeout(() => {
-            updateVideoAlignment();
-            if (viewMode === 'table') {
-              updateTableEasingWidth();
             }
-          }, 100);
-        });
-      }
-    });
+            // Triple RAF to ensure layout is fully updated after potential padding change
+            requestAnimationFrame(() => {
+              updateVideoAlignment();
+              if (viewMode === 'table') {
+                updateTableEasingWidth();
+              }
+              requestAnimationFrame(() => {
+                updateVideoAlignment();
+                requestAnimationFrame(() => {
+                  updateVideoAlignment();
+                });
+              });
+            });
+          };
+
+          // Check if video metadata is already loaded (cached video)
+          if (video.readyState >= 1) {
+            onMetadataLoaded();
+          } else {
+            video.addEventListener('loadedmetadata', onMetadataLoaded, { once: true });
+          }
+        }
+      });
     }
 
     // Calculate dynamic min-width based on viewport dimensions (matches CSS max(280px, min(55vh, 45vw)))
@@ -5242,11 +5332,34 @@ ${cleanedScript}
           videoContainer.classList.add('has-video');
         }
 
-        video.addEventListener('loadedmetadata', () => {
+        const onVideoReady = () => {
+          console.log('[EXPORT] onVideoReady called, readyState:', video.readyState, 'videoWidth:', video.videoWidth);
           videoDuration = video.duration * 1000;
           video.currentTime = 0;
-          setTimeout(updateVideoAlignment, 100);
-        });
+          // Triple RAF to ensure layout is fully updated after potential padding change
+          requestAnimationFrame(() => {
+            console.log('[EXPORT] RAF 1 updateVideoAlignment');
+            updateVideoAlignment();
+            requestAnimationFrame(() => {
+              console.log('[EXPORT] RAF 2 updateVideoAlignment');
+              updateVideoAlignment();
+              requestAnimationFrame(() => {
+                console.log('[EXPORT] RAF 3 updateVideoAlignment');
+                updateVideoAlignment();
+              });
+            });
+          });
+        };
+
+        // Check if video metadata is already loaded (cached video)
+        console.log('[EXPORT] video.readyState:', video.readyState);
+        if (video.readyState >= 1) {
+          console.log('[EXPORT] Video already loaded, calling onVideoReady immediately');
+          onVideoReady();
+        } else {
+          console.log('[EXPORT] Video not loaded yet, adding loadedmetadata listener');
+          video.addEventListener('loadedmetadata', onVideoReady, { once: true });
+        }
       }
 
       // Load description for current video
