@@ -5,6 +5,11 @@ All notable changes to Motion Inspector will be documented in this file.
 ## [Unreleased] - 2025-11-25
 
 ### Added
+- **Per-video color system**: Timeline bar colors are now stored independently for each video in a tab
+  - Colors update automatically when switching between videos
+  - New videos inherit colors from the current video as defaults
+  - Video IDs ensure colors persist through export/import
+  - See `docs/PER_VIDEO_COLORS.md` for implementation details
 - **Table mode with editable fields**: All animation properties can now be edited directly in table view
   - Click any cell to edit description, delay, duration, or easing values
   - Changes automatically sync to timeline view and persist in exports
