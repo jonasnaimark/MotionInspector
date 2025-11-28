@@ -182,7 +182,7 @@
       font-weight: 500;
       line-height: 16px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.2s, color 0.2s;
       position: relative;
       box-sizing: border-box;
     }
@@ -227,6 +227,7 @@
       background: #444;
       color: #ffffff;
       border-radius: 16px;
+      box-shadow: inset 0 0 0 1px #555;
       z-index: 1;
     }
 
@@ -703,11 +704,17 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transform: translate(1px, 1px) scale(0.95);
+      transform: translate(1px, 0px) scale(0.95);
+    }
+
+    .playhead-time #playPauseBtn .icon svg {
+      width: 10px;
+      height: 12px;
+      fill: white;
     }
 
     .playhead-time #playPauseBtn .icon.pause {
-      font-size: 14px;
+      font-size: 16px;
       line-height: 1;
       display: flex;
       align-items: center;
@@ -715,10 +722,15 @@
       transform: none;
     }
 
+    .playhead-time #playPauseBtn .icon.pause svg {
+      width: 10px;
+      height: 12px;
+    }
+
     .settings-btn {
       padding: 0;
       background: #333;
-      border: none;
+      border: 1px solid transparent;
       border-radius: 50%;
       width: 29px;
       height: 29px;
@@ -727,7 +739,7 @@
       font-size: 18px;
       line-height: 1;
       opacity: 0.8;
-      transition: all 0.2s;
+      transition: opacity 0.2s;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -738,9 +750,19 @@
       opacity: 0.8;
     }
 
+    .settings-btn:active,
+    .settings-btn:focus {
+      outline: none;
+    }
+
+    .settings-btn svg {
+      width: 14px;
+      height: 16px;
+    }
+
     .settings-btn.active {
       opacity: 1;
-      border: 1px solid #444;
+      border-color: #444;
     }
 
     .settings-popup {
@@ -4003,11 +4025,11 @@
       const playPauseBtn = document.getElementById('playPauseBtn');
       if (video.paused) {
         video.play();
-        if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon pause">⏸</span>';
+        if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon pause"><svg viewBox="0 0 10 12"><rect x="1" y="1" width="3" height="10" rx="1" fill="white"/><rect x="6" y="1" width="3" height="10" rx="1" fill="white"/></svg></span>';
         startPlayheadAnimation();
       } else {
         video.pause();
-        if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon">▶</span>';
+        if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon"><svg viewBox="0 0 10 12"><path d="M1 1.5 L8.5 6 L1 10.5 Z" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white"/></svg></span>';
         stopPlayheadAnimation();
       }
     }
@@ -4107,12 +4129,18 @@
 
     // Toggle loop video
     let isLoopEnabled = false;
+    let loopTimeoutId = null;
     function toggleLoopVideo() {
       isLoopEnabled = !isLoopEnabled;
-      video.loop = isLoopEnabled;
+      // Don't use native loop - we handle it manually with a pause delay
       const toggle = document.getElementById('loopToggle');
       if (toggle) {
         toggle.classList.toggle('active', isLoopEnabled);
+      }
+      // Clear any pending loop timeout if disabling
+      if (!isLoopEnabled && loopTimeoutId) {
+        clearTimeout(loopTimeoutId);
+        loopTimeoutId = null;
       }
     }
 
@@ -4192,20 +4220,35 @@
     // Video events
     video.addEventListener('play', () => {
       const playPauseBtn = document.getElementById('playPauseBtn');
-      if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon pause">⏸</span>';
+      if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon pause"><svg viewBox="0 0 10 12"><rect x="1" y="1" width="3" height="10" rx="1" fill="white"/><rect x="6" y="1" width="3" height="10" rx="1" fill="white"/></svg></span>';
       startPlayheadAnimation();
     });
 
     video.addEventListener('pause', () => {
       const playPauseBtn = document.getElementById('playPauseBtn');
-      if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon">▶</span>';
+      if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon"><svg viewBox="0 0 10 12"><path d="M1 1.5 L8.5 6 L1 10.5 Z" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white"/></svg></span>';
       stopPlayheadAnimation();
+      // Cancel any pending loop restart
+      if (loopTimeoutId) {
+        clearTimeout(loopTimeoutId);
+        loopTimeoutId = null;
+      }
     });
 
     video.addEventListener('ended', () => {
-      const playPauseBtn = document.getElementById('playPauseBtn');
-      if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon">▶</span>';
-      stopPlayheadAnimation();
+      // Check if looping is enabled
+      if (isLoopEnabled) {
+        // Pause 500ms at the end, then restart
+        loopTimeoutId = setTimeout(() => {
+          video.currentTime = 0;
+          video.play();
+          loopTimeoutId = null;
+        }, 500);
+      } else {
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon"><svg viewBox="0 0 10 12"><path d="M1 1.5 L8.5 6 L1 10.5 Z" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white"/></svg></span>';
+        stopPlayheadAnimation();
+      }
     });
 
     // Update time displays
@@ -6904,9 +6947,9 @@ ${cleanedScript}
       // Left column - labels
       html += `<div class="timeline-labels-column">`;
       html += `<div class="playhead-time" style="position: relative;">
-        <button id="playPauseBtn" onclick="togglePlayPause()"><span class="icon">▶</span></button>
+        <button id="playPauseBtn" onclick="togglePlayPause()"><span class="icon"><svg viewBox="0 0 10 12"><path d="M1 1.5 L8.5 6 L1 10.5 Z" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white"/></svg></span></button>
         <span style="position: relative; display: inline-flex;">
-          <button class="settings-btn" id="settingsBtn" onclick="toggleSettingsPopup(event)">⛭</button>
+          <button class="settings-btn" id="settingsBtn" onclick="toggleSettingsPopup(event)"><svg viewBox="0 0 14 16" fill="currentColor"><path d="M14 8.77v-1.6l-1.94-.64-.45-1.09.88-1.84-1.13-1.13-1.81.91-1.09-.45-.69-1.92h-1.6l-.63 1.94-1.11.45-1.84-.88-1.13 1.13.91 1.81-.45 1.09L0 7.23v1.59l1.94.64.45 1.09-.88 1.84 1.13 1.13 1.81-.91 1.09.45.69 1.92h1.59l.63-1.94 1.11-.45 1.84.88 1.13-1.13-.92-1.81.47-1.09L14 8.75v.02zM7 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg></button>
           <div class="settings-popup" id="settingsPopup">
           <div class="settings-section">
             <div class="settings-label">Playback Speed</div>
@@ -8574,7 +8617,7 @@ ${cleanedScript}
         isDraggingPlayhead = true;
         video.pause();
         const playPauseBtn = document.getElementById('playPauseBtn');
-        if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon">▶</span>';
+        if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon"><svg viewBox="0 0 10 12"><path d="M1 1.5 L8.5 6 L1 10.5 Z" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white"/></svg></span>';
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
         onMouseMove(e);
