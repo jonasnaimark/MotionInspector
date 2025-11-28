@@ -22,7 +22,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1a1a1a;
+      background: #171717;
       color: #e0e0e0;
       padding: 20px 20px 6px 20px;
       overflow: auto;
@@ -37,11 +37,13 @@
     }
 
     .header-section {
-      padding: 4px 20px 0 20px;
-      display: flex;
+      padding: 6px 20px 0 20px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 28px;
+      margin-bottom: 32px;
+      position: relative;
+      z-index: 100; /* Ensure tooltips appear above video section */
     }
 
     h1 {
@@ -59,6 +61,11 @@
       padding: 2px 8px;
       margin: -2px -8px;
       border-radius: 4px;
+      min-width: 190px; /* fits "Motion Inspector" */
+      max-width: calc(100% - 20px); /* 20px gap before toggle */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     h1[contenteditable="true"]:hover {
@@ -77,6 +84,7 @@
       display: flex;
       gap: 12px;
       align-items: center;
+      justify-self: end;
     }
 
     .btn {
@@ -227,7 +235,7 @@
 
     .main-content {
       display: grid;
-      grid-template-columns: max(280px, min(55vh, 45vw)) 20px 1fr;
+      grid-template-columns: 1fr 20px max(560px, min(55vh, 45vw));
       gap: 0;
       grid-auto-rows: max-content;
       position: relative;
@@ -250,7 +258,7 @@
       content: '';
       position: absolute;
       top: 50%;
-      left: 50%;
+      left: calc(50% + 1px);
       transform: translate(-50%, -50%);
       width: 4px;
       height: 40px;
@@ -273,16 +281,16 @@
       align-items: center;
       justify-content: center;
       gap: 0;
-      height: calc(100vh - 110px);
-      max-height: calc(100vh - 110px);
-      min-width: max(280px, min(55vh, 45vw));
+      height: calc(100vh - 118px);
+      max-height: calc(100vh - 118px);
+      min-width: 560px; /* Fixed minimum - JS controls actual width via grid */
       padding: 48px;
       box-sizing: border-box;
       position: relative;
     }
 
     .video-section:not(:has(video[src])) {
-      min-height: calc(100vh - 110px);
+      min-height: calc(100vh - 118px);
     }
 
     .video-container {
@@ -411,7 +419,9 @@
 
     .video-nav-arrow.visible.disabled {
       display: flex;
-      color: rgba(255, 255, 255, 0.2);
+      background: rgba(30, 30, 30, 0.9);
+      border-color: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.15);
       cursor: default;
       pointer-events: none;
     }
@@ -569,19 +579,36 @@
     .timeline-wrapper {
       display: flex;
       flex-direction: column;
-      height: calc(100vh - 110px + 25px); /* Add tab height to total height */
+      height: calc(100vh - 118px); /* Same height as video section */
       position: relative;
-      margin-top: -25px; /* Pull up by tab height so tabs poke above baseline */
+      padding-top: 6px; /* Gap between backing container top and tabs */
+    }
+
+    /* Backing container behind timeline - same height as wrapper */
+    .timeline-wrapper::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0; /* Match wrapper height exactly */
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .timeline-section {
       background: #242424;
       border-radius: 8px;
-      padding: 16px;
+      padding: 8px;
       overflow: visible;
       border: 1px solid #383838;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       position: relative;
+      z-index: 1;
       display: flex;
       flex-direction: column;
       flex: 1;
@@ -589,7 +616,7 @@
     }
 
     .timeline-section:has(#timelineContent:empty) {
-      min-height: calc(100vh - 110px);
+      min-height: calc(100vh - 118px);
     }
 
     #timelineContent {
@@ -874,7 +901,7 @@
       background: transparent;
       align-items: flex-end;
       position: relative;
-      padding-left: 24px; /* Align tabs with timeline content */
+      padding-left: 20px; /* Align tabs with timeline content */
     }
 
     .tabs-bar-left {
@@ -895,10 +922,10 @@
       border-radius: 6px 6px 0 0;
       cursor: grab;
       transition: background 0.15s ease, box-shadow 0.15s ease;
-      min-width: 100px;
-      max-width: 200px;
+      min-width: 164px;
+      max-width: 264px;
       z-index: 1;
-      height: 26px;
+      height: 30px;
       box-sizing: border-box;
       box-shadow: inset 0 -4px 6px -3px rgba(0, 0, 0, 0.25);
     }
@@ -1004,7 +1031,7 @@
       justify-content: center;
       z-index: 1;
       margin-left: 0;
-      top: -1px;
+      top: -3px;
     }
 
     .tab-add-btn:hover {
@@ -2177,7 +2204,7 @@
 
     /* Adjust grid layout in read mode when resize handle is hidden */
     body[data-mode="read"] .main-content {
-      grid-template-columns: max(280px, min(55vh, 45vw)) 1fr;
+      grid-template-columns: 1fr max(560px, min(55vh, 45vw));
       gap: 20px;
     }
 
@@ -2187,12 +2214,12 @@
   <div class="container">
     <div class="header-section">
       <h1 id="pageTitle" contenteditable="false">Motion Inspector</h1>
+      <div class="view-mode-control">
+        <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
+        <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
+      </div>
       <div class="controls">
         <input type="file" id="videoInput" accept="video/*" class="edit-only main-only">
-        <div class="view-mode-control">
-          <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
-          <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
-        </div>
         <button class="btn btn-secondary edit-only main-only" onclick="pasteSpec()">
           <span class="btn-emoji">📋</span>&nbsp;&nbsp;Paste Spec
         </button>
@@ -2203,6 +2230,19 @@
     </div>
 
     <div class="main-content">
+      <div class="timeline-wrapper">
+        <div class="tabs-container">
+          <div class="tabs-bar">
+            <!-- Tabs will be rendered here by JavaScript -->
+          </div>
+        </div>
+        <div class="timeline-section">
+          <div id="timelineContent"></div>
+        </div>
+      </div>
+
+      <div class="resize-handle edit-only" id="resizeHandle"></div>
+
       <div class="video-section">
         <div class="video-nav-arrow left" id="videoNavLeft" onclick="switchVideo(-1)">‹</div>
         <div class="video-nav-arrow right" id="videoNavRight" onclick="switchVideo(1)">›</div>
@@ -2233,19 +2273,6 @@
               <textarea id="videoDescription" class="video-description-input" placeholder="Add optional description" rows="1" oninput="saveDescription(this.value)" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"></textarea>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="resize-handle edit-only" id="resizeHandle"></div>
-
-      <div class="timeline-wrapper">
-        <div class="tabs-container">
-          <div class="tabs-bar">
-            <!-- Tabs will be rendered here by JavaScript -->
-          </div>
-        </div>
-        <div class="timeline-section">
-          <div id="timelineContent"></div>
         </div>
       </div>
     </div>
@@ -3209,6 +3236,12 @@
     // Initialize mode on page load
     updateMode();
 
+    // Initialize video section to minimum width
+    // videoSectionWidthRatio stays null (default state)
+    requestAnimationFrame(() => {
+      setVideoSectionWidth(VIDEO_MIN_WIDTH);
+    });
+
     // Initialize tabs
     syncLegacyVariables();
     renderTabs();
@@ -3334,7 +3367,7 @@
         videoSection.style.padding = isSquareOrWider ? '24px' : '48px';
       }
 
-      const viewportMaxHeight = Math.max(0, window.innerHeight - 110);
+      const viewportMaxHeight = Math.max(0, window.innerHeight - 118);
       const containerHeight = videoContainer.clientHeight;
       const heightLimits = [];
 
@@ -3484,42 +3517,56 @@
       });
     }
 
-    // Calculate dynamic min-width based on viewport dimensions (matches CSS max(280px, min(55vh, 45vw)))
-    function getVideoSectionMinWidth() {
-      return Math.max(280, Math.min(window.innerHeight * 0.55, window.innerWidth * 0.45));
+    // Centralized function to set video section width
+    // All grid column changes go through here for consistency
+    const VIDEO_MIN_WIDTH = 560;
+    const BODY_PADDING = 40; // 20px left + 20px right
+
+    // videoSectionWidthRatio: null = default/minimum width, number = user-specified ratio
+    // When null, video stays at VIDEO_MIN_WIDTH regardless of window size
+    // When set, video maintains that ratio when window resizes
+
+    function setVideoSectionWidth(desiredWidth) {
+      const mainContent = document.querySelector('.main-content');
+      if (!mainContent) return null;
+
+      // Use viewport width to prevent overflow when container is already overflowing
+      const viewportAvailable = window.innerWidth - BODY_PADDING;
+      const containerWidth = Math.min(mainContent.offsetWidth, viewportAvailable);
+      if (containerWidth <= 0) return null;
+
+      const handleWidth = isEditMode ? 20 : 0;
+      const maxWidth = (containerWidth - handleWidth) / 2;
+      const clampedWidth = Math.max(VIDEO_MIN_WIDTH, Math.min(desiredWidth, maxWidth));
+
+      // Use setProperty with 'important' to ensure override of CSS rules
+      const gridValue = isEditMode
+        ? `1fr 20px ${clampedWidth}px`
+        : `1fr ${clampedWidth}px`;
+      mainContent.style.setProperty('grid-template-columns', gridValue, 'important');
+
+      // Don't update videoSectionWidthRatio here - callers decide when to update it
+      return clampedWidth;
+    }
+
+    // Helper to get current available width
+    function getAvailableWidth() {
+      return window.innerWidth - BODY_PADDING;
     }
 
     // Update alignment on window resize
     window.addEventListener('resize', () => {
-      const mainContent = document.querySelector('.main-content');
-      const minWidth = getVideoSectionMinWidth();
-
       if (viewMode === 'table') {
-        // In table view, always keep video section at minWidth
-        if (isEditMode) {
-          mainContent.style.gridTemplateColumns = `${minWidth}px 20px 1fr`;
-        } else {
-          mainContent.style.gridTemplateColumns = `${minWidth}px 1fr`;
-        }
+        // Table mode: always stay at minimum width
+        setVideoSectionWidth(VIDEO_MIN_WIDTH);
         requestAnimationFrame(updateTableEasingWidth);
       } else if (videoSectionWidthRatio !== null) {
-        // In timeline view, maintain column ratio if one has been set
-        const containerWidth = mainContent.offsetWidth;
-        const handleWidth = 20;
-
-        // Calculate new width based on ratio
-        let newWidth = containerWidth * videoSectionWidthRatio;
-
-        // Clamp to min/max
-        const maxWidth = (containerWidth - handleWidth) / 2;
-        newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
-
-        // Apply new width
-        if (isEditMode) {
-          mainContent.style.gridTemplateColumns = `${newWidth}px 20px 1fr`;
-        } else {
-          mainContent.style.gridTemplateColumns = `${newWidth}px 1fr`;
-        }
+        // Timeline mode with user-specified ratio: maintain that ratio
+        const availableWidth = getAvailableWidth();
+        setVideoSectionWidth(availableWidth * videoSectionWidthRatio);
+      } else {
+        // Timeline mode at default: stay at minimum width
+        setVideoSectionWidth(VIDEO_MIN_WIDTH);
       }
 
       updateVideoAlignment();
@@ -3528,10 +3575,9 @@
 
     // Resize handle functionality
     const resizeHandle = document.getElementById('resizeHandle');
-    const mainContent = document.querySelector('.main-content');
     let isResizing = false;
     let startX = 0;
-    let startWidth = getVideoSectionMinWidth();
+    let startWidth = VIDEO_MIN_WIDTH;
 
     if (resizeHandle) {
       resizeHandle.addEventListener('mousedown', (e) => {
@@ -3547,22 +3593,15 @@
         if (!isResizing) return;
 
         const deltaX = e.clientX - startX;
-        const newWidth = startWidth + deltaX;
-        const containerWidth = mainContent.offsetWidth;
-        const minWidth = getVideoSectionMinWidth();
-        const handleWidth = 20;
-        const maxWidth = (containerWidth - handleWidth) / 2;
+        const newWidth = startWidth - deltaX; // Inverted: dragging right shrinks video (now on right)
+        const actualWidth = setVideoSectionWidth(newWidth);
 
-        // Clamp width between min and max
-        const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+        // User is manually resizing - save their ratio
+        const availableWidth = getAvailableWidth();
+        if (actualWidth && availableWidth > 0) {
+          videoSectionWidthRatio = actualWidth / availableWidth;
+        }
 
-        // Save the ratio for maintaining proportions on window resize
-        videoSectionWidthRatio = clampedWidth / containerWidth;
-
-        // Update grid column
-        mainContent.style.gridTemplateColumns = `${clampedWidth}px 20px 1fr`;
-
-        // Update playhead position during resize
         requestAnimationFrame(() => {
           updatePlayhead();
           updateVideoAlignment();
@@ -3837,83 +3876,43 @@
 
     // Switch to table view
     function switchToTableView() {
-      console.log('[TABLE] Switching to table view');
       document.body.classList.add('table-view-active');
-      const mainContent = document.querySelector('.main-content');
       const timelineContent = document.getElementById('timelineContent');
 
-      console.log('[TABLE] timelineContent:', timelineContent);
+      // Save current ratio for when we switch back to timeline
+      savedVideoSectionWidth = videoSectionWidthRatio;
 
-      // Save the user's intended ratio (videoSectionWidthRatio) if they manually resized
-      // This preserves their intent even if browser is currently thin and video is at minimum
-      if (videoSectionWidthRatio !== null) {
-        savedVideoSectionWidth = videoSectionWidthRatio;
-        console.log('[TABLE] Saved video section ratio:', savedVideoSectionWidth);
-      } else {
-        savedVideoSectionWidth = null; // No user resize, will restore to minimum
-        console.log('[TABLE] No user ratio set, will restore to minimum');
-      }
+      // Set video to minimum width for table view
+      setVideoSectionWidth(VIDEO_MIN_WIDTH);
 
-      // Set video section to minimum width
-      const minWidth = getVideoSectionMinWidth();
-      if (isEditMode) {
-        mainContent.style.gridTemplateColumns = `${minWidth}px 20px 1fr`;
-      } else {
-        mainContent.style.gridTemplateColumns = `${minWidth}px 1fr`;
-      }
-
-      // Clear timeline content (will be replaced with table)
+      // Clear timeline content and render table
       timelineContent.innerHTML = '';
-      console.log('[TABLE] Cleared timeline content');
-
-      // Render table
       renderTableView();
       requestAnimationFrame(() => {
         updateVideoAlignment();
         updateTableEasingWidth();
         syncTableRowHeights();
       });
-      console.log('[TABLE] Table rendered');
     }
 
     // Switch back to timeline view
     function switchToTimelineView() {
-      console.log('[TABLE] Switching back to timeline view');
       document.body.classList.remove('table-view-active');
-      const mainContent = document.querySelector('.main-content');
       const timelineContent = document.getElementById('timelineContent');
 
-      // Restore video section width
-      const containerWidth = mainContent.offsetWidth;
-      const minWidth = getVideoSectionMinWidth();
-      let restoredWidth;
+      // Restore user's ratio (could be null if they never manually resized)
+      videoSectionWidthRatio = savedVideoSectionWidth;
 
-      if (savedVideoSectionWidth !== null) {
-        // savedVideoSectionWidth is a ratio (0-1), calculate pixel width
-        restoredWidth = containerWidth * savedVideoSectionWidth;
-        // Ensure it respects minimum width
-        restoredWidth = Math.max(minWidth, restoredWidth);
-        console.log('[TABLE] Restored video section width:', restoredWidth, 'from ratio:', savedVideoSectionWidth);
+      // Apply the restored ratio (or minimum if null)
+      if (videoSectionWidthRatio !== null) {
+        const availableWidth = getAvailableWidth();
+        setVideoSectionWidth(availableWidth * videoSectionWidthRatio);
       } else {
-        // Was at minimum before, restore to minimum
-        restoredWidth = minWidth;
-        console.log('[TABLE] Restored video section to minimum:', restoredWidth);
-      }
-
-      // Check if in edit mode (has resize handle) or read mode (no resize handle)
-      if (isEditMode) {
-        mainContent.style.gridTemplateColumns = `${restoredWidth}px 20px 1fr`;
-      } else {
-        mainContent.style.gridTemplateColumns = `${restoredWidth}px 1fr`;
-      }
-      // Update the ratio so resize handler continues to work
-      if (containerWidth > 0) {
-        videoSectionWidthRatio = restoredWidth / containerWidth;
+        setVideoSectionWidth(VIDEO_MIN_WIDTH);
       }
 
       // Clear table content
       timelineContent.innerHTML = '';
-      console.log('[TABLE] Cleared table content');
 
       // Re-render timeline
       const contentColumn = document.querySelector('.timeline-content-column');
@@ -4969,10 +4968,10 @@
           }
         });
 
-        // Update autocomplete filter on input for easing fields
+        // Hide autocomplete when typing in easing fields
         if (cell.dataset.field === 'easing') {
           cell.addEventListener('input', (e) => {
-            showEasingAutocomplete(cell, cell.textContent.trim());
+            hideEasingAutocomplete();
           });
 
           // Handle paste to ensure plain text with preserved spaces
@@ -4988,6 +4987,7 @@
         cell.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
+            hideEasingAutocomplete();
             cell.blur();
           } else if (e.key === 'Escape') {
             // Restore original value
@@ -5276,31 +5276,30 @@
     }
 
     // Get the base HTML template for export (without the export button and JSZip)
-    function getExportTemplate(videoFileName, tabsJson, videoSectionRatio = 0.5) {
-      console.log('[GET_EXPORT_TEMPLATE] videoSectionRatio:', videoSectionRatio);
-
+    // videoSectionRatio: null = default/minimum, number = user-specified ratio
+    function getExportTemplate(videoFileName, tabsJson, videoSectionRatio = null) {
       // Get all the styles from this page
       const styleElement = document.querySelector('style');
       const styles = styleElement ? styleElement.textContent : '';
-      console.log('[GET_EXPORT_TEMPLATE] Styles length:', styles.length);
 
-      // Calculate fr values from ratio to preserve the user's chosen split
-      // Use 100 as base for precision (e.g., 50/50 = 50fr 50fr, 30/70 = 30fr 70fr)
-      const videoFr = Math.round(videoSectionRatio * 100);
-      const timelineFr = 100 - videoFr;
-
-      // Build custom CSS for the exported file with ratio-based sizing
-      // Uses minmax to respect minimum width while preserving the ratio
-      const customCSS = `
+      // Build custom CSS for the exported file
+      // If ratio is null, use default layout (video at minimum width)
+      // If ratio is set, preserve the user's chosen split
+      let customCSS = '';
+      if (videoSectionRatio !== null) {
+        const videoFr = Math.round(videoSectionRatio * 100);
+        const timelineFr = 100 - videoFr;
+        customCSS = `
     /* Preserve video section ratio for exported files */
     body[data-mode='read'] .main-content {
-      grid-template-columns: minmax(max(280px, min(55vh, 45vw)), ${videoFr}fr) ${timelineFr}fr;
+      grid-template-columns: ${timelineFr}fr minmax(560px, ${videoFr}fr);
       gap: 20px;
     }
     body[data-mode='edit'] .main-content {
-      grid-template-columns: minmax(max(280px, min(55vh, 45vw)), ${videoFr}fr) 20px ${timelineFr}fr;
+      grid-template-columns: ${timelineFr}fr 20px minmax(560px, ${videoFr}fr);
     }`;
-      console.log('[GET_EXPORT_TEMPLATE] customCSS:', customCSS);
+      }
+      // If ratio is null, we don't add custom CSS - JS will handle it at minimum width
 
       // Get all the script content (we'll extract just the functions we need)
       const scriptElement = document.querySelector('script:not([src])');
@@ -5334,11 +5333,11 @@
   <div class="container">
     <div class="header-section">
       <h1 id="pageTitle" contenteditable="false">Motion Inspector</h1>
+      <div class="view-mode-control">
+        <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
+        <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
+      </div>
       <div class="controls">
-        <div class="view-mode-control">
-          <button class="view-mode-btn selected" data-view="timeline" onclick="switchToView('timeline')">Timeline</button>
-          <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
-        </div>
         <button class="btn btn-secondary btn-circular" onclick="copySpecJson()" data-tooltip="Copy Spec">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -5349,6 +5348,19 @@
     </div>
 
     <div class="main-content">
+      <div class="timeline-wrapper">
+        <div class="tabs-container" id="tabsContainer">
+          <div class="tabs-bar">
+            <!-- Tabs will be rendered here by JavaScript -->
+          </div>
+        </div>
+        <div class="timeline-section">
+          <div id="timelineContent"></div>
+        </div>
+      </div>
+
+      <div class="resize-handle edit-only" id="resizeHandle"></div>
+
       <div class="video-section">
         <div class="video-nav-arrow left" id="videoNavLeft" onclick="switchVideo(-1)">‹</div>
         <div class="video-nav-arrow right" id="videoNavRight" onclick="switchVideo(1)">›</div>
@@ -5377,19 +5389,6 @@
           </div>
         </div>
       </div>
-
-      <div class="resize-handle edit-only" id="resizeHandle"></div>
-
-      <div class="timeline-wrapper">
-        <div class="tabs-container" id="tabsContainer">
-          <div class="tabs-bar">
-            <!-- Tabs will be rendered here by JavaScript -->
-          </div>
-        </div>
-        <div class="timeline-section">
-          <div id="timelineContent"></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -5400,29 +5399,15 @@ ${cleanedScript}
     const EXPORT_VIDEO_RATIO = ${videoSectionRatio};
 
     window.addEventListener('DOMContentLoaded', () => {
-      console.log('[EXPORT] DOMContentLoaded fired');
-      console.log('[EXPORT] isEditMode:', isEditMode);
-      console.log('[EXPORT] body data-mode:', document.body.getAttribute('data-mode'));
-
-      // Initialize grid with pixel values based on exported ratio
-      // This prevents the fr-unit CSS from causing initial layout mismatch
-      const mainContent = document.querySelector('.main-content');
-      if (mainContent && EXPORT_VIDEO_RATIO) {
-        const containerWidth = mainContent.offsetWidth;
-        const minWidth = getVideoSectionMinWidth();
-        const gapWidth = 20; // gap between columns in read mode
-        const availableWidth = containerWidth - gapWidth;
-        let videoWidth = availableWidth * EXPORT_VIDEO_RATIO;
-
-        // Clamp to minimum
-        videoWidth = Math.max(minWidth, videoWidth);
-
-        // Set the grid with pixel value (read mode uses 2 columns + gap)
-        mainContent.style.gridTemplateColumns = videoWidth + 'px 1fr';
-
-        // Initialize the ratio for resize handler
-        videoSectionWidthRatio = videoWidth / containerWidth;
-        console.log('[EXPORT] Initialized grid with videoWidth:', videoWidth, 'ratio:', videoSectionWidthRatio);
+      // Initialize grid based on exported ratio
+      // EXPORT_VIDEO_RATIO is null if user never manually resized, or a number if they did
+      if (EXPORT_VIDEO_RATIO !== null) {
+        const availableWidth = getAvailableWidth();
+        setVideoSectionWidth(availableWidth * EXPORT_VIDEO_RATIO);
+        videoSectionWidthRatio = EXPORT_VIDEO_RATIO;
+      } else {
+        setVideoSectionWidth(VIDEO_MIN_WIDTH);
+        // videoSectionWidthRatio stays null
       }
 
       // Load tabs array
@@ -5516,56 +5501,30 @@ ${cleanedScript}
           tabsContainer.style.display = 'none';
         }
 
-        // Reduce top spacing by 16px and keep header content centered
+        // Adjust top spacing for single tab (no description)
         const headerSection = document.querySelector('.header-section');
         if (headerSection) {
-          headerSection.style.paddingTop = '0px'; // Reduced from 4px to move content up
-          headerSection.style.marginBottom = '16px'; // Adjusted to maintain total reduction
-          headerSection.style.transform = 'translateY(-2px)'; // Move content up 2px more without affecting containers
-
-          // Change to grid layout to center toggle
-          headerSection.style.display = 'grid';
-          headerSection.style.gridTemplateColumns = '1fr auto 1fr';
-          headerSection.style.alignItems = 'center';
-
-          // Ensure header is above timeline container
-          headerSection.style.position = 'relative';
-          headerSection.style.zIndex = '100';
+          headerSection.style.paddingTop = '0px';
+          headerSection.style.marginBottom = '16px';
+          headerSection.style.transform = 'translateY(-2px)';
         }
 
-        // Position controls and toggle
-        const controlsDiv = document.querySelector('.controls');
-        const toggle = document.querySelector('.view-mode-control');
-        const copyButton = document.querySelector('.btn-circular');
-
-        if (controlsDiv && toggle && copyButton) {
-          // Move toggle out of controls div and into center position
-          controlsDiv.removeChild(toggle);
-          headerSection.insertBefore(toggle, controlsDiv);
-
-          // Keep copy button in controls div on the right
-          controlsDiv.style.display = 'flex';
-          controlsDiv.style.justifyContent = 'flex-end';
-          controlsDiv.style.gap = '0';
-        }
-
-        // Adjust container heights for reduced top spacing (110px - 16px = 94px)
+        // Adjust container heights for smaller top spacing
         const videoSection = document.querySelector('.video-section');
+        const videoElement = document.querySelector('video');
+        const timelineWrapper = document.querySelector('.timeline-wrapper');
+
         if (videoSection) {
           videoSection.style.height = 'calc(100vh - 94px)';
           videoSection.style.maxHeight = 'calc(100vh - 94px)';
         }
-
-        const videoElement = document.querySelector('video');
         if (videoElement) {
           videoElement.style.maxHeight = 'calc(100vh - 94px)';
         }
-
-        // Also adjust timeline wrapper height to match video section
-        const timelineWrapper = document.querySelector('.timeline-wrapper');
         if (timelineWrapper) {
           timelineWrapper.style.height = 'calc(100vh - 94px)';
           timelineWrapper.style.marginTop = '0';
+          timelineWrapper.style.paddingTop = '0';
         }
       }
 
@@ -5595,15 +5554,9 @@ ${cleanedScript}
       }
 
       try {
-        // Get current video section ratio (proportion of content width, excluding resize handle)
-        const videoSection = document.querySelector('.video-section');
-        const mainContent = document.querySelector('.main-content');
-        const videoSectionWidth = videoSection ? videoSection.offsetWidth : getVideoSectionMinWidth();
-        const totalWidth = mainContent ? mainContent.offsetWidth : window.innerWidth;
-        const handleWidth = 20; // resize handle width in edit mode
-        const contentWidth = totalWidth - handleWidth; // width available for video + timeline
-        const videoSectionRatio = videoSectionWidth / contentWidth;
-        console.log('[EXPORT] Video section width:', videoSectionWidth, 'content width:', contentWidth, 'ratio:', videoSectionRatio);
+        // Export the user's ratio setting (null if never manually resized, number if they did)
+        // This preserves the user's intent in the exported file
+        const exportRatio = videoSectionWidthRatio;
 
         // Create zip file
         const zip = new JSZip();
@@ -5649,7 +5602,7 @@ ${cleanedScript}
         });
 
         // Generate clean HTML template
-        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), videoSectionRatio);
+        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), exportRatio);
         console.log('[EXPORT] Generated HTML length:', exportHtml.length);
 
         // Create download link with spec name
@@ -8509,7 +8462,14 @@ ${cleanedScript}
           showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
         });
         easingTextarea.addEventListener('input', () => {
-          showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
+          hideEasingAutocomplete();
+        });
+        easingTextarea.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            hideEasingAutocomplete();
+            easingTextarea.blur();
+          }
         });
       }
 
