@@ -740,6 +740,7 @@
 
     .settings-btn.active {
       opacity: 1;
+      border: 1px solid #444;
     }
 
     .settings-popup {
@@ -6628,9 +6629,14 @@ ${cleanedScript}
         console.log('[REFRESH] Calling renderTimeline');
         renderTimeline();
       }
-      // If an animation is selected, refresh its detail panel
+      // If an animation is selected, refresh its detail panel and re-apply selected state
       if (selectedAnimation !== null) {
         showAnimationDetails(selectedAnimation);
+        // Re-apply selected class to timeline bar and label after re-render
+        const bar = document.querySelector(`.timeline-bar[data-anim-index="${selectedAnimation}"]`);
+        const label = document.querySelector(`.timeline-label.indented[data-anim-index="${selectedAnimation}"]`);
+        if (bar) bar.classList.add('selected');
+        if (label) label.classList.add('selected');
       }
       console.log('[REFRESH] refreshActiveView complete');
     }
@@ -7833,9 +7839,14 @@ ${cleanedScript}
             // Do a full re-render to ensure everything is consistent
             renderTimeline();
 
-            // Restore info box if it was showing (renderTimeline clears the detail panel)
+            // Restore info box and selected state if it was showing
             if (wasSelected) {
               showAnimationDetails(animIndex);
+              // Re-apply selected class after re-render
+              const bar = document.querySelector(`.timeline-bar[data-anim-index="${animIndex}"]`);
+              const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
+              if (bar) bar.classList.add('selected');
+              if (label) label.classList.add('selected');
             }
 
             document.removeEventListener('mousemove', onMouseMove);
@@ -8049,9 +8060,14 @@ ${cleanedScript}
               // Re-render to finalize
               renderTimeline();
 
-              // Restore info box if needed
+              // Restore info box and selected state if needed
               if (wasSelected) {
                 showAnimationDetails(animIndex);
+                // Re-apply selected class after re-render
+                const bar = document.querySelector(`.timeline-bar[data-anim-index="${animIndex}"]`);
+                const label = document.querySelector(`.timeline-label.indented[data-anim-index="${animIndex}"]`);
+                if (bar) bar.classList.add('selected');
+                if (label) label.classList.add('selected');
               }
             } else if (dragDirection === 'vertical') {
               // Complete the drop
