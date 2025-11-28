@@ -6517,12 +6517,12 @@ ${cleanedScript}
           const animCustomColor = getAnimationColorForVideo(anim, currentVideoId);
           let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
           if (animCustomColor) {
-            if (anim.easing.type === 'spring') {
-              // Spring gradient with custom color
+            if (springClass) {
+              // Spring gradient with custom color (matches springClass determination)
               const rgb = animCustomColor.match(/\w\w/g).map(x => parseInt(x, 16));
               customStyle += ` background: linear-gradient(90deg, ${animCustomColor} 0%, ${animCustomColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
             } else {
-              // Solid custom color
+              // Solid custom color for curves
               customStyle += ` background: ${animCustomColor};`;
             }
           }
