@@ -2438,12 +2438,12 @@
       return 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
-    // Get current video's ID (returns null if no video)
+    // Get current video's ID (returns 'default' if no video, for pre-video color storage)
     function getCurrentVideoId() {
       const tab = getCurrentTab();
-      if (!tab || !tab.videos || tab.videos.length === 0) return null;
+      if (!tab || !tab.videos || tab.videos.length === 0) return 'default';
       const video = tab.videos[tab.currentVideoIndex || 0];
-      return video ? video.id : null;
+      return video ? video.id : 'default';
     }
 
     // Get animation color for a specific video
@@ -2564,9 +2564,12 @@
       if (currentTabIndex === -1) return;
       const tab = tabs[currentTabIndex];
       if (!tab.videos || tab.videos.length === 0) {
-        // Create first video entry
-        tab.videos = [{ id: generateVideoId(), src: src, file: null, description: '' }];
+        // Create first video entry and migrate colors from 'default'
+        const newVideoId = generateVideoId();
+        tab.videos = [{ id: newVideoId, src: src, file: null, description: '' }];
         tab.currentVideoIndex = 0;
+        // Copy any colors set before video was added
+        copyColorsToVideo(tab.specData, 'default', newVideoId);
       } else {
         tab.videos[tab.currentVideoIndex].src = src;
       }
@@ -2576,9 +2579,12 @@
       if (currentTabIndex === -1) return;
       const tab = tabs[currentTabIndex];
       if (!tab.videos || tab.videos.length === 0) {
-        // Create first video entry
-        tab.videos = [{ id: generateVideoId(), src: null, file: file, description: '' }];
+        // Create first video entry and migrate colors from 'default'
+        const newVideoId = generateVideoId();
+        tab.videos = [{ id: newVideoId, src: null, file: file, description: '' }];
         tab.currentVideoIndex = 0;
+        // Copy any colors set before video was added
+        copyColorsToVideo(tab.specData, 'default', newVideoId);
       } else {
         tab.videos[tab.currentVideoIndex].file = file;
       }
