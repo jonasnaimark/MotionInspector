@@ -411,6 +411,47 @@
       border-color: #555;
     }
 
+    .video-fullscreen-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease;
+      z-index: 5;
+    }
+
+    .video-fullscreen-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    .video-wrapper:hover .video-fullscreen-btn {
+      opacity: 1;
+    }
+
+    .video-fullscreen-btn:hover {
+      background: rgba(0, 0, 0, 0.9);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* In edit mode, hide fullscreen button when hovering video (overlay shows) */
+    .video-wrapper:has(video:hover) .video-fullscreen-btn.edit-mode,
+    .video-wrapper:has(.video-overlay:hover) .video-fullscreen-btn.edit-mode {
+      opacity: 0;
+      pointer-events: none;
+    }
+
     .video-nav-arrow {
       position: absolute;
       top: 50%;
@@ -2421,6 +2462,9 @@
         <div id="videoContainer" class="video-container">
           <div class="video-wrapper">
             <video id="videoPlayer"></video>
+            <button class="video-fullscreen-btn edit-mode" onclick="toggleVideoFullscreen()" title="Fullscreen">
+              <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+            </button>
             <div class="video-overlay edit-only" id="videoOverlay">
               <div class="video-overlay-btn" id="replaceVideoBtn" onclick="document.getElementById('videoInput').click()">
                 <span>📁</span>
@@ -4022,6 +4066,20 @@
         video.pause();
         if (playPauseBtn) playPauseBtn.innerHTML = '<span class="icon"><svg viewBox="0 0 10 12"><path d="M1 1.5 L8.5 6 L1 10.5 Z" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white"/></svg></span>';
         stopPlayheadAnimation();
+      }
+    }
+
+    // Toggle video fullscreen
+    function toggleVideoFullscreen() {
+      const videoElement = document.getElementById('videoPlayer');
+      if (!videoElement) return;
+
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        videoElement.requestFullscreen().catch(err => {
+          console.log('Fullscreen error:', err);
+        });
       }
     }
 
@@ -5947,6 +6005,9 @@
         <div id="videoContainer" class="video-container">
           <div class="video-wrapper">
             <video id="videoPlayer"></video>
+            <button class="video-fullscreen-btn" onclick="toggleVideoFullscreen()" title="Fullscreen">
+              <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+            </button>
             <div class="video-overlay edit-only">
               <div class="video-overlay-btn" onclick="document.getElementById('videoInput').click()">
                 <span>📁</span>
