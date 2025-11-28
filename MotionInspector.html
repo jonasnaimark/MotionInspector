@@ -683,7 +683,7 @@
       color: white;
       cursor: pointer;
       font-size: 11px;
-      width: 50px;
+      width: 52px;
       height: 29px;
       display: flex;
       align-items: center;
@@ -715,25 +715,144 @@
       transform: none;
     }
 
-    .speed-btn {
+    .settings-btn {
       padding: 0;
-      background: transparent;
+      background: #333;
       border: none;
+      border-radius: 50%;
+      width: 29px;
+      height: 29px;
       color: #e0e0e0;
       cursor: pointer;
-      font-size: 11px;
-      font-weight: 400;
-      opacity: 0.5;
+      font-size: 18px;
+      line-height: 1;
+      opacity: 0.8;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: -2px;
     }
 
-    .speed-btn:hover {
-      opacity: 0.7;
+    .settings-btn:hover {
+      opacity: 0.8;
     }
 
-    .speed-btn.selected {
+    .settings-btn.active {
       opacity: 1;
-      font-weight: 500;
+    }
+
+    .settings-popup {
+      position: fixed;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      display: none;
+      min-width: 180px;
+    }
+
+    .settings-popup.visible {
+      display: block;
+    }
+
+    .settings-popup::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 69px;
+      width: 10px;
+      height: 10px;
+      background: #2a2a2a;
+      border-left: 1px solid #444;
+      border-top: 1px solid #444;
+      transform: rotate(45deg);
+    }
+
+    .settings-section {
+      margin-bottom: 20px;
+    }
+
+    .settings-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .settings-label {
+      font-size: 12px;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .settings-options {
+      display: flex;
+      gap: 6px;
+    }
+
+    .settings-option {
+      padding: 4px 0;
+      width: 46px;
+      text-align: center;
+      background: #3a3a3a;
+      border: 1px solid transparent;
+      border-radius: 20px;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .settings-option:hover {
+      background: #4a4a4a;
+    }
+
+    .settings-option.selected {
+      background: #666;
+      border: 1px solid #888;
+      color: white;
+    }
+
+    .settings-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .settings-toggle-label {
+      font-size: 12px;
+      color: #ffffff;
+      margin-right: 12px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: #444;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-switch.active {
+      background: #4a90e2;
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .toggle-switch.active::after {
+      transform: translateX(16px);
     }
 
     /* Zoom controls */
@@ -3465,23 +3584,17 @@
       const videoWrapper = document.querySelector('.video-wrapper');
       const videoOverlay = document.querySelector('.video-overlay');
 
-      console.log('[VIDEO_ALIGN] Called, videoWidth:', video?.videoWidth, 'videoHeight:', video?.videoHeight);
-      console.log('[VIDEO_ALIGN] container:', videoContainer?.clientWidth, 'x', videoContainer?.clientHeight);
-
       if (!videoContainer || !videoWrapper || !video || !video.videoWidth) {
-        console.log('[VIDEO_ALIGN] Early return - missing:', !videoContainer ? 'container' : '', !videoWrapper ? 'wrapper' : '', !video ? 'video' : '', !video?.videoWidth ? 'videoWidth' : '');
         return;
       }
 
       const containerWidth = videoContainer.clientWidth;
       if (containerWidth <= 0) {
-        console.log('[VIDEO_ALIGN] Early return - containerWidth <= 0');
         return;
       }
 
       const aspectRatio = video.videoWidth / video.videoHeight;
       if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) {
-        console.log('[VIDEO_ALIGN] Early return - bad aspectRatio:', aspectRatio);
         return;
       }
 
@@ -3509,28 +3622,20 @@
       if (viewportMaxHeight > 0) heightLimits.push(viewportMaxHeight);
       if (containerHeight > 0) heightLimits.push(containerHeight);
 
-      console.log('[VIDEO_ALIGN] viewportMaxHeight:', viewportMaxHeight, 'containerHeight:', containerHeight, 'heightLimits:', heightLimits);
-
       // Start with max available width for the video (excluding bezel)
       let videoWidth = containerWidth - bezelPadding;
       let videoHeight = videoWidth / aspectRatio;
-
-      console.log('[VIDEO_ALIGN] Initial calc - videoWidth:', videoWidth, 'videoHeight:', videoHeight);
 
       // Check if height constraint is exceeded
       if (heightLimits.length) {
         const maxAllowedHeight = Math.min(...heightLimits);
         if (videoHeight > maxAllowedHeight) {
-          console.log('[VIDEO_ALIGN] Height constrained! maxAllowedHeight:', maxAllowedHeight);
           videoHeight = maxAllowedHeight;
           videoWidth = videoHeight * aspectRatio;
         }
       }
 
-      console.log('[VIDEO_ALIGN] Final dimensions - videoWidth:', videoWidth, 'videoHeight:', videoHeight);
-
       if (!Number.isFinite(videoWidth) || !Number.isFinite(videoHeight) || videoWidth <= 0 || videoHeight <= 0) {
-        console.log('[VIDEO_ALIGN] Early return - invalid dimensions');
         return;
       }
 
@@ -3845,17 +3950,106 @@
     }
 
     // Set playback speed
+    let currentPlaybackSpeed = 1;
     function setPlaybackSpeed(speed) {
+      currentPlaybackSpeed = speed;
       video.playbackRate = speed;
 
-      // Update button states
-      document.querySelectorAll('.speed-btn').forEach(btn => {
-        btn.classList.remove('selected');
+      // Update button states in the popup that's in body
+      const popup = document.getElementById('settingsPopup');
+      if (popup) {
+        popup.querySelectorAll('.settings-option[data-speed]').forEach(btn => {
+          btn.classList.remove('selected');
+        });
+        const selectedBtn = popup.querySelector(`.settings-option[data-speed="${speed}"]`);
+        if (selectedBtn) {
+          selectedBtn.classList.add('selected');
+        }
+      }
+    }
+
+    // Toggle settings popup
+    function toggleSettingsPopup(e) {
+      e.stopPropagation();
+      const btn = document.getElementById('settingsBtn');
+      if (!btn) return;
+
+      // Check if popup already exists in body
+      let popup = document.body.querySelector(':scope > #settingsPopup');
+
+      // If popup is in body and visible, just close it
+      if (popup && popup.classList.contains('visible')) {
+        popup.classList.remove('visible');
+        btn.classList.remove('active');
+        return;
+      }
+
+      // Check if there's a fresh popup in the timeline (from re-render)
+      const freshPopup = document.querySelector('.timeline-labels-column #settingsPopup');
+
+      if (freshPopup) {
+        // Remove old popup from body if exists
+        if (popup) popup.remove();
+        // Use fresh popup and move to body
+        popup = freshPopup;
+        document.body.appendChild(popup);
+      } else if (!popup) {
+        // No popup anywhere
+        return;
+      }
+
+      // Show popup
+      popup.classList.add('visible');
+      btn.classList.add('active');
+
+      // Restore the selected state based on current speed
+      popup.querySelectorAll('.settings-option[data-speed]').forEach(b => {
+        b.classList.toggle('selected', parseFloat(b.dataset.speed) === currentPlaybackSpeed);
       });
 
-      const selectedBtn = document.querySelector(`.speed-btn[data-speed="${speed}"]`);
-      if (selectedBtn) {
-        selectedBtn.classList.add('selected');
+      // Restore loop toggle state
+      const loopToggle = popup.querySelector('#loopToggle');
+      if (loopToggle) {
+        loopToggle.classList.toggle('active', isLoopEnabled);
+      }
+
+      // Position popup below the button
+      const btnRect = btn.getBoundingClientRect();
+      const arrowOffset = 75; // Arrow is ~75px from left edge of popup
+      popup.style.top = (btnRect.bottom + 11) + 'px';
+      popup.style.left = (btnRect.left + btnRect.width/2 - arrowOffset) + 'px';
+    }
+
+    // Close settings popup when clicking outside
+    document.addEventListener('click', (e) => {
+      const popup = document.getElementById('settingsPopup');
+      const btn = document.getElementById('settingsBtn');
+      if (popup && popup.classList.contains('visible')) {
+        // If target is orphaned (disconnected from DOM after re-render), don't close
+        if (!e.target.isConnected) {
+          return;
+        }
+
+        // Use closest() to handle child elements
+        const clickedPlayBtn = e.target.closest('#playPauseBtn') !== null;
+        const clickedSettingsBtn = e.target.closest('#settingsBtn') !== null;
+        const clickedPopup = e.target.closest('#settingsPopup') !== null;
+
+        if (!clickedPopup && !clickedSettingsBtn && !clickedPlayBtn) {
+          popup.classList.remove('visible');
+          btn.classList.remove('active');
+        }
+      }
+    });
+
+    // Toggle loop video
+    let isLoopEnabled = false;
+    function toggleLoopVideo() {
+      isLoopEnabled = !isLoopEnabled;
+      video.loop = isLoopEnabled;
+      const toggle = document.getElementById('loopToggle');
+      if (toggle) {
+        toggle.classList.toggle('active', isLoopEnabled);
       }
     }
 
@@ -4342,6 +4536,9 @@
                 if (currentIndex === animIndex) {
                   const anim = layer.animations[animIdx];
 
+                  // Save snapshot BEFORE any modifications for proper undo
+                  saveSnapshot();
+
                   // Update duration based on preset type
                   if (isSpring) {
                     // Spring: set duration to "-"
@@ -4356,14 +4553,16 @@
                     // If duration is already a number, keep it
                   }
 
-                  break;
+                  // Set easing directly (not through updateAnimationField to avoid double snapshot)
+                  anim.customEasing = presetName;
+
+                  // Refresh the view
+                  refreshActiveView();
+                  return;
                 }
                 currentIndex++;
               }
             }
-
-            // Update easing field
-            updateAnimationField(animIndex, 'easing', presetName);
           }
         } else {
           // Contenteditable DIV (table mode)
@@ -4379,6 +4578,9 @@
           if (layer) {
             const anim = layer.animations[animIndex];
             if (anim) {
+              // Save snapshot BEFORE any modifications for proper undo
+              saveSnapshot();
+
               anim.customEasing = presetName;
 
               // Update duration based on preset type
@@ -6562,12 +6764,28 @@ ${cleanedScript}
 
       // Left column - labels
       html += `<div class="timeline-labels-column">`;
-      html += `<div class="playhead-time">
+      html += `<div class="playhead-time" style="position: relative;">
         <button id="playPauseBtn" onclick="togglePlayPause()"><span class="icon">▶</span></button>
-        <button class="speed-btn selected" data-speed="1" onclick="setPlaybackSpeed(1)">1x</button>
-        <button class="speed-btn" data-speed="0.5" onclick="setPlaybackSpeed(0.5)">0.5x</button>
-        <button class="speed-btn" data-speed="0.1" onclick="setPlaybackSpeed(0.1)">0.1x</button>
-      </div>`; // Play button and speed controls above labels
+        <span style="position: relative; display: inline-flex;">
+          <button class="settings-btn" id="settingsBtn" onclick="toggleSettingsPopup(event)">⛭</button>
+          <div class="settings-popup" id="settingsPopup">
+          <div class="settings-section">
+            <div class="settings-label">Playback Speed</div>
+            <div class="settings-options">
+              <button class="settings-option selected" data-speed="1" onclick="setPlaybackSpeed(1)">1x</button>
+              <button class="settings-option" data-speed="0.5" onclick="setPlaybackSpeed(0.5)">0.5x</button>
+              <button class="settings-option" data-speed="0.1" onclick="setPlaybackSpeed(0.1)">0.1x</button>
+            </div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-toggle-row">
+              <span class="settings-toggle-label">Loop Video</span>
+              <div class="toggle-switch" id="loopToggle" onclick="toggleLoopVideo()"></div>
+            </div>
+          </div>
+        </div>
+        </span>
+      </div>`; // Play button and settings above labels
 
       let animIndex = 0;
       specData.layers.forEach((layer, layerIndex) => {
@@ -8712,7 +8930,12 @@ ${cleanedScript}
       // Setup autocomplete for easing textarea
       const easingTextarea = detailPanel.querySelector('textarea.detail-value-input');
       if (easingTextarea) {
+        // Show on focus (first time clicking into field)
         easingTextarea.addEventListener('focus', () => {
+          showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
+        });
+        // Also show on click (handles case where field is already focused)
+        easingTextarea.addEventListener('click', () => {
           showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
         });
         easingTextarea.addEventListener('input', () => {
