@@ -7207,8 +7207,8 @@ ${cleanedScript}
                  data-is-spring="${isSpring}">
               <span class="timeline-bar-text edit-only" contenteditable="true" data-anim-index="${animIndex}">${description}</span>
               <span class="timeline-bar-text export-only">${description}</span>
-              <div class="timeline-bar-resize-handle left" data-handle="left"></div>
-              ${!isSpring ? '<div class="timeline-bar-resize-handle right" data-handle="right"></div>' : ''}
+              <div class="timeline-bar-resize-handle left edit-only" data-handle="left"></div>
+              ${!isSpring ? '<div class="timeline-bar-resize-handle right edit-only" data-handle="right"></div>' : ''}
             </div>
           `;
           html += `</div>`;
@@ -7934,6 +7934,9 @@ ${cleanedScript}
 
       handles.forEach(handle => {
         handle.addEventListener('mousedown', (e) => {
+          // Disable resize in export mode
+          if (isExportMode) return;
+
           e.stopPropagation();
           e.preventDefault();
 
