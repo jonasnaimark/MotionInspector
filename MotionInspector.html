@@ -4547,18 +4547,21 @@
                   saveSnapshot();
 
                   // Update duration based on preset type
+                  // Check if this is an imported spring (not yet user-modified)
+                  const wasImportedSpring = !anim.durationUserSet && anim.easing && anim.easing.type === 'spring';
+
                   if (isSpring) {
                     // Spring: set duration to "-"
                     anim.timing.duration = '-';
-                    anim.durationUserSet = true;
                   } else {
-                    // Curve: if duration is "-" or not set, use default 300ms
-                    if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
+                    // Curve: if duration is "-", not set, or was an imported spring, use default 300ms
+                    if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null || wasImportedSpring) {
                       anim.timing.duration = 300;
-                      anim.durationUserSet = true;
                     }
-                    // If duration is already a number, keep it
+                    // If duration is already a number (user-set), keep it
                   }
+                  // Always mark as user-set to clear isImportedSpring flag
+                  anim.durationUserSet = true;
 
                   // Set easing directly (not through updateAnimationField to avoid double snapshot)
                   anim.customEasing = presetName;
@@ -4591,18 +4594,21 @@
               anim.customEasing = presetName;
 
               // Update duration based on preset type
+              // Check if this is an imported spring (not yet user-modified)
+              const wasImportedSpring = !anim.durationUserSet && anim.easing && anim.easing.type === 'spring';
+
               if (isSpring) {
                 // Spring: set duration to "-"
                 anim.timing.duration = '-';
-                anim.durationUserSet = true;
               } else {
-                // Curve: if duration is "-" or not set, use default 300ms
-                if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
+                // Curve: if duration is "-", not set, or was an imported spring, use default 300ms
+                if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null || wasImportedSpring) {
                   anim.timing.duration = 300;
-                  anim.durationUserSet = true;
                 }
-                // If duration is already a number, keep it
+                // If duration is already a number (user-set), keep it
               }
+              // Always mark as user-set to clear isImportedSpring flag
+              anim.durationUserSet = true;
 
               console.log('Saved to specData:', presetName);
               renderTableView();
@@ -5470,14 +5476,26 @@
             saveSnapshot();
             anim.customEasing = newValue || undefined;
 
-            // Detect spring parameters and auto-switch to spring style
+            // Detect spring or curve parameters and auto-switch style
             if (newValue) {
               const springKeywords = ['stiffness', 'damping', 'mass'];
               const lowerValue = newValue.toLowerCase();
               const hasSpringParams = springKeywords.some(keyword => lowerValue.includes(keyword));
+
+              // Detect curve parameters (cubic-bezier or 4 comma-separated numbers)
+              const hasCubicKeyword = lowerValue.includes('cubic');
+              const curveNumberPattern = /[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+/;
+              const hasCurveParams = hasCubicKeyword || curveNumberPattern.test(newValue);
+
               if (hasSpringParams) {
                 // Set duration to "-" to trigger spring style bar
                 anim.timing.duration = '-';
+                anim.durationUserSet = true;
+              } else if (hasCurveParams) {
+                // Ensure duration is a number for curve style bar
+                if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
+                  anim.timing.duration = 300;
+                }
                 anim.durationUserSet = true;
               }
             }
@@ -6726,9 +6744,22 @@ ${cleanedScript}
               const springKeywords = ['stiffness', 'damping', 'mass'];
               const lowerValue = newValue.toLowerCase();
               const hasSpringParams = springKeywords.some(keyword => lowerValue.includes(keyword));
+
+              // Detect curve parameters (cubic-bezier or 4 comma-separated numbers)
+              const hasCubicKeyword = lowerValue.includes('cubic');
+              // Match pattern like "0.2, 0, 0.2, 1" or "0.2,0,0.2,1" (4 numbers with 3 commas)
+              const curveNumberPattern = /[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+/;
+              const hasCurveParams = hasCubicKeyword || curveNumberPattern.test(newValue);
+
               if (hasSpringParams) {
                 // Set duration to "-" to trigger spring style bar
                 anim.timing.duration = '-';
+                anim.durationUserSet = true;
+              } else if (hasCurveParams) {
+                // Ensure duration is a number for curve style bar
+                if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
+                  anim.timing.duration = 300;
+                }
                 anim.durationUserSet = true;
               }
             } else if (fieldName === 'startValue') {
