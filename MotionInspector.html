@@ -304,6 +304,27 @@
       background: rgba(74, 144, 226, 0.1);
     }
 
+    .video-section.drag-over .video-empty-state-btn,
+    .video-section.drag-over .video-overlay {
+      display: none !important;
+    }
+
+    .video-drop-text {
+      display: none;
+      font-size: 13px;
+      font-weight: 500;
+      color: #4a90e2;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .video-section.drag-over .video-drop-text {
+      display: block;
+    }
+
     .video-container {
       display: none;
       flex: 1;
@@ -2257,6 +2278,7 @@
       <div class="video-section">
         <div class="video-nav-arrow left" id="videoNavLeft" onclick="switchVideo(-1)">‹</div>
         <div class="video-nav-arrow right" id="videoNavRight" onclick="switchVideo(1)">›</div>
+        <div class="video-drop-text">Drop to add video</div>
         <div id="videoEmptyState" class="video-empty-state edit-only" onclick="document.getElementById('videoInput').click()">
           <div class="video-empty-state-btn">
             <span>📁</span>
@@ -2593,16 +2615,26 @@
       videoSectionObserver.observe(videoSection);
 
       // Setup drag and drop on video section
+      videoSection.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        videoSection.classList.add('drag-over');
+      });
+
       videoSection.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
         videoSection.classList.add('drag-over');
       });
 
       videoSection.addEventListener('dragleave', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        videoSection.classList.remove('drag-over');
+        // Only remove class if leaving the video section entirely
+        if (!videoSection.contains(e.relatedTarget)) {
+          videoSection.classList.remove('drag-over');
+        }
       });
 
       videoSection.addEventListener('drop', (e) => {
@@ -2616,6 +2648,17 @@
         }
       });
     }
+
+    // Prevent browser from opening dropped files anywhere on the page
+    document.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+    document.addEventListener('drop', (e) => {
+      // Only prevent if not handled by video section
+      if (!e.defaultPrevented) {
+        e.preventDefault();
+      }
+    });
 
     // Update overlay buttons based on video count
     function updateVideoOverlayButtons() {
@@ -2790,6 +2833,63 @@
     let savedVideoSectionWidth = null;
     let isBarTextBeingEdited = false; // Flag to prevent bar dragging during text editing
     let videoSectionWidthRatio = null; // Ratio of video section width to total width (0-1)
+
+    // Undo/Redo system
+    const undoStack = [];
+    const redoStack = [];
+    const MAX_UNDO_HISTORY = 50;
+
+    function saveSnapshot() {
+      // Deep clone current specData
+      const snapshot = JSON.parse(JSON.stringify(specData));
+      undoStack.push(snapshot);
+      if (undoStack.length > MAX_UNDO_HISTORY) undoStack.shift();
+      redoStack.length = 0; // Clear redo stack on new change
+    }
+
+    function undo() {
+      if (undoStack.length === 0) return;
+      // Save current state to redo stack
+      redoStack.push(JSON.parse(JSON.stringify(specData)));
+      // Restore previous state
+      specData = undoStack.pop();
+      // Update tab's specData reference
+      const tab = getCurrentTab();
+      if (tab) tab.specData = specData;
+      refreshActiveView();
+    }
+
+    function redo() {
+      if (redoStack.length === 0) return;
+      // Save current state to undo stack
+      undoStack.push(JSON.parse(JSON.stringify(specData)));
+      // Restore redo state
+      specData = redoStack.pop();
+      // Update tab's specData reference
+      const tab = getCurrentTab();
+      if (tab) tab.specData = specData;
+      refreshActiveView();
+    }
+
+    // Keyboard shortcuts for undo/redo
+    document.addEventListener('keydown', (e) => {
+      // Only handle if not typing in an input field
+      const isTyping = e.target.tagName === 'INPUT' ||
+                       e.target.tagName === 'TEXTAREA' ||
+                       e.target.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          // Cmd+Shift+Z = Redo
+          e.preventDefault();
+          redo();
+        } else if (!isTyping) {
+          // Cmd+Z = Undo (only when not typing, to preserve native undo in fields)
+          e.preventDefault();
+          undo();
+        }
+      }
+    });
 
     // Hide main-only buttons in exported files
     if (isExportMode) {
@@ -4847,6 +4947,7 @@
           }
           // For dropping animations on layer headers
           else if (draggedType === 'animation' && targetType === 'layer') {
+            saveSnapshot();
             const sourceLayer = specData.layers[draggedLayerIndex];
             const targetLayer = specData.layers[targetLayerIndex];
             const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
@@ -4858,6 +4959,7 @@
             if (draggedLayerIndex === targetLayerIndex) {
               performAnimationMove(draggedLayerIndex, draggedAnimIndex, targetAnimIndex, dropPosition);
             } else {
+              saveSnapshot();
               const sourceLayer = specData.layers[draggedLayerIndex];
               const targetLayer = specData.layers[targetLayerIndex];
               const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
@@ -4923,6 +5025,8 @@
             const animInLayer = parseInt(label.dataset.animInLayer);
             insertIndex = animInLayer + 1;
           }
+
+          saveSnapshot();
 
           // Create new animation with default values
           const newAnimation = {
@@ -4996,6 +5100,8 @@
           } else {
             return;
           }
+
+          saveSnapshot();
 
           // Create new layer with one default animation
           const newLayer = {
@@ -5106,6 +5212,7 @@
           const animIndex = parseInt(row.dataset.animIndex);
           const fieldName = cell.dataset.field;
           let newValue = cell.textContent.trim();
+          const originalValue = cell.dataset.originalValue || '';
 
           // Get the animation
           const layer = specData.layers[layerIndex];
@@ -5113,41 +5220,45 @@
           const anim = layer.animations[animIndex];
           if (!anim) return;
 
-          // Apply validation and update based on field type
-          if (fieldName === 'description') {
-            // Update custom description
-            anim.description = newValue || undefined;
-          } else if (fieldName === 'delay') {
+          // Check if value changed - if not, skip
+          if (newValue === originalValue) return;
+
+          // Validate first, then save snapshot only if valid
+          if (fieldName === 'delay') {
             // Parse delay - remove "ms" suffix if present
-            newValue = newValue.replace(/ms$/i, '').trim();
-            const numValue = parseFloat(newValue);
-            if (!isNaN(numValue)) {
-              anim.timing.delay = numValue;
-            } else {
+            const cleanValue = newValue.replace(/ms$/i, '').trim();
+            const numValue = parseFloat(cleanValue);
+            if (isNaN(numValue)) {
               // Invalid - restore original
-              cell.textContent = cell.dataset.originalValue || '';
+              cell.textContent = originalValue;
               return;
             }
+            saveSnapshot();
+            anim.timing.delay = numValue;
           } else if (fieldName === 'duration') {
             // Parse duration - remove "ms" suffix if present
-            newValue = newValue.replace(/ms$/i, '').trim();
-
-            const numValue = parseFloat(newValue);
+            const cleanValue = newValue.replace(/ms$/i, '').trim();
+            const numValue = parseFloat(cleanValue);
             if (!isNaN(numValue) && numValue >= 0) {
-              // Valid number - set duration
+              // Valid number
+              saveSnapshot();
               anim.timing.duration = numValue;
               anim.durationUserSet = true;
-            } else if (newValue === '-' || newValue === '') {
-              // "-" or empty - spring style (no defined end time)
+            } else if (cleanValue === '-' || cleanValue === '') {
+              // "-" or empty - spring style
+              saveSnapshot();
               anim.timing.duration = '-';
               anim.durationUserSet = true;
             } else {
               // Invalid - restore original
-              cell.textContent = cell.dataset.originalValue || '';
+              cell.textContent = originalValue;
               return;
             }
+          } else if (fieldName === 'description') {
+            saveSnapshot();
+            anim.description = newValue || undefined;
           } else if (fieldName === 'easing') {
-            // Store custom easing as plain text
+            saveSnapshot();
             anim.customEasing = newValue || undefined;
 
             // Detect spring parameters and auto-switch to spring style
@@ -6351,6 +6462,7 @@ ${cleanedScript}
     // Update a layer field and refresh views
     function updateLayerField(layerIndex, fieldName, newValue) {
       if (layerIndex >= 0 && layerIndex < specData.layers.length) {
+        saveSnapshot();
         specData.layers[layerIndex][fieldName] = newValue;
         // Refresh the view - this will update:
         // 1. Left column layer header in timeline/table
@@ -6361,6 +6473,7 @@ ${cleanedScript}
 
     // Update an animation field and refresh views
     function updateAnimationField(animIndex, fieldName, newValue) {
+      saveSnapshot();
       // Find the animation in specData
       let currentIndex = 0;
       for (let layerIndex = 0; layerIndex < specData.layers.length; layerIndex++) {
@@ -7038,6 +7151,7 @@ ${cleanedScript}
           }
           // For dropping animations on layer headers (empty sections or add to top)
           else if (draggedType === 'animation' && targetType === 'layer') {
+            saveSnapshot();
             const sourceLayer = specData.layers[draggedLayerIndex];
             const targetLayer = specData.layers[targetLayerIndex];
             const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
@@ -7053,6 +7167,7 @@ ${cleanedScript}
               performAnimationMove(draggedLayerIndex, draggedAnimIndex, targetAnimIndex, dropPosition);
             } else {
               // Moving to a different layer
+              saveSnapshot();
               const sourceLayer = specData.layers[draggedLayerIndex];
               const targetLayer = specData.layers[targetLayerIndex];
               const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
@@ -7158,6 +7273,8 @@ ${cleanedScript}
             insertIndex = animInLayer + 1;
           }
 
+          saveSnapshot();
+
           // Create new animation with default values
           const newAnimation = {
             property: "Add parameter",
@@ -7230,6 +7347,8 @@ ${cleanedScript}
           } else {
             return;
           }
+
+          saveSnapshot();
 
           // Create new layer with one default animation
           const newLayer = {
@@ -7432,6 +7551,9 @@ ${cleanedScript}
           // Add dragging class to maintain hover state
           bar.classList.add('dragging-resize');
 
+          // Save state before resize changes
+          saveSnapshot();
+
           // Function to snap to 25ms increments
           function snapToIncrement(value) {
             return Math.round(value / 25) * 25;
@@ -7580,6 +7702,7 @@ ${cleanedScript}
 
               if (Math.abs(deltaX) > Math.abs(deltaY)) {
                 dragDirection = 'horizontal';
+                saveSnapshot(); // Save state before horizontal drag changes delay
                 bar.classList.add('dragging-resize');
               } else {
                 dragDirection = 'vertical';
@@ -7734,6 +7857,7 @@ ${cleanedScript}
               if (targetElement) {
                 if (isLayerHeader) {
                   // Dropping on a layer header - add to beginning of that section
+                  saveSnapshot();
                   const targetLayerIndex = parseInt(targetElement.dataset.layerIndex);
                   const sourceLayer = specData.layers[layerIndex];
                   const targetLayer = specData.layers[targetLayerIndex];
@@ -7756,6 +7880,7 @@ ${cleanedScript}
                     if (animInLayerIndex < targetIndex) targetIndex--;
 
                     if (animInLayerIndex !== targetIndex) {
+                      saveSnapshot();
                       const layer = specData.layers[layerIndex];
                       const anim = layer.animations.splice(animInLayerIndex, 1)[0];
                       layer.animations.splice(targetIndex, 0, anim);
@@ -7763,6 +7888,7 @@ ${cleanedScript}
                     }
                   } else {
                     // Moving to a different layer
+                    saveSnapshot();
                     const sourceLayer = specData.layers[layerIndex];
                     const targetLayer = specData.layers[targetLayerIndex];
                     const anim = sourceLayer.animations.splice(animInLayerIndex, 1)[0];
@@ -7976,6 +8102,7 @@ ${cleanedScript}
       if (fromIndex < targetIndex) targetIndex--;
 
       if (fromIndex === targetIndex) return;
+      saveSnapshot();
 
       // Remove from old position
       const layer = specData.layers.splice(fromIndex, 1)[0];
@@ -8007,6 +8134,7 @@ ${cleanedScript}
       if (fromAnimIndex < targetIndex) targetIndex--;
 
       if (fromAnimIndex === targetIndex) return;
+      saveSnapshot();
 
       const layer = specData.layers[layerIndex];
 
@@ -8166,6 +8294,7 @@ ${cleanedScript}
 
     // Change animation color
     function changeAnimationColor(animIndex, color) {
+      saveSnapshot();
       // Find the animation in specData
       let currentIndex = 0;
       let targetAnim = null;
@@ -8636,6 +8765,7 @@ ${cleanedScript}
     // Move entire layer up in the timeline
     function moveLayerUp(layerIndex) {
       if (layerIndex === 0) return; // Already at top
+      saveSnapshot();
 
       // Swap layers
       const temp = specData.layers[layerIndex];
@@ -8684,6 +8814,7 @@ ${cleanedScript}
     // Move entire layer down in the timeline
     function moveLayerDown(layerIndex) {
       if (layerIndex === specData.layers.length - 1) return; // Already at bottom
+      saveSnapshot();
 
       // Swap layers
       const temp = specData.layers[layerIndex];
@@ -8732,6 +8863,7 @@ ${cleanedScript}
     // Move individual animation up within its layer
     function moveAnimationUp(layerIndex, animIndexInLayer) {
       if (animIndexInLayer === 0) return; // Already at top of layer
+      saveSnapshot();
 
       const layer = specData.layers[layerIndex];
 
@@ -8766,6 +8898,7 @@ ${cleanedScript}
     function moveAnimationDown(layerIndex, animIndexInLayer) {
       const layer = specData.layers[layerIndex];
       if (animIndexInLayer === layer.animations.length - 1) return; // Already at bottom of layer
+      saveSnapshot();
 
       // Swap animations within the layer
       const temp = layer.animations[animIndexInLayer];
@@ -8831,12 +8964,14 @@ ${cleanedScript}
           return;
         }
         // Remove the entire layer
+        saveSnapshot();
         specData.layers.splice(layerIndex, 1);
       } else {
         if (!confirm(`Delete "${propertyName}" parameter from "${layerName}"?`)) {
           return;
         }
         // Remove just this animation
+        saveSnapshot();
         layer.animations.splice(animInLayerIndex, 1);
       }
 
