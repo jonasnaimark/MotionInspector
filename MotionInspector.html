@@ -5046,6 +5046,18 @@
           } else if (fieldName === 'easing') {
             // Store custom easing as plain text
             anim.customEasing = newValue || undefined;
+
+            // Detect spring parameters and auto-switch to spring style
+            if (newValue) {
+              const springKeywords = ['stiffness', 'damping', 'mass'];
+              const lowerValue = newValue.toLowerCase();
+              const hasSpringParams = springKeywords.some(keyword => lowerValue.includes(keyword));
+              if (hasSpringParams) {
+                // Set duration to "-" to trigger spring style bar
+                anim.timing.duration = '-';
+                anim.durationUserSet = true;
+              }
+            }
           }
 
           // Refresh the view to show updates
@@ -6279,6 +6291,16 @@ ${cleanedScript}
             } else if (fieldName === 'easing') {
               // Update easing - allow any text value
               anim.customEasing = newValue;
+
+              // Detect spring parameters and auto-switch to spring style
+              const springKeywords = ['stiffness', 'damping', 'mass'];
+              const lowerValue = newValue.toLowerCase();
+              const hasSpringParams = springKeywords.some(keyword => lowerValue.includes(keyword));
+              if (hasSpringParams) {
+                // Set duration to "-" to trigger spring style bar
+                anim.timing.duration = '-';
+                anim.durationUserSet = true;
+              }
             } else if (fieldName === 'startValue') {
               // Update start value - no validation
               anim.customStartValue = newValue;
