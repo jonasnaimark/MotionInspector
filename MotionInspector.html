@@ -2439,6 +2439,62 @@
       return 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
+    // Spring preset physics parameters
+    const springPresetParams = {
+      'Standard Spring': { mass: 1, stiffness: 175, damping: 26 },
+      'Slow Spring': { mass: 1, stiffness: 100, damping: 20 },
+      'Fast Spring': { mass: 1, stiffness: 300, damping: 35 },
+      'Slow Bounce Spring': { mass: 1, stiffness: 100, damping: 14 },
+      'Medium Bounce Spring': { mass: 1, stiffness: 175, damping: 18.5 },
+      'Fast Bounce Spring': { mass: 1, stiffness: 250, damping: 22 }
+    };
+
+    // Parse spring parameters from text like "Stiffness: 100, Damping: 10, Mass: 1"
+    function parseSpringParams(text) {
+      if (!text) return null;
+      const lower = text.toLowerCase();
+
+      // Try to extract stiffness, damping, mass
+      const stiffnessMatch = lower.match(/stiffness[:\s]+(\d+\.?\d*)/);
+      const dampingMatch = lower.match(/damping[:\s]+(\d+\.?\d*)/);
+      const massMatch = lower.match(/mass[:\s]+(\d+\.?\d*)/);
+
+      if (stiffnessMatch && dampingMatch) {
+        return {
+          stiffness: parseFloat(stiffnessMatch[1]),
+          damping: parseFloat(dampingMatch[1]),
+          mass: massMatch ? parseFloat(massMatch[1]) : 1 // Default mass to 1
+        };
+      }
+      return null;
+    }
+
+    // Calculate spring duration from physics parameters (in ms)
+    function calculateSpringDuration(stiffness, damping, mass) {
+      // Natural frequency (rad/s)
+      const omega = Math.sqrt(stiffness / mass);
+      // Damping ratio
+      const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+
+      // Settling time to ~1% of final value
+      // For underdamped (zeta < 1): t ≈ -ln(0.01) / (zeta * omega)
+      // For overdamped/critical: use similar approximation
+      const threshold = 0.01; // 1% settling
+      let duration;
+
+      if (zeta < 1) {
+        // Underdamped - oscillates
+        duration = -Math.log(threshold) / (zeta * omega);
+      } else {
+        // Critically damped or overdamped
+        duration = -Math.log(threshold) / (zeta * omega);
+      }
+
+      // Convert to milliseconds and clamp to reasonable range
+      duration = duration * 1000;
+      return Math.max(200, Math.min(duration, 3000)); // Clamp between 200ms and 3000ms
+    }
+
     // Get current video's ID (returns 'default' if no video, for pre-video color storage)
     function getCurrentVideoId() {
       const tab = getCurrentTab();
@@ -4553,11 +4609,22 @@
                   if (isSpring) {
                     // Spring: set duration to "-"
                     anim.timing.duration = '-';
+                    // Calculate spring duration from preset params
+                    const presetParams = springPresetParams[presetName];
+                    if (presetParams) {
+                      anim.calculatedSpringDuration = calculateSpringDuration(
+                        presetParams.stiffness,
+                        presetParams.damping,
+                        presetParams.mass
+                      );
+                    }
                   } else {
                     // Curve: if duration is "-", not set, or was an imported spring, use default 300ms
                     if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null || wasImportedSpring) {
                       anim.timing.duration = 300;
                     }
+                    // Clear any calculated spring duration
+                    delete anim.calculatedSpringDuration;
                     // If duration is already a number (user-set), keep it
                   }
                   // Always mark as user-set to clear isImportedSpring flag
@@ -4600,11 +4667,22 @@
               if (isSpring) {
                 // Spring: set duration to "-"
                 anim.timing.duration = '-';
+                // Calculate spring duration from preset params
+                const presetParams = springPresetParams[presetName];
+                if (presetParams) {
+                  anim.calculatedSpringDuration = calculateSpringDuration(
+                    presetParams.stiffness,
+                    presetParams.damping,
+                    presetParams.mass
+                  );
+                }
               } else {
                 // Curve: if duration is "-", not set, or was an imported spring, use default 300ms
                 if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null || wasImportedSpring) {
                   anim.timing.duration = 300;
                 }
+                // Clear any calculated spring duration
+                delete anim.calculatedSpringDuration;
                 // If duration is already a number (user-set), keep it
               }
               // Always mark as user-set to clear isImportedSpring flag
@@ -5491,6 +5569,15 @@
                 // Set duration to "-" to trigger spring style bar
                 anim.timing.duration = '-';
                 anim.durationUserSet = true;
+                // Calculate spring duration from params for bar width
+                const springParams = parseSpringParams(newValue);
+                if (springParams) {
+                  anim.calculatedSpringDuration = calculateSpringDuration(
+                    springParams.stiffness,
+                    springParams.damping,
+                    springParams.mass
+                  );
+                }
               } else if (hasCurveParams) {
                 // Ensure duration is a number for curve style bar
                 if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
@@ -6755,6 +6842,15 @@ ${cleanedScript}
                 // Set duration to "-" to trigger spring style bar
                 anim.timing.duration = '-';
                 anim.durationUserSet = true;
+                // Calculate spring duration from params for bar width
+                const springParams = parseSpringParams(newValue);
+                if (springParams) {
+                  anim.calculatedSpringDuration = calculateSpringDuration(
+                    springParams.stiffness,
+                    springParams.damping,
+                    springParams.mass
+                  );
+                }
               } else if (hasCurveParams) {
                 // Ensure duration is a number for curve style bar
                 if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
@@ -6986,11 +7082,46 @@ ${cleanedScript}
 
             if (durationIsString) {
               // Duration is "-" - spring style
-              widthPercent = 40;
+              // Use calculated spring duration if available, otherwise try to parse from customEasing
+              let springDuration = anim.calculatedSpringDuration;
+              if (!springDuration && anim.customEasing) {
+                // Try to calculate from customEasing text (handles edits that didn't recalculate)
+                const params = parseSpringParams(anim.customEasing);
+                if (params) {
+                  springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+                } else {
+                  // Check if it's a preset name
+                  const presetParams = springPresetParams[anim.customEasing];
+                  if (presetParams) {
+                    springDuration = calculateSpringDuration(presetParams.stiffness, presetParams.damping, presetParams.mass);
+                  }
+                }
+              }
+              widthPercent = springDuration
+                ? (springDuration * 2 / currentViewDuration) * 100
+                : 40;
               springClass = ' bar-spring';
             } else if (isImportedSpring) {
-              // Imported spring (not yet edited) - spring style
-              widthPercent = (anim.timing.duration / currentViewDuration) * 100;
+              // Imported spring - calculate duration from physics params for consistency
+              let calculatedDuration = null;
+              const spring = anim.easing.spring;
+              if (spring) {
+                if (spring.preset && springPresetParams[spring.preset]) {
+                  // Preset spring - use our preset params
+                  const params = springPresetParams[spring.preset];
+                  calculatedDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+                } else if (spring.custom) {
+                  // Custom spring - use imported params
+                  calculatedDuration = calculateSpringDuration(
+                    spring.custom.stiffness,
+                    spring.custom.damping,
+                    spring.custom.mass || 1
+                  );
+                }
+              }
+              widthPercent = calculatedDuration
+                ? (calculatedDuration * 2 / currentViewDuration) * 100
+                : (anim.timing.duration * 2 / currentViewDuration) * 100;
               springClass = ' bar-spring';
             } else if (durationIsNumeric) {
               // Numeric duration (curve or user-edited) - curve style
