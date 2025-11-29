@@ -2204,6 +2204,7 @@
 
     .detail-title-input-property {
       margin-left: 2px;
+      max-width: 500px;
     }
 
     .detail-panel-close {
@@ -5006,6 +5007,7 @@
       specData.layers.forEach((layer, layerIndex) => {
         // Layer header label
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        const isParentedLayer = layer.parenting && layer.animations.length === 0;
         html += `<div class="timeline-label layer-header${dividerClass}"
                       data-row-type="layer"
                       data-layer-index="${layerIndex}"
@@ -5013,16 +5015,17 @@
                       data-drag-type="layer"
                       data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
-          <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+          ${!isParentedLayer ? '<button class="timeline-label-add-btn edit-only" draggable="false">+</button>' : ''}
           ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
         // Check for parented layer with no animations
-        if (layer.parenting && layer.animations.length === 0) {
-          // Capitalize each property (e.g., "position" -> "Position")
-          const propertyLabel = layer.parenting.animatingProperties
+        if (isParentedLayer) {
+          // Use custom label if set, otherwise capitalize inherited properties
+          const defaultLabel = layer.parenting.animatingProperties
             .map(p => p.charAt(0).toUpperCase() + p.slice(1))
             .join(', ');
+          const propertyLabel = layer.parentingPropertyLabel || defaultLabel;
 
           html += `<div class="timeline-label indented"
                         data-row-type="parented"
@@ -5084,7 +5087,7 @@
           const parentingDescription = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
 
           html += `<div class="timeline-track table-row" data-row-type="parented" data-layer-index="${layerIndex}">
-            <div class="table-cell table-cell--desc"><span class="table-desc-text">${parentingDescription}</span></div>
+            <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${parentingDescription}</span></div>
             <div class="table-cell table-cell--delay">—</div>
             <div class="table-cell table-cell--duration">—</div>
             <div class="table-cell table-cell--easing">—</div>
@@ -5553,6 +5556,96 @@
           });
         });
       });
+
+      // Set up drag handlers for bottom divider (to allow dropping sections at the end)
+      const bottomDivider = document.querySelector('.timeline-bottom-divider');
+      const bottomTrack = document.querySelector('.timeline-bottom-track');
+      if (bottomDivider && bottomTrack) {
+        bottomDivider.addEventListener('dragover', (e) => {
+          if (!draggedElement || draggedType !== 'layer') return;
+
+          // Check if dragged layer is already the last layer
+          const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
+          if (isLastLayer) {
+            // Don't show indicator if already at the end
+            return;
+          }
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Clear previous indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          // Show indicator on both bottom elements (left and right columns)
+          bottomDivider.classList.add('drag-over-top');
+          bottomTrack.classList.add('drag-over-top');
+          e.dataTransfer.dropEffect = 'move';
+        });
+
+        bottomDivider.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (!draggedElement || draggedType !== 'layer') return;
+
+          // Move layer to end
+          performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+
+          // Clear indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+          bottomDivider.classList.remove('drag-over-top');
+          bottomTrack.classList.remove('drag-over-top');
+        });
+
+        bottomDivider.addEventListener('dragleave', (e) => {
+          bottomDivider.classList.remove('drag-over-top');
+          bottomTrack.classList.remove('drag-over-top');
+        });
+
+        // Also handle drag events on the right side (bottom track)
+        bottomTrack.addEventListener('dragover', (e) => {
+          if (!draggedElement || draggedType !== 'layer') return;
+
+          const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
+          if (isLastLayer) return;
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          bottomDivider.classList.add('drag-over-top');
+          bottomTrack.classList.add('drag-over-top');
+          e.dataTransfer.dropEffect = 'move';
+        });
+
+        bottomTrack.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (!draggedElement || draggedType !== 'layer') return;
+
+          performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
+            l.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+          bottomDivider.classList.remove('drag-over-top');
+          bottomTrack.classList.remove('drag-over-top');
+        });
+
+        bottomTrack.addEventListener('dragleave', (e) => {
+          bottomDivider.classList.remove('drag-over-top');
+          bottomTrack.classList.remove('drag-over-top');
+        });
+      }
     }
 
     // Helper function to find the corresponding right row for a left label
@@ -5790,9 +5883,22 @@
           let newValue = cell.textContent.trim();
           const originalValue = cell.dataset.originalValue || '';
 
-          // Get the animation
+          // Get the layer
           const layer = specData.layers[layerIndex];
           if (!layer) return;
+
+          // Handle parented rows separately
+          if (row.dataset.rowType === 'parented') {
+            if (newValue === originalValue) return;
+            if (fieldName === 'parentingDescription') {
+              saveSnapshot();
+              layer.parentingDescription = newValue || undefined;
+              renderTable();
+              renderTimeline();
+            }
+            return;
+          }
+
           const anim = layer.animations[animIndex];
           if (!anim) return;
 
@@ -5883,7 +5989,8 @@
     // Setup label editing for both timeline and table modes
     function setupLabelEditing() {
       // Handle left column label editing with drag threshold
-      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"]');
+      // Include both draggable labels and parented rows (which have draggable="false")
+      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"], .timeline-labels-column .timeline-label[data-row-type="parented"]');
 
       leftLabels.forEach(label => {
         const labelText = label.querySelector('.timeline-label-text');
@@ -5978,6 +6085,9 @@
           if (newText && newText !== originalText) {
             if (isLayerHeader) {
               updateLayerField(layerIndex, 'layerName', newText);
+            } else if (label.dataset.rowType === 'parented') {
+              // Parented row - update property label
+              updateParentedPropertyLabel(layerIndex, newText);
             } else {
               // Calculate global animation index
               let globalAnimIndex = 0;
@@ -7057,8 +7167,10 @@ ${cleanedScript}
       temp.textContent = input.value || input.placeholder || '';
       document.body.appendChild(temp);
 
-      // Set width with some padding (12px for left/right padding in input)
-      const width = Math.min(Math.max(temp.offsetWidth + 16, 40), 200);
+      // Set width with some padding - property fields allow larger widths
+      const isPropertyField = input.classList.contains('detail-title-input-property');
+      const maxWidth = isPropertyField ? 500 : 200;
+      const width = Math.min(Math.max(temp.offsetWidth + 16, 40), maxWidth);
       input.style.width = width + 'px';
 
       document.body.removeChild(temp);
@@ -7266,22 +7378,24 @@ ${cleanedScript}
       specData.layers.forEach((layer, layerIndex) => {
         // Layer header label (add divider class if not first layer)
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        const isParentedLayer = layer.parenting && layer.animations.length === 0;
         html += `<div class="timeline-label layer-header${dividerClass}"
                       draggable="${isEditMode}"
                       data-drag-type="layer"
                       data-layer-index="${layerIndex}"
                       data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
-          <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+          ${!isParentedLayer ? '<button class="timeline-label-add-btn edit-only" draggable="false">+</button>' : ''}
           ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
         // Check for parented layer with no animations
-        if (layer.parenting && layer.animations.length === 0) {
-          // Capitalize each property (e.g., "position" -> "Position")
-          const propertyLabel = layer.parenting.animatingProperties
+        if (isParentedLayer) {
+          // Use custom label if set, otherwise capitalize inherited properties
+          const defaultLabel = layer.parenting.animatingProperties
             .map(p => p.charAt(0).toUpperCase() + p.slice(1))
             .join(', ');
+          const propertyLabel = layer.parentingPropertyLabel || defaultLabel;
 
           html += `<div class="timeline-label indented"
                         data-row-type="parented"
@@ -7392,8 +7506,8 @@ ${cleanedScript}
           // Use spring class if parent has spring
           const springClass = parentInfo.hasSpring ? ' bar-spring' : '';
 
-          // Get custom color if set, otherwise use position color
-          const colorClass = 'color-position';
+          // Get custom color if set, otherwise use grey for parented layers
+          const colorClass = 'bar-blur';
           const currentVideoId = getCurrentVideoId();
           const customColor = layer.parentingColor && layer.parentingColor[currentVideoId];
           let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
@@ -9561,12 +9675,16 @@ ${cleanedScript}
 
       const detailPanel = document.getElementById('detailPanel');
 
-      // Generate description
+      // Generate property label and description
+      const defaultPropertyLabel = layer.parenting.animatingProperties
+        .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+        .join(', ');
+      const propertyLabel = layer.parentingPropertyLabel || defaultPropertyLabel;
       const propertiesText = layer.parenting.animatingProperties.join(', ');
       const description = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
 
-      // Get color for this layer (use custom color if set, otherwise default position color)
-      const colorClass = 'color-position';
+      // Get color for this layer (use custom color if set, otherwise grey for parented layers)
+      const colorClass = 'bar-blur';
       const defaultBarColor = getPropertyColor(colorClass);
       const videoId = getCurrentVideoId();
       const customColor = layer.parentingColor && layer.parentingColor[videoId];
@@ -9601,8 +9719,18 @@ ${cleanedScript}
           oninput="autoResizeTitleInput(this)"
           onkeydown="if(event.key === 'Enter') { this.blur(); }"
         />`;
+        html += `<span> › </span>`;
+        html += `<input
+          type="text"
+          class="detail-title-input detail-title-input-property"
+          value="${propertyLabel.replace(/"/g, '&quot;')}"
+          onfocus="this.select()"
+          onblur="updateParentedPropertyLabel(${layerIndex}, this.value)"
+          oninput="autoResizeTitleInput(this)"
+          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+        />`;
       } else {
-        html += `<span>${layer.layerName}</span>`;
+        html += `<span>${layer.layerName} › ${propertyLabel}</span>`;
       }
 
       // Color picker panel
@@ -9650,9 +9778,9 @@ ${cleanedScript}
       html += `</div>`;
       detailPanel.innerHTML = html;
 
-      // Auto-resize title input
-      const titleInput = detailPanel.querySelector('.detail-title-input');
-      if (titleInput) autoResizeTitleInput(titleInput);
+      // Auto-resize all title inputs
+      const titleInputs = detailPanel.querySelectorAll('.detail-title-input');
+      titleInputs.forEach(input => autoResizeTitleInput(input));
 
       // Update playhead position
       requestAnimationFrame(() => updatePlayhead());
@@ -9756,6 +9884,24 @@ ${cleanedScript}
         const descCell = tableRow.querySelector('.table-cell--desc .table-desc-text');
         if (descCell) descCell.textContent = newDescription;
       }
+    }
+
+    // Update parented layer property label (left column text)
+    function updateParentedPropertyLabel(layerIndex, newLabel) {
+      saveSnapshot();
+      const layer = specData.layers[layerIndex];
+      if (!layer) return;
+
+      layer.parentingPropertyLabel = newLabel;
+
+      // Update the label in both views if visible
+      const labels = document.querySelectorAll(`.timeline-label[data-row-type="parented"][data-layer-index="${layerIndex}"]`);
+      labels.forEach(label => {
+        const input = label.querySelector('.timeline-label-input');
+        const span = label.querySelector('.timeline-label-text');
+        if (input) input.value = newLabel;
+        if (span) span.textContent = newLabel;
+      });
     }
 
     // Move entire layer up in the timeline
