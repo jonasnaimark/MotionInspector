@@ -5017,27 +5017,43 @@
           ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
-        // Animation labels
-        layer.animations.forEach((anim, animIndexInLayer) => {
-          // Calculate global animation index
-          let globalAnimIndex = 0;
-          for (let i = 0; i < layerIndex; i++) {
-            globalAnimIndex += specData.layers[i].animations.length;
-          }
-          globalAnimIndex += animIndexInLayer;
+        // Check for parented layer with no animations
+        if (layer.parenting && layer.animations.length === 0) {
+          // Capitalize each property (e.g., "position" -> "Position")
+          const propertyLabel = layer.parenting.animatingProperties
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+            .join(', ');
 
           html += `<div class="timeline-label indented"
-                        data-row-type="animation"
+                        data-row-type="parented"
                         data-layer-index="${layerIndex}"
-                        data-anim-index="${animIndexInLayer}"
-                        draggable="${isEditMode}"
-                        data-drag-type="animation"
-                        data-anim-in-layer="${animIndexInLayer}">
-            <span class="timeline-label-text">${anim.property}</span>
-            <button class="param-action-btn edit-only" draggable="false"></button>
-            <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+                        draggable="false">
+            <span class="timeline-label-text">${propertyLabel}</span>
+            <button class="param-action-btn edit-only" draggable="false" onclick="deleteParentedLayer(${layerIndex}); event.stopPropagation();"></button>
           </div>`;
-        });
+        } else {
+          // Animation labels
+          layer.animations.forEach((anim, animIndexInLayer) => {
+            // Calculate global animation index
+            let globalAnimIndex = 0;
+            for (let i = 0; i < layerIndex; i++) {
+              globalAnimIndex += specData.layers[i].animations.length;
+            }
+            globalAnimIndex += animIndexInLayer;
+
+            html += `<div class="timeline-label indented"
+                          data-row-type="animation"
+                          data-layer-index="${layerIndex}"
+                          data-anim-index="${animIndexInLayer}"
+                          draggable="${isEditMode}"
+                          data-drag-type="animation"
+                          data-anim-in-layer="${animIndexInLayer}">
+              <span class="timeline-label-text">${anim.property}</span>
+              <button class="param-action-btn edit-only" draggable="false"></button>
+              <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+            </div>`;
+          });
+        }
       });
 
       // Bottom section divider for adding new sections at the end
@@ -5061,106 +5077,120 @@
           <div class="table-cell table-cell--easing"></div>
         </div>`;
 
-        // Animation rows
-        layer.animations.forEach((anim, animIndex) => {
-          const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layer.layerName);
+        // Check for parented layer with no animations
+        if (layer.parenting && layer.animations.length === 0) {
+          // Generate parenting description (use custom if set)
+          const propertiesText = layer.parenting.animatingProperties.join(', ');
+          const parentingDescription = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
 
-          // For Fit to Shape or other special animations, only show description
-          const isFitToShape = anim.isFitToShape || anim.fitToShape;
-
-          let delay, duration, easingText;
-
-          if (isFitToShape) {
-            delay = '-';
-            duration = '-';
-            easingText = '-';
-          } else {
-            delay = anim.timing.delay + 'ms';
-            // Display duration: show "-" for imported springs (not yet edited)
-            const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
-            const userSetDuration = anim.durationUserSet === true;
-            const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
-            duration = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration + 'ms' : '-');
-
-            // Check for custom easing first
-            if (anim.customEasing !== undefined && anim.customEasing !== null) {
-              easingText = formatSpringPreset(anim.customEasing);
-            } else if (anim.easing.type === 'spring') {
-              const spring = anim.easing.spring;
-              const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
-              const springLinks = {
-                'Standard Spring': 'https://air.bb/standard-spring',
-                'Slow Spring': 'https://air.bb/slow-spring',
-                'Fast Spring': 'https://air.bb/fast-spring',
-                'Slow Bounce Spring': 'https://air.bb/slow-bounce-spring',
-                'Medium Bounce Spring': 'https://air.bb/medium-bounce-spring',
-                'Fast Bounce Spring': 'https://air.bb/fast-bounce-spring'
-              };
-              const isPreset = presetSprings.includes(spring.preset);
-
-              if (isPreset) {
-                const link = springLinks[spring.preset];
-                easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
-              } else {
-                // Wrap numbers in spans for styling with non-breaking spaces
-                if (isEditMode) {
-                  easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>, Damping:&nbsp;<span class="num">${spring.custom.damping}</span>, Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>, Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
-                } else {
-                  easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>,&nbsp;Damping:&nbsp;<span class="num">${spring.custom.damping}</span>,&nbsp;Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>,&nbsp;Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
-                }
-              }
-            } else if (anim.easing.type === 'cubic-bezier') {
-              const bezierValue = anim.easing.cubicBezier;
-
-              // Check if preset name is already provided in JSON
-              let presetName = anim.easing.cubicBezierPreset;
-
-              // If not provided, detect from the bezier values
-              if (!presetName) {
-                // Normalize the bezier string by removing spaces and parsing numbers
-                const normalized = bezierValue.replace(/\s+/g, '').toLowerCase();
-                const curvePresets = {
-                  'cubic-bezier(0.2,0,0.2,1)': 'Standard Curve',
-                  'cubic-bezier(0.20,0.00,0.20,1.00)': 'Standard Curve',
-                  'cubic-bezier(0.1,1,0.2,1)': 'Enter Curve',
-                  'cubic-bezier(0.10,1.00,0.20,1.00)': 'Enter Curve',
-                  'cubic-bezier(0.4,0,1,1)': 'Exit Curve',
-                  'cubic-bezier(0.40,0.00,1.00,1.00)': 'Exit Curve'
-                };
-                presetName = curvePresets[normalized];
-              }
-
-              const curveLinks = {
-                'Standard Curve': 'https://air.bb/standard-curve',
-                'Enter Curve': 'https://air.bb/enter-curve',
-                'Exit Curve': 'https://air.bb/exit-curve'
-              };
-
-              if (presetName && curveLinks[presetName]) {
-                const link = curveLinks[presetName];
-                easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
-              } else {
-                // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
-                if (bezierValue.includes('cubic-bezier')) {
-                  easingText = wrapNumbers(bezierValue.replace('cubic-bezier', ''));
-                } else {
-                  easingText = wrapNumbers(`(${bezierValue})`);
-                }
-              }
-            } else if (anim.easing.type === 'linear') {
-              easingText = 'linear';
-            } else {
-              easingText = anim.easing.type || '-';
-            }
-          }
-
-          html += `<div class="timeline-track table-row" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
-            <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="description"><span class="table-desc-text">${description}</span></div>
-            <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="delay">${delay}</div>
-            <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="duration">${duration}</div>
-            <div class="table-cell table-cell--easing editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="easing">${easingText}</div>
+          html += `<div class="timeline-track table-row" data-row-type="parented" data-layer-index="${layerIndex}">
+            <div class="table-cell table-cell--desc"><span class="table-desc-text">${parentingDescription}</span></div>
+            <div class="table-cell table-cell--delay">—</div>
+            <div class="table-cell table-cell--duration">—</div>
+            <div class="table-cell table-cell--easing">—</div>
           </div>`;
-        });
+        } else {
+          // Animation rows
+          layer.animations.forEach((anim, animIndex) => {
+            const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layer.layerName);
+
+            // For Fit to Shape or other special animations, only show description
+            const isFitToShape = anim.isFitToShape || anim.fitToShape;
+
+            let delay, duration, easingText;
+
+            if (isFitToShape) {
+              delay = '-';
+              duration = '-';
+              easingText = '-';
+            } else {
+              delay = anim.timing.delay + 'ms';
+              // Display duration: show "-" for imported springs (not yet edited)
+              const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+              const userSetDuration = anim.durationUserSet === true;
+              const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+              duration = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration + 'ms' : '-');
+
+              // Check for custom easing first
+              if (anim.customEasing !== undefined && anim.customEasing !== null) {
+                easingText = formatSpringPreset(anim.customEasing);
+              } else if (anim.easing.type === 'spring') {
+                const spring = anim.easing.spring;
+                const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
+                const springLinks = {
+                  'Standard Spring': 'https://air.bb/standard-spring',
+                  'Slow Spring': 'https://air.bb/slow-spring',
+                  'Fast Spring': 'https://air.bb/fast-spring',
+                  'Slow Bounce Spring': 'https://air.bb/slow-bounce-spring',
+                  'Medium Bounce Spring': 'https://air.bb/medium-bounce-spring',
+                  'Fast Bounce Spring': 'https://air.bb/fast-bounce-spring'
+                };
+                const isPreset = presetSprings.includes(spring.preset);
+
+                if (isPreset) {
+                  const link = springLinks[spring.preset];
+                  easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
+                } else {
+                  // Wrap numbers in spans for styling with non-breaking spaces
+                  if (isEditMode) {
+                    easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>, Damping:&nbsp;<span class="num">${spring.custom.damping}</span>, Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>, Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
+                  } else {
+                    easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>,&nbsp;Damping:&nbsp;<span class="num">${spring.custom.damping}</span>,&nbsp;Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>,&nbsp;Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
+                  }
+                }
+              } else if (anim.easing.type === 'cubic-bezier') {
+                const bezierValue = anim.easing.cubicBezier;
+
+                // Check if preset name is already provided in JSON
+                let presetName = anim.easing.cubicBezierPreset;
+
+                // If not provided, detect from the bezier values
+                if (!presetName) {
+                  // Normalize the bezier string by removing spaces and parsing numbers
+                  const normalized = bezierValue.replace(/\s+/g, '').toLowerCase();
+                  const curvePresets = {
+                    'cubic-bezier(0.2,0,0.2,1)': 'Standard Curve',
+                    'cubic-bezier(0.20,0.00,0.20,1.00)': 'Standard Curve',
+                    'cubic-bezier(0.1,1,0.2,1)': 'Enter Curve',
+                    'cubic-bezier(0.10,1.00,0.20,1.00)': 'Enter Curve',
+                    'cubic-bezier(0.4,0,1,1)': 'Exit Curve',
+                    'cubic-bezier(0.40,0.00,1.00,1.00)': 'Exit Curve'
+                  };
+                  presetName = curvePresets[normalized];
+                }
+
+                const curveLinks = {
+                  'Standard Curve': 'https://air.bb/standard-curve',
+                  'Enter Curve': 'https://air.bb/enter-curve',
+                  'Exit Curve': 'https://air.bb/exit-curve'
+                };
+
+                if (presetName && curveLinks[presetName]) {
+                  const link = curveLinks[presetName];
+                  easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
+                } else {
+                  // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
+                  if (bezierValue.includes('cubic-bezier')) {
+                    easingText = wrapNumbers(bezierValue.replace('cubic-bezier', ''));
+                  } else {
+                    easingText = wrapNumbers(`(${bezierValue})`);
+                  }
+                }
+              } else if (anim.easing.type === 'linear') {
+                easingText = 'linear';
+              } else {
+                easingText = anim.easing.type || '-';
+              }
+            }
+
+            html += `<div class="timeline-track table-row" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
+              <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="description"><span class="table-desc-text">${description}</span></div>
+              <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="delay">${delay}</div>
+              <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="duration">${duration}</div>
+              <div class="table-cell table-cell--easing editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="easing">${easingText}</div>
+            </div>`;
+          });
+        }
       });
 
       // Bottom divider for right column to match left column
@@ -5564,8 +5594,8 @@
           // Determine insert position
           let insertIndex;
           if (label.classList.contains('layer-header')) {
-            // If clicking on header, add to end of layer
-            insertIndex = layer.animations.length;
+            // If clicking on header, add to top of layer
+            insertIndex = 0;
           } else {
             // If clicking on animation row, add after it
             const animInLayer = parseInt(label.dataset.animInLayer);
@@ -7246,20 +7276,36 @@ ${cleanedScript}
           ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
-        // Animation labels for this layer
-        layer.animations.forEach((anim, animIndexInLayer) => {
+        // Check for parented layer with no animations
+        if (layer.parenting && layer.animations.length === 0) {
+          // Capitalize each property (e.g., "position" -> "Position")
+          const propertyLabel = layer.parenting.animatingProperties
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+            .join(', ');
+
           html += `<div class="timeline-label indented"
-                        draggable="${isEditMode}"
-                        data-drag-type="animation"
-                        data-anim-index="${animIndex}"
+                        data-row-type="parented"
                         data-layer-index="${layerIndex}"
-                        data-anim-in-layer="${animIndexInLayer}">
-            <span class="timeline-label-text">${anim.property}</span>
-            <button class="param-action-btn edit-only" draggable="false"></button>
-            <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+                        draggable="false">
+            <span class="timeline-label-text">${propertyLabel}</span>
+            <button class="param-action-btn edit-only" draggable="false" onclick="deleteParentedLayer(${layerIndex}); event.stopPropagation();"></button>
           </div>`;
-          animIndex++;
-        });
+        } else {
+          // Animation labels for this layer
+          layer.animations.forEach((anim, animIndexInLayer) => {
+            html += `<div class="timeline-label indented"
+                          draggable="${isEditMode}"
+                          data-drag-type="animation"
+                          data-anim-index="${animIndex}"
+                          data-layer-index="${layerIndex}"
+                          data-anim-in-layer="${animIndexInLayer}">
+              <span class="timeline-label-text">${anim.property}</span>
+              <button class="param-action-btn edit-only" draggable="false"></button>
+              <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+            </div>`;
+            animIndex++;
+          });
+        }
       });
 
       // Bottom section divider for adding new sections at the end
@@ -7328,8 +7374,52 @@ ${cleanedScript}
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
         html += `<div class="timeline-track layer-header${dividerClass}"></div>`;
 
-        // Animation tracks for this layer
-        layer.animations.forEach(anim => {
+        // Check for parented layer with no animations
+        if (layer.parenting && layer.animations.length === 0) {
+          // Get parent layer's timing info
+          const parentInfo = getParentLayerInfo(layer.parenting.parentName);
+          const startPercent = (parentInfo.delay / currentViewDuration) * 100;
+          let widthPercent = (parentInfo.duration / currentViewDuration) * 100;
+
+          // Cap width so bars don't extend past the edge
+          const maxWidth = 100 - startPercent;
+          widthPercent = Math.min(widthPercent, maxWidth);
+
+          // Generate parenting description (use custom if set)
+          const propertiesText = layer.parenting.animatingProperties.join(', ');
+          const description = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
+
+          // Use spring class if parent has spring
+          const springClass = parentInfo.hasSpring ? ' bar-spring' : '';
+
+          // Get custom color if set, otherwise use position color
+          const colorClass = 'color-position';
+          const currentVideoId = getCurrentVideoId();
+          const customColor = layer.parentingColor && layer.parentingColor[currentVideoId];
+          let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
+          if (customColor) {
+            if (springClass) {
+              const rgb = customColor.match(/\w\w/g).map(x => parseInt(x, 16));
+              customStyle += ` background: linear-gradient(90deg, ${customColor} 0%, ${customColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
+            } else {
+              customStyle += ` background: ${customColor};`;
+            }
+          }
+
+          html += `<div class="timeline-track">`;
+          html += `
+            <div class="timeline-bar ${colorClass}${springClass}"
+                 style="${customStyle}"
+                 data-is-parented="true"
+                 data-layer-index="${layerIndex}"
+                 onclick="showParentedLayerDetails(${layerIndex})">
+              <span class="timeline-bar-text">${description}</span>
+            </div>
+          `;
+          html += `</div>`;
+        } else {
+          // Animation tracks for this layer
+          layer.animations.forEach(anim => {
           let startPercent, widthPercent, description, springClass;
 
           // Handle Fit to Shape animations - use parent layer's timing
@@ -7451,7 +7541,8 @@ ${cleanedScript}
           html += `</div>`;
 
           animIndex++;
-        });
+          });
+        }
       });
 
       // Bottom divider track to match left column
@@ -7929,8 +8020,8 @@ ${cleanedScript}
           // Determine insert position
           let insertIndex;
           if (label.classList.contains('layer-header')) {
-            // If clicking on header, add to end of layer
-            insertIndex = layer.animations.length;
+            // If clicking on header, add to top of layer
+            insertIndex = 0;
           } else {
             // If clicking on animation row, add after it
             const animInLayer = parseInt(label.dataset.animInLayer);
@@ -9450,6 +9541,221 @@ ${cleanedScript}
           }
         }
       });
+    }
+
+    // Show simplified info box for parented layers (just layer name, description, color picker)
+    function showParentedLayerDetails(layerIndex) {
+      const layer = specData.layers[layerIndex];
+      if (!layer || !layer.parenting) return;
+
+      // Clear any existing selection
+      selectedAnimation = null;
+      document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
+
+      // Select the parented bar
+      const parentedBar = document.querySelector(`.timeline-bar[data-layer-index="${layerIndex}"][data-is-parented="true"]`);
+      if (parentedBar) {
+        parentedBar.classList.add('selected');
+      }
+
+      const detailPanel = document.getElementById('detailPanel');
+
+      // Generate description
+      const propertiesText = layer.parenting.animatingProperties.join(', ');
+      const description = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
+
+      // Get color for this layer (use custom color if set, otherwise default position color)
+      const colorClass = 'color-position';
+      const defaultBarColor = getPropertyColor(colorClass);
+      const videoId = getCurrentVideoId();
+      const customColor = layer.parentingColor && layer.parentingColor[videoId];
+      const barColor = customColor || defaultBarColor;
+      const brightColor = brightenColor(barColor);
+
+      // Define available colors for picker (sorted cool to warm)
+      const colorOptions = [
+        '#045c7d', // blue (coolest)
+        '#045c45', // teal
+        '#4c7a4c', // green
+        '#5a1778', // purple
+        '#a82968', // pink
+        '#a82929', // red
+        '#ae4715', // orange
+        '#4a4a4a'  // dark grey
+      ];
+
+      let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
+      html += `<div class="detail-panel-header">`;
+      html += `<div class="detail-panel-title">`;
+      html += `<div class="color-picker-dot" id="colorPickerDot" style="background: ${brightColor};" onclick="toggleParentedColorPicker(event, ${layerIndex})"></div>`;
+
+      if (isEditMode) {
+        html += `<input
+          type="text"
+          class="detail-title-input detail-title-input-section"
+          value="${layer.layerName.replace(/"/g, '&quot;')}"
+          maxlength="21"
+          onfocus="this.select()"
+          onblur="updateLayerField(${layerIndex}, 'layerName', this.value)"
+          oninput="autoResizeTitleInput(this)"
+          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+        />`;
+      } else {
+        html += `<span>${layer.layerName}</span>`;
+      }
+
+      // Color picker panel
+      html += `<div class="color-picker-panel" id="colorPickerPanel">`;
+      html += `<div class="color-picker-grid">`;
+      colorOptions.forEach(color => {
+        const selected = color === barColor ? 'selected' : '';
+        html += `<div class="color-option ${selected}" style="background: ${color};" onclick="changeParentedLayerColor(${layerIndex}, '${color}')"></div>`;
+      });
+      html += `</div></div>`;
+      html += `</div>`;
+
+      if (isEditMode) {
+        html += `<div class="detail-panel-actions">`;
+        html += `<button class="detail-panel-action-btn delete" onclick="deleteParentedLayer(${layerIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
+        html += `<button class="detail-panel-close" onclick="closeParentedDetails()">&times;</button>`;
+        html += `</div>`;
+      } else {
+        html += `<button class="detail-panel-close" onclick="closeParentedDetails()">&times;</button>`;
+      }
+
+      html += `</div>`;
+
+      // Description - editable in edit mode, plain text in read mode
+      if (isEditMode) {
+        html += `
+          <div class="detail-description" style="border-bottom: none;">
+            <input
+              type="text"
+              class="detail-description-input"
+              value="${description.replace(/"/g, '&quot;')}"
+              placeholder="Enter description..."
+              onfocus="this.select()"
+              onblur="updateParentedDescription(${layerIndex}, this.value)"
+              onkeydown="if(event.key === 'Enter') { this.blur(); }"
+            />
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="detail-description" style="border-bottom: none;">${description}</div>
+        `;
+      }
+
+      html += `</div>`;
+      detailPanel.innerHTML = html;
+
+      // Auto-resize title input
+      const titleInput = detailPanel.querySelector('.detail-title-input');
+      if (titleInput) autoResizeTitleInput(titleInput);
+
+      // Update playhead position
+      requestAnimationFrame(() => updatePlayhead());
+    }
+
+    // Close parented layer details panel
+    function closeParentedDetails() {
+      document.getElementById('detailPanel').innerHTML = '';
+      document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
+      requestAnimationFrame(() => updatePlayhead());
+    }
+
+    // Delete a parented layer (removes the entire layer)
+    function deleteParentedLayer(layerIndex) {
+      saveSnapshot();
+
+      // Close the detail panel
+      closeParentedDetails();
+
+      // Remove the layer from specData
+      specData.layers.splice(layerIndex, 1);
+
+      // Re-render based on current view mode
+      if (viewMode === 'table') {
+        renderTableView();
+      } else {
+        renderTimeline();
+      }
+    }
+
+    // Toggle color picker for parented layers
+    function toggleParentedColorPicker(event, layerIndex) {
+      event.stopPropagation();
+      const panel = document.getElementById('colorPickerPanel');
+      if (panel) {
+        panel.classList.toggle('visible');
+      }
+    }
+
+    // Change color for parented layer
+    function changeParentedLayerColor(layerIndex, color) {
+      saveSnapshot();
+      const layer = specData.layers[layerIndex];
+      if (!layer) return;
+
+      const videoId = getCurrentVideoId();
+      if (!layer.parentingColor) {
+        layer.parentingColor = {};
+      }
+      layer.parentingColor[videoId] = color;
+
+      // Update the bar color
+      const bar = document.querySelector(`.timeline-bar[data-layer-index="${layerIndex}"][data-is-parented="true"]`);
+      if (bar) {
+        // Check if spring (has gradient)
+        const isSpring = bar.classList.contains('bar-spring');
+        if (isSpring) {
+          const rgb = color.match(/\w\w/g).map(x => parseInt(x, 16));
+          bar.style.background = `linear-gradient(90deg, ${color} 0%, ${color} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%)`;
+        } else {
+          bar.style.background = color;
+        }
+      }
+
+      // Update the color picker dot and panel border
+      const brightColor = brightenColor(color);
+      const dot = document.getElementById('colorPickerDot');
+      if (dot) dot.style.background = brightColor;
+      const panel = document.querySelector('.detail-panel');
+      if (panel) panel.style.borderLeftColor = brightColor;
+
+      // Update selected state in picker
+      document.querySelectorAll('.color-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.style.background === color);
+      });
+
+      // Hide picker
+      const pickerPanel = document.getElementById('colorPickerPanel');
+      if (pickerPanel) pickerPanel.classList.remove('visible');
+    }
+
+    // Update parented layer description
+    function updateParentedDescription(layerIndex, newDescription) {
+      saveSnapshot();
+      const layer = specData.layers[layerIndex];
+      if (!layer) return;
+
+      layer.parentingDescription = newDescription;
+
+      // Update the bar text
+      const bar = document.querySelector(`.timeline-bar[data-layer-index="${layerIndex}"][data-is-parented="true"]`);
+      if (bar) {
+        const textSpan = bar.querySelector('.timeline-bar-text');
+        if (textSpan) textSpan.textContent = newDescription;
+      }
+
+      // Update the table cell if in table view
+      const tableRow = document.querySelector(`.timeline-track.table-row[data-row-type="parented"][data-layer-index="${layerIndex}"]`);
+      if (tableRow) {
+        const descCell = tableRow.querySelector('.table-cell--desc .table-desc-text');
+        if (descCell) descCell.textContent = newDescription;
+      }
     }
 
     // Move entire layer up in the timeline
