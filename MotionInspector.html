@@ -49,7 +49,7 @@
 
     h1 {
       font-family: 'Airbnb Cereal VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 300;
       margin: 0;
       letter-spacing: 0;
@@ -568,7 +568,7 @@
       height: 22px;
       background: transparent;
       border: none;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(255, 255, 255, 0.7);
       font-family: 'Airbnb Cereal VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 13px;
       font-weight: 300;
@@ -587,7 +587,7 @@
     }
 
     .video-description-input::placeholder {
-      color: rgba(224, 224, 224, 0.5);
+      color: rgba(255, 255, 255, 0.5);
     }
 
     .video-description-input:hover {
@@ -612,7 +612,7 @@
 
     body[data-mode='read'] .video-description-input {
       pointer-events: auto;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(255, 255, 255, 0.7);
       cursor: text;
       user-select: text;
       -webkit-user-select: text;
@@ -645,18 +645,96 @@
       display: flex;
       flex-direction: column;
       height: calc(100vh - 96px); /* Same height as video section */
+      min-height: calc(100vh - 96px);
       position: relative;
-      padding-top: 6px; /* Gap between backing container top and tabs */
+      --description-height: 50px; /* Default height of description container + margin */
     }
 
-    /* Backing container behind timeline - same height as wrapper */
+    .timeline-description-container {
+      background: #1f1f1f;
+      border-radius: 8px;
+      padding: 6px 12px 6px 20px;
+      border: none;
+      margin-bottom: 10px;
+      min-height: 40px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      transition: background-color 0.15s ease;
+    }
+
+    body:not([data-mode='read']) .timeline-description-container:hover {
+      background: #262626;
+    }
+
+    .timeline-description-input {
+      width: 100%;
+      min-height: 16px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      font-family: 'Airbnb Cereal VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 300;
+      text-align: left;
+      padding: 0;
+      margin: 0;
+      resize: none;
+      outline: none;
+      overflow: hidden;
+      line-height: 18px;
+      cursor: text;
+      box-sizing: border-box;
+    }
+
+    .timeline-description-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .timeline-description-input:focus::placeholder {
+      color: transparent;
+    }
+
+    body[data-mode='read'] .timeline-description-input {
+      pointer-events: auto;
+      cursor: text;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    body[data-mode='read'] .timeline-description-input::placeholder {
+      color: transparent;
+    }
+
+    /* Hide description container if all tabs have empty descriptions */
+    body[data-mode='read'].no-descriptions .timeline-description-container {
+      display: none;
+    }
+
+    body[data-mode='read'].no-descriptions .timeline-wrapper {
+      --description-height: 0px;
+    }
+
+    body[data-mode='read'].no-descriptions .timeline-wrapper::before {
+      top: 0;
+    }
+
+    .tabs-container {
+      padding-top: 6px; /* Gap between backing container top and tabs */
+      flex-shrink: 0;
+    }
+
+    /* Backing container behind tabs and timeline */
     .timeline-wrapper::before {
       content: '';
       position: absolute;
-      top: 0;
+      top: var(--description-height); /* Below description container */
       left: 0;
       right: 0;
-      bottom: 0; /* Match wrapper height exactly */
+      bottom: 0;
       background: #1a1a1a;
       border: 1px solid #2e2e2e;
       border-radius: 8px;
@@ -702,10 +780,7 @@
       padding: 0 12px;
       border-bottom: 1px solid #333;
       box-sizing: border-box;
-      background: #0a0a0a;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      background: transparent;
     }
 
     .playhead-time #playPauseBtn {
@@ -998,7 +1073,7 @@
     }
 
     .color-picker-dot:hover {
-      border-color: rgba(255, 255, 255, 0.6);
+      border-color: rgba(255, 255, 255, 0.7);
     }
 
     .color-picker-panel {
@@ -1049,7 +1124,7 @@
     }
 
     .color-option.selected {
-      border-color: rgba(255, 255, 255, 0.8);
+      border-color: rgba(255, 255, 255, 0.7);
       box-shadow: 0 0 0 2px #2a2a2a, 0 0 0 4px rgba(255, 255, 255, 0.3);
     }
 
@@ -1246,17 +1321,37 @@
     /* ===== END TABS STYLING ===== */
 
     /* DevTools-style timeline */
+    .timeline-outer-wrapper {
+      flex: 1;
+      min-height: 0;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .timeline-header-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      flex-shrink: 0;
+    }
+
     .timeline-container {
       display: grid;
       grid-template-columns: 180px 1fr;
       gap: 0;
-      border-radius: 6px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      flex: 1;
-      min-height: 0;
       position: relative;
+      flex: 1;
     }
 
     .timeline-content-column {
@@ -1287,6 +1382,7 @@
 
     .timeline-labels-column {
       background: #0a0a0a;
+      overflow: visible;
     }
 
     .timeline-bottom-divider {
@@ -1308,15 +1404,13 @@
     }
 
     .timeline-ruler {
-      position: sticky;
-      top: 0;
       height: 44px;
-      background: #0a0a0a;
+      background: transparent;
       border-bottom: 1px solid #333;
       margin-bottom: 0;
       box-sizing: border-box;
       padding-right: 80px;
-      z-index: 100;
+      position: relative;
     }
 
     .timeline-tick {
@@ -2022,7 +2116,7 @@
 
     .playhead-handle {
       position: absolute;
-      top: -11.5px; /* Vertically center at bottom of 44px row */
+      top: -1px;
       left: 50%;
       transform: translateX(-50%);
       padding: 4px 8px;
@@ -2437,6 +2531,9 @@
 
     <div class="main-content">
       <div class="timeline-wrapper">
+        <div class="timeline-description-container">
+          <textarea id="timelineDescription" class="timeline-description-input" placeholder="Add optional description" rows="1" oninput="console.log('INPUT FIRED'); try { saveTimelineDescription(this.value); console.log('SAVE DONE'); } catch(e) { console.error('SAVE ERROR', e); } try { autoResizeTextarea(this); console.log('RESIZE DONE'); } catch(e) { console.error('RESIZE ERROR', e); }" onfocus="this.select()"></textarea>
+        </div>
         <div class="tabs-container">
           <div class="tabs-bar">
             <!-- Tabs will be rendered here by JavaScript -->
@@ -2731,6 +2828,49 @@
       const currentVideo = getCurrentVideo();
       textarea.value = currentVideo ? (currentVideo.description || '') : '';
       // Don't auto-resize for single-line description field
+    }
+
+    // Save timeline description to current tab's specData
+    function saveTimelineDescription(value) {
+      const specData = getCurrentSpecData();
+      if (!specData) return;
+      specData.description = value;
+    }
+
+    // Load timeline description from current tab's specData
+    function loadTimelineDescription() {
+      const textarea = document.getElementById('timelineDescription');
+      if (!textarea) return;
+      const specData = getCurrentSpecData();
+      console.log('[LOAD DESC] specData:', specData);
+      console.log('[LOAD DESC] specData.description:', specData ? specData.description : 'no specData');
+      textarea.value = specData && specData.description ? specData.description : '';
+      console.log('[LOAD DESC] textarea.value set to:', textarea.value);
+      autoResizeTextarea(textarea);
+    }
+
+    // Auto-resize textarea to fit content
+    function autoResizeTextarea(textarea) {
+      if (!textarea) return;
+      console.log('[RESIZE] Before - textarea height:', textarea.style.height, 'scrollHeight:', textarea.scrollHeight);
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+      console.log('[RESIZE] After - textarea height:', textarea.style.height);
+
+      // Update backing container position based on description container height
+      const descContainer = textarea.closest('.timeline-description-container');
+      const timelineWrapper = document.querySelector('.timeline-wrapper');
+      if (descContainer && timelineWrapper) {
+        console.log('[RESIZE] Container offsetHeight:', descContainer.offsetHeight);
+        const descHeight = descContainer.offsetHeight + 10; // +10 for margin-bottom
+        timelineWrapper.style.setProperty('--description-height', descHeight + 'px');
+        console.log('[RESIZE] Set --description-height to:', descHeight + 'px');
+      }
+
+      // Update playhead position after timeline resizes
+      if (typeof updatePlayhead === 'function') {
+        requestAnimationFrame(updatePlayhead);
+      }
     }
 
     // Switch between videos in current tab
@@ -3048,11 +3188,6 @@
       syncLegacyVariables();
     }
 
-    // Auto-resize textarea to fit content (not used for description field)
-    function autoResizeTextarea(textarea) {
-      // Single-line textarea doesn't need auto-resize
-    }
-
     // Maintain legacy references for backward compatibility
     let specData = initialSpec; // Start with Tab 1's spec
     let uploadedVideoFile = null;
@@ -3315,6 +3450,9 @@
 
       // Load description for current video
       loadDescription();
+
+      // Load timeline description for current tab
+      loadTimelineDescription();
 
       // Update video navigation arrows and overlay buttons
       updateVideoNavigation();
@@ -3999,6 +4137,10 @@
 
       updateVideoAlignment();
       positionVideoNavArrows();
+
+      // Resize timeline description textarea on window resize
+      const timelineDesc = document.getElementById('timelineDescription');
+      if (timelineDesc) autoResizeTextarea(timelineDesc);
     });
 
     // Resize handle functionality
@@ -4037,6 +4179,9 @@
           if (viewMode === 'table') {
             updateTableEasingWidth();
           }
+          // Resize timeline description textarea on drag
+          const timelineDesc = document.getElementById('timelineDescription');
+          if (timelineDesc) autoResizeTextarea(timelineDesc);
         });
       });
 
@@ -4323,19 +4468,27 @@
       if (isDraggingPlayhead || justFinishedDragging) return;
 
       const playhead = document.querySelector('.playhead');
-      const timelineContainer = document.querySelector('.timeline-container');
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
       const timelineContent = document.querySelector('.timeline-content-column');
+      const timelineRuler = document.querySelector('.timeline-ruler');
 
-      if (playhead && timelineContainer && timelineContent) {
+      if (playhead && outerWrapper && timelineContent) {
         const positionPercent = getTimelinePosition(video.currentTime);
-        const containerRect = timelineContainer.getBoundingClientRect();
+        const wrapperRect = outerWrapper.getBoundingClientRect();
         const contentRect = timelineContent.getBoundingClientRect();
 
         // Calculate pixel position relative to viewport
         const leftPosition = contentRect.left + (positionPercent / 100 * contentRect.width);
         playhead.style.left = `${leftPosition}px`;
-        playhead.style.top = `${containerRect.top + 44}px`;
-        playhead.style.bottom = `${window.innerHeight - containerRect.bottom}px`;
+
+        // If ruler exists in header, extend playhead up into it
+        if (timelineRuler) {
+          const rulerRect = timelineRuler.getBoundingClientRect();
+          playhead.style.top = `${rulerRect.top + 32}px`; // Start within ruler area
+        } else {
+          playhead.style.top = `${wrapperRect.top}px`;
+        }
+        playhead.style.bottom = `${window.innerHeight - wrapperRect.bottom}px`;
       }
     }
 
@@ -4824,17 +4977,32 @@
       // Build table view HTML - must match timeline structure exactly
       let html = '';
 
-      // Timeline container
-      html += `<div class="timeline-container">`;
+      // Outer wrapper containing header + scroll area
+      html += `<div class="timeline-outer-wrapper">`;
 
-      // ===== LEFT COLUMN - Keep exactly the same as timeline =====
-      html += `<div class="timeline-labels-column" style="border-right: 1px solid #2a2a2a;">`;
+      // ===== HEADER ROW (fixed, outside scroll) =====
+      html += `<div class="timeline-header-row">`;
 
-      // Top section - playhead-time (44px) - matches timeline-ruler height
-      html += `<div class="playhead-time" style="cursor: default;">
+      // Left side of header - empty playhead-time for spacing
+      html += `<div class="playhead-time" style="cursor: default;"></div>`;
+
+      // Right side of header - Table header row
+      html += `<div class="timeline-ruler table-row table-row--header">
+        <div class="table-cell table-cell--desc"><span class="table-desc-text">Description</span></div>
+        <div class="table-cell table-cell--delay">Delay</div>
+        <div class="table-cell table-cell--duration">Duration</div>
+        <div class="table-cell table-cell--easing">Easing</div>
       </div>`;
 
-      // Labels - exactly the same as timeline mode
+      html += `</div>`; // timeline-header-row
+
+      // ===== SCROLL AREA =====
+      html += `<div class="timeline-container">`;
+
+      // ===== LEFT COLUMN =====
+      html += `<div class="timeline-labels-column" style="border-right: 1px solid #2a2a2a;">`;
+
+      // Labels
       specData.layers.forEach((layer, layerIndex) => {
         // Layer header label
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
@@ -4879,16 +5047,8 @@
 
       html += `</div>`; // timeline-labels-column
 
-      // ===== RIGHT COLUMN - Table data =====
+      // ===== RIGHT COLUMN - Table data (header is now in header row above) =====
       html += `<div class="timeline-content-column">`;
-
-      // Table header row - matches timeline-ruler styling (44px)
-      html += `<div class="timeline-ruler table-row table-row--header">
-        <div class="table-cell table-cell--desc"><span class="table-desc-text">Description</span></div>
-        <div class="table-cell table-cell--delay">Delay</div>
-        <div class="table-cell table-cell--duration">Duration</div>
-        <div class="table-cell table-cell--easing">Easing</div>
-      </div>`;
 
       // Table rows - each row exactly 32px to match timeline tracks
       specData.layers.forEach((layer, layerIndex) => {
@@ -5013,6 +5173,7 @@
 
       html += `</div>`; // timeline-content-column
       html += `</div>`; // timeline-container
+      html += `</div>`; // timeline-outer-wrapper
 
       timelineContent.innerHTML = html;
       console.log('[TABLE] Table view rendered');
@@ -5981,6 +6142,9 @@
 
     <div class="main-content">
       <div class="timeline-wrapper">
+        <div class="timeline-description-container">
+          <textarea id="timelineDescription" class="timeline-description-input" placeholder="Add optional description" rows="1" readonly></textarea>
+        </div>
         <div class="tabs-container" id="tabsContainer">
           <div class="tabs-bar">
             <!-- Tabs will be rendered here by JavaScript -->
@@ -6116,6 +6280,9 @@ ${cleanedScript}
         }
       }
 
+      // Load timeline description for current tab
+      loadTimelineDescription();
+
       // Update video navigation for read mode (if multiple videos)
       if (typeof updateVideoNavigation === 'function') {
         updateVideoNavigation();
@@ -6129,8 +6296,15 @@ ${cleanedScript}
       console.log('[EXPORT] About to render tabs and timeline');
       renderTabs();
 
+      // Check if all tabs have empty descriptions
+      const allDescriptionsEmpty = tabs.every(tab => !tab.specData || !tab.specData.description || tab.specData.description.trim() === '');
+      if (allDescriptionsEmpty) {
+        document.body.classList.add('no-descriptions');
+      }
+
       // Hide tabs container if only one tab
       if (tabs.length === 1) {
+        document.body.classList.add('single-tab');
         const tabsContainer = document.getElementById('tabsContainer');
         if (tabsContainer) {
           tabsContainer.style.display = 'none';
@@ -6989,16 +7163,18 @@ ${cleanedScript}
       // Update the main title with the spec name
       document.querySelector('h1').textContent = specData.compName;
       // Update the page title
-      document.title = `Motion Inspector - ${specData.compName}`;
+      document.title = specData.compName;
 
       let html = '';
 
-      // Timeline container
-      html += `<div class="timeline-container">`;
+      // Outer wrapper containing header + scroll area
+      html += `<div class="timeline-outer-wrapper">`;
 
-      // Left column - labels
-      html += `<div class="timeline-labels-column">`;
-      html += `<div class="playhead-time" style="position: relative;">
+      // ===== HEADER ROW (fixed, outside scroll) =====
+      html += `<div class="timeline-header-row">`;
+
+      // Left side of header - playhead controls
+      html += `<div class="playhead-time">
         <button id="playPauseBtn" onclick="togglePlayPause()"><span class="icon"><svg viewBox="0 0 10 12"><path d="M1 1.5 L8.5 6 L1 10.5 Z" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white"/></svg></span></button>
         <span style="position: relative; display: inline-flex;">
           <button class="settings-btn" id="settingsBtn" onclick="toggleSettingsPopup(event)"><svg viewBox="0 0 14 16" fill="currentColor"><path d="M14 8.77v-1.6l-1.94-.64-.45-1.09.88-1.84-1.13-1.13-1.81.91-1.09-.45-.69-1.92h-1.6l-.63 1.94-1.11.45-1.84-.88-1.13 1.13.91 1.81-.45 1.09L0 7.23v1.59l1.94.64.45 1.09-.88 1.84 1.13 1.13 1.81-.91 1.09.45.69 1.92h1.59l.63-1.94 1.11-.45 1.84.88 1.13-1.13-.92-1.81.47-1.09L14 8.75v.02zM7 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg></button>
@@ -7019,7 +7195,42 @@ ${cleanedScript}
           </div>
         </div>
         </span>
-      </div>`; // Play button and settings above labels
+      </div>`;
+
+      // Right side of header - timeline ruler (need to build it now before the scroll area)
+      const specDuration = specData.workArea.duration;
+      if (!viewDuration) {
+        viewDuration = Math.round(specDuration / 100) * 100;
+      }
+      const currentViewDuration = viewDuration;
+      const timeIntervals = getNiceTimeIntervals(currentViewDuration);
+      const interval = timeIntervals.interval;
+      const ticks = [];
+      for (let time = 0; time <= currentViewDuration; time += interval) {
+        ticks.push(time);
+      }
+
+      html += `<div class="timeline-ruler">`;
+      html += `<div class="zoom-controls edit-only">
+        <span class="zoom-duration">Timeline duration: ${specDuration}ms</span>
+        <button class="zoom-btn" onclick="zoomOut()">−</button>
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+      </div>`;
+      html += `<div style="position: absolute; top: 0; left: 0; right: 0; height: 100%;">`;
+      ticks.forEach((time, index) => {
+        if (time >= currentViewDuration) return;
+        const position = (time / currentViewDuration) * 100;
+        html += `<div class="timeline-tick" style="position: absolute; left: ${position}%; height: 100%; transform: translateX(-50%);">${Math.round(time)}ms</div>`;
+      });
+      html += `</div></div>`; // timeline-ruler
+
+      html += `</div>`; // timeline-header-row
+
+      // ===== SCROLL AREA =====
+      html += `<div class="timeline-container">`;
+
+      // Left column - labels (no playhead-time, it's in header now)
+      html += `<div class="timeline-labels-column">`;
 
       let animIndex = 0;
       specData.layers.forEach((layer, layerIndex) => {
@@ -7058,60 +7269,25 @@ ${cleanedScript}
 
       html += `</div>`; // timeline-labels-column
 
-      // Right column - timeline content
+      // Right column - timeline content (ruler is now in header)
       html += `<div class="timeline-content-column">`;
-
-      // Zoom controls
-      const specDuration = specData.workArea.duration;
-      // Initialize viewDuration to rounded spec duration if not set
-      if (!viewDuration) {
-        viewDuration = Math.round(specDuration / 100) * 100;
-      }
-      const currentViewDuration = viewDuration;
-
-      // Timeline ruler - use view duration for rendering
-      const timeIntervals = getNiceTimeIntervals(currentViewDuration);
-      const interval = timeIntervals.interval;
-      const ticks = [];
-
-      for (let time = 0; time <= currentViewDuration; time += interval) {
-        ticks.push(time);
-      }
-      // Don't add final tick at exact duration - we'll stop before it
-
-      html += `<div class="timeline-ruler">`;
-      html += `<div class="zoom-controls edit-only">
-        <span class="zoom-duration">Timeline duration: ${specDuration}ms</span>
-        <button class="zoom-btn" onclick="zoomOut()">−</button>
-        <button class="zoom-btn" onclick="zoomIn()">+</button>
-      </div>`;
-      html += `<div style="position: absolute; top: 0; left: 0; right: 0; height: 100%;">`;
-      ticks.forEach((time, index) => {
-        // Skip the last tick if it's at the end
-        if (time >= currentViewDuration) return;
-
-        // Position based on view time percentage, centered over grid line
-        const position = (time / currentViewDuration) * 100;
-        html += `<div class="timeline-tick" style="position: absolute; left: ${position}%; height: 100%; transform: translateX(-50%);">${Math.round(time)}ms</div>`;
-      });
-      html += `</div></div>`;
 
       // Timeline grid with bars
       html += `<div style="position: relative; padding-right: 80px;">`;
-      html += `<div class="timeline-grid-lines" style="display: block; position: absolute; top: -8px; left: 0; right: 0; height: calc(100% + 8px); pointer-events: none; z-index: 5;">`;
+      html += `<div class="timeline-grid-lines" style="display: block; position: absolute; top: 0; left: 0; right: 0; height: 100%; pointer-events: none; z-index: 5;">`;
 
-      // Main grid lines (taller - extend into ruler, stop at bottom divider)
+      // Main grid lines (stop at bottom divider)
       ticks.forEach(time => {
         if (time >= currentViewDuration) return;
         const position = (time / currentViewDuration) * 100;
         html += `<div style="position: absolute; left: ${position}%; top: 0; bottom: 15px; width: 1px; background: rgba(255, 255, 255, 0.12);"></div>`;
       });
 
-      // Subtle halfway markers between main grid lines (normal height - start below ruler, stop at bottom divider)
+      // Subtle halfway markers between main grid lines (stop at bottom divider)
       for (let i = 0; i < ticks.length - 1; i++) {
         const midTime = (ticks[i] + ticks[i + 1]) / 2;
         const position = (midTime / currentViewDuration) * 100;
-        html += `<div style="position: absolute; left: ${position}%; top: 8px; bottom: 15px; width: 1px; background: rgba(255, 255, 255, 0.06);"></div>`;
+        html += `<div style="position: absolute; left: ${position}%; top: 0; bottom: 15px; width: 1px; background: rgba(255, 255, 255, 0.06);"></div>`;
       }
 
       html += `</div>`;
@@ -7285,6 +7461,7 @@ ${cleanedScript}
       html += `</div>`; // position relative wrapper
       html += `</div>`; // timeline-content-column
       html += `</div>`; // timeline-container
+      html += `</div>`; // timeline-outer-wrapper
 
       // Detail panel placeholder
       html += `<div id="detailPanel"></div>`;
@@ -8665,8 +8842,9 @@ ${cleanedScript}
       const playhead = document.getElementById('playhead');
       if (!playhead) return;
 
-      const timelineContainer = document.querySelector('.timeline-container');
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
       const timelineContent = document.querySelector('.timeline-content-column');
+      const timelineRuler = document.querySelector('.timeline-ruler');
 
       function onMouseDown(e) {
         isDraggingPlayhead = true;
@@ -8679,7 +8857,7 @@ ${cleanedScript}
       }
 
       function onMouseMove(e) {
-        const containerRect = timelineContainer.getBoundingClientRect();
+        const wrapperRect = outerWrapper.getBoundingClientRect();
         const contentRect = timelineContent.getBoundingClientRect();
         let x = e.clientX - contentRect.left;
 
@@ -8692,8 +8870,15 @@ ${cleanedScript}
         // Calculate pixel position relative to viewport
         const leftPosition = contentRect.left + (percentage * contentRect.width);
         playhead.style.left = `${leftPosition}px`;
-        playhead.style.top = `${containerRect.top + 44}px`;
-        playhead.style.bottom = `${window.innerHeight - containerRect.bottom}px`;
+
+        // Position playhead to extend from ruler down through content
+        if (timelineRuler) {
+          const rulerRect = timelineRuler.getBoundingClientRect();
+          playhead.style.top = `${rulerRect.top + 32}px`;
+        } else {
+          playhead.style.top = `${wrapperRect.top}px`;
+        }
+        playhead.style.bottom = `${window.innerHeight - wrapperRect.bottom}px`;
 
         if (video.duration && specData) {
           // Convert drag percentage to spec time (use current view duration for zoom)
@@ -9503,6 +9688,9 @@ ${cleanedScript}
     // Note: specData is already initialized via syncLegacyVariables() which sets it to tabs[0].specData
     // Don't reassign specData here as it would break the connection to tabs[0].specData
     renderTimeline();
+
+    // Load timeline description for initial tab
+    loadTimelineDescription();
   </script>
 </body>
 </html>
