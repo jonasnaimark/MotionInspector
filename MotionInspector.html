@@ -8869,12 +8869,20 @@ ${cleanedScript}
 
               // Show drop indicator on closest element only (extends across full timeline)
               if (closestElement) {
+                // Find corresponding track to add indicator to both sides
+                const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+                const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+                const labelIndex = allLabels.indexOf(closestElement);
+
                 if (isLayerHeader) {
                   // For layer headers, always show bottom indicator (add to section)
                   const headerLayerIndex = parseInt(closestElement.dataset.layerIndex);
                   if (headerLayerIndex !== layerIndex) {
                     // Only show if dropping into a different section
                     closestElement.classList.add('drag-over-bottom');
+                    if (labelIndex >= 0 && allTracks[labelIndex]) {
+                      allTracks[labelIndex].classList.add('drag-over-bottom');
+                    }
                   }
                 } else if (closestElement.dataset.animIndex !== String(animIndex)) {
                   // For animation labels, show top/bottom based on position
@@ -8883,8 +8891,14 @@ ${cleanedScript}
 
                   if (moveEvent.clientY < midpoint) {
                     closestElement.classList.add('drag-over-top');
+                    if (labelIndex >= 0 && allTracks[labelIndex]) {
+                      allTracks[labelIndex].classList.add('drag-over-top');
+                    }
                   } else {
                     closestElement.classList.add('drag-over-bottom');
+                    if (labelIndex >= 0 && allTracks[labelIndex]) {
+                      allTracks[labelIndex].classList.add('drag-over-bottom');
+                    }
                   }
                 }
               }
