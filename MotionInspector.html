@@ -801,8 +801,8 @@
     }
 
     .playhead-time #playPauseBtn:hover {
-      background: #357abd;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      background: #5a9ee8;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     .playhead-time #playPauseBtn .icon {
@@ -854,7 +854,8 @@
     }
 
     .settings-btn:hover {
-      opacity: 0.8;
+      opacity: 1;
+      background: #3a3a3a;
     }
 
     .settings-btn:active,
@@ -1661,8 +1662,8 @@
     .timeline-label.indented.has-child-line::before {
       content: '';
       position: absolute;
-      left: 17px;
-      top: -4px;
+      left: 15px;
+      top: -6px;
       bottom: -1px; /* Extend slightly to connect to next row */
       width: 1px;
       background: #fff;
@@ -1681,9 +1682,9 @@
     .timeline-label.child-layer-header::before {
       content: '';
       position: absolute;
-      left: 17px;
-      top: -4px;
-      height: calc(50% - 10px + 4px);
+      left: 15px;
+      top: -6px;
+      height: calc(50% - 10px + 6px);
       width: 1px;
       background: #fff;
       z-index: 0;
@@ -1693,7 +1694,7 @@
     .timeline-label.child-layer-header::after {
       content: '';
       position: absolute;
-      left: 17px;
+      left: 15px;
       top: calc(50% - 10px);
       width: 9px;
       height: 10px;
@@ -1712,7 +1713,7 @@
     /* When there are more siblings below, extend vertical line to bottom */
     .timeline-label.child-layer-header.has-siblings::before {
       height: auto;
-      top: -4px;
+      top: -6px;
       bottom: -1px;
     }
 
@@ -1720,8 +1721,8 @@
     .timeline-label.indented.child-continues::before {
       content: '';
       position: absolute;
-      left: 17px;
-      top: -4px;
+      left: 15px;
+      top: -6px;
       bottom: -1px;
       width: 1px;
       background: #fff;
@@ -2225,8 +2226,8 @@
     }
 
     .playhead-handle:hover {
-      background: #357abd;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+      background: #5a9ee8;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
     }
 
     .detail-panel {
@@ -5185,7 +5186,7 @@
                           data-row-type="parented"
                           data-layer-index="${childLayerIndex}"
                           draggable="false">
-              <span class="timeline-label-text">Inherited:</span>
+              <span class="timeline-label-text">Inherited</span>
               <button class="param-action-btn edit-only" draggable="false"></button>
             </div>`;
 
@@ -7288,12 +7289,11 @@ ${cleanedScript}
 
     // Generate nice time divisions
     function getNiceTimeIntervals(duration) {
-      const niceIntervals = [100, 200, 250, 500, 1000, 2000, 2500, 5000];
-      const targetDivisions = 8;
+      const niceIntervals = [25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000];
 
       for (const interval of niceIntervals) {
         const divisions = Math.floor(duration / interval);
-        if (divisions >= 6 && divisions <= 10) {
+        if (divisions >= 5 && divisions <= 12) {
           return { interval, count: divisions };
         }
       }
@@ -7619,7 +7619,7 @@ ${cleanedScript}
                         data-row-type="parented"
                         data-layer-index="${childLayerIndex}"
                         draggable="false">
-            <span class="timeline-label-text">Inherited:</span>
+            <span class="timeline-label-text">Inherited</span>
           </div>`;
 
           // Child's own animations (if any)
