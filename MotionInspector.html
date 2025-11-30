@@ -2401,6 +2401,54 @@
       margin: 0 4px;
     }
 
+    .parent-selector-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .parent-selector-label {
+      font-size: 11px;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    .parent-selector {
+      background: #333;
+      border: 1px solid #555;
+      color: #e0e0e0;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 28px 4px 8px;
+      height: 28px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      min-width: 100px;
+      max-width: 160px;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23888' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+
+    .parent-selector:hover {
+      background-color: #444;
+      border-color: #666;
+    }
+
+    .parent-selector:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+
+    .parent-selector option {
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+
     .detail-description {
       margin-bottom: 12px;
       padding-bottom: 12px;
@@ -2798,7 +2846,7 @@
       return {
         compName: "Motion Inspector",
         workArea: {
-          duration: 2000
+          duration: 1000
         },
         layers: [
           {
@@ -5379,8 +5427,7 @@
           </div>`;
 
           // Child's "Inherits" row (always shown to match left column)
-          const propertiesText = childLayer.parenting.animatingProperties.join(', ');
-          const inheritsDescription = childLayer.parentingDescription || `Attached to ${layer.layerName}, inherits ${propertiesText}`;
+          const inheritsDescription = getInheritedDescription(childLayer);
           html += `<div class="timeline-track table-row${childContinueClass}" data-row-type="parented" data-layer-index="${childLayerIndex}">
             <div class="table-cell table-cell--desc"><span class="table-desc-text">${inheritsDescription}</span></div>
             <div class="table-cell table-cell--delay">-</div>
@@ -6746,15 +6793,51 @@ ${cleanedScript}
             });
           }
 
+          // Filter out default/placeholder sections from specData
+          const filteredSpecData = filterDefaultSections(tab.specData);
+
           const exportTab = {
             id: tab.id,
             name: tab.name,
-            specData: tab.specData,
+            specData: filteredSpecData,
             videos: exportVideos,
             currentVideoIndex: 0  // Always start with first video when opening exported file
           };
           return exportTab;
         });
+
+        // Helper function to filter out default placeholder sections
+        function filterDefaultSections(specData) {
+          if (!specData || !specData.layers) return specData;
+
+          const defaultValues = ['New Section', 'Add parameter', 'Add description'];
+
+          const filteredLayers = specData.layers.filter(layer => {
+            // Check if layer name is a default placeholder
+            const layerNameLower = layer.layerName?.toLowerCase() || '';
+            const isDefaultLayerName = defaultValues.some(d => layerNameLower === d.toLowerCase());
+
+            // Check if all animations have default values
+            const allAnimsDefault = layer.animations?.every(anim => {
+              const propLower = anim.property?.toLowerCase() || '';
+              const descLower = anim.description?.toLowerCase() || '';
+              return defaultValues.some(d => propLower === d.toLowerCase()) ||
+                     defaultValues.some(d => descLower === d.toLowerCase());
+            });
+
+            // Exclude if layer name is default AND all animations are default
+            if (isDefaultLayerName && allAnimsDefault) {
+              return false;
+            }
+
+            return true;
+          });
+
+          return {
+            ...specData,
+            layers: filteredLayers
+          };
+        }
 
         // Generate clean HTML template
         const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), exportRatio);
@@ -7406,11 +7489,126 @@ ${cleanedScript}
     function updateLayerField(layerIndex, fieldName, newValue) {
       if (layerIndex >= 0 && layerIndex < specData.layers.length) {
         saveSnapshot();
+        const oldValue = specData.layers[layerIndex][fieldName];
         specData.layers[layerIndex][fieldName] = newValue;
+
+        // If layerName changed, update any child layers that reference this as parent
+        if (fieldName === 'layerName' && oldValue !== newValue) {
+          specData.layers.forEach(layer => {
+            if (layer.parenting && layer.parenting.parentName === oldValue) {
+              layer.parenting.parentName = newValue;
+            }
+          });
+        }
+
         // Refresh the view - this will update:
         // 1. Left column layer header in timeline/table
         // 2. All info boxes for animations in this layer (they all reference layer.layerName)
         refreshActiveView();
+      }
+    }
+
+    // Generate the inherited description dynamically from parent layer's current data
+    function getInheritedDescription(childLayer) {
+      if (!childLayer.parenting) return '';
+
+      // If user has set a custom description, use it
+      if (childLayer.parentingDescription) {
+        return childLayer.parentingDescription;
+      }
+
+      // Find the actual parent layer to get current properties
+      const parentName = childLayer.parenting.parentName;
+      const parentLayer = specData?.layers?.find(l => l.layerName === parentName);
+
+      if (parentLayer) {
+        // Get current property names from parent's animations
+        const propertiesText = parentLayer.animations.map(a => a.property).join(', ');
+        return `Attached to ${parentName}, inherits ${propertiesText}`;
+      } else {
+        // Fallback to stored data if parent not found
+        const propertiesText = childLayer.parenting.animatingProperties?.join(', ') || '';
+        return `Attached to ${parentName}, inherits ${propertiesText}`;
+      }
+    }
+
+    // Get available parent layers for a given layer
+    // Returns layers that can be selected as parents (top-level only, excluding current layer)
+    function getAvailableParentLayers(currentLayerIndex) {
+      if (!specData || !specData.layers) return [];
+
+      const availableParents = [];
+      specData.layers.forEach((layer, index) => {
+        // Exclude the current layer
+        if (index === currentLayerIndex) return;
+        // Exclude layers that already have a parent (only allow 1 level of nesting)
+        if (layer.parenting) return;
+        // This layer can be a parent
+        availableParents.push({ name: layer.layerName, index: index });
+      });
+
+      return availableParents;
+    }
+
+    // Set a layer's parent and reorder layers accordingly
+    function setLayerParent(layerIndex, parentName, animIndex) {
+      if (!specData || layerIndex < 0 || layerIndex >= specData.layers.length) return;
+
+      saveSnapshot();
+
+      const layer = specData.layers[layerIndex];
+
+      if (!parentName || parentName === '') {
+        // Remove parenting (make it a top-level layer)
+        delete layer.parenting;
+      } else {
+        // Set the parent
+        layer.parenting = {
+          parentName: parentName,
+          animatingProperties: layer.animations.map(a => a.property)
+        };
+
+        // Find the parent layer's index
+        const parentIndex = specData.layers.findIndex(l => l.layerName === parentName);
+        if (parentIndex !== -1 && parentIndex !== layerIndex) {
+          // Remove the layer from its current position
+          const [movedLayer] = specData.layers.splice(layerIndex, 1);
+
+          // Find where to insert it (right after the parent and any existing children)
+          let insertIndex = parentIndex + 1;
+          // Skip past any existing children of this parent
+          while (insertIndex < specData.layers.length &&
+                 specData.layers[insertIndex].parenting?.parentName === parentName) {
+            insertIndex++;
+          }
+
+          // Adjust insert index if we removed from before the insert position
+          if (layerIndex < insertIndex) {
+            insertIndex--;
+          }
+
+          // Insert the layer at the new position
+          specData.layers.splice(insertIndex, 0, movedLayer);
+        }
+      }
+
+      // Update the tab's specData
+      setCurrentSpecData(specData);
+
+      // Refresh the view
+      refreshActiveView();
+
+      // Re-show the animation details (animIndex may have changed due to reordering)
+      // Recalculate the new animIndex for this layer's animations
+      let newAnimIndex = 0;
+      for (let i = 0; i < specData.layers.length; i++) {
+        const l = specData.layers[i];
+        if (l.layerName === layer.layerName) {
+          // Found our layer, show first animation's details
+          showAnimationDetails(newAnimIndex);
+          break;
+        }
+        newAnimIndex += l.animations.length;
       }
     }
 
@@ -7664,6 +7862,7 @@ ${cleanedScript}
                         data-layer-index="${childLayerIndex}"
                         draggable="false">
             <span class="timeline-label-text">Inherited</span>
+            <button class="param-action-btn edit-only" draggable="false"></button>
           </div>`;
 
           // Child's own animations (if any)
@@ -7850,8 +8049,7 @@ ${cleanedScript}
         const maxWidth = 100 - startPercent;
         widthPercent = Math.min(widthPercent, maxWidth);
 
-        const propertiesText = childLayer.parenting.animatingProperties.join(', ');
-        const description = childLayer.parentingDescription || `Attached to ${parentName}, inherits ${propertiesText}`;
+        const description = getInheritedDescription(childLayer);
         const springClass = parentInfo.hasSpring ? ' bar-spring' : '';
         const colorClass = 'bar-blur';
 
@@ -9592,6 +9790,21 @@ ${cleanedScript}
 
       if (isEditMode) {
         html += `<div class="detail-panel-actions">`;
+
+        // Parent selector dropdown
+        const currentParentName = layer.parenting?.parentName || '';
+        const parentOptions = getAvailableParentLayers(layerIndex);
+        html += `<div class="parent-selector-container">`;
+        html += `<span class="parent-selector-label">Parent to:</span>`;
+        html += `<select class="parent-selector" onchange="setLayerParent(${layerIndex}, this.value, ${animIndex})">`;
+        html += `<option value="">None</option>`;
+        parentOptions.forEach(opt => {
+          const selected = opt.name === currentParentName ? 'selected' : '';
+          html += `<option value="${opt.name}" ${selected}>${opt.name}</option>`;
+        });
+        html += `</select>`;
+        html += `</div>`;
+
         html += `<button class="detail-panel-action-btn delete" onclick="deleteAnimation(${animIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
         html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
         html += `</div>`;
@@ -9949,13 +10162,14 @@ ${cleanedScript}
 
       const detailPanel = document.getElementById('detailPanel');
 
-      // Generate property label and description
-      const defaultPropertyLabel = layer.parenting.animatingProperties
+      // Generate property label and description dynamically from parent's current data
+      const parentLayer = specData?.layers?.find(l => l.layerName === layer.parenting.parentName);
+      const parentProperties = parentLayer ? parentLayer.animations.map(a => a.property) : (layer.parenting.animatingProperties || []);
+      const defaultPropertyLabel = parentProperties
         .map(p => p.charAt(0).toUpperCase() + p.slice(1))
         .join(', ');
       const propertyLabel = layer.parentingPropertyLabel || defaultPropertyLabel;
-      const propertiesText = layer.parenting.animatingProperties.join(', ');
-      const description = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
+      const description = getInheritedDescription(layer);
 
       // Get color for this layer (use custom color if set, otherwise grey for parented layers)
       const colorClass = 'bar-blur';
