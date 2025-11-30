@@ -594,8 +594,6 @@
 
     .video-description-input:hover {
       background: #222222;
-      outline: 1px solid #3a3a3a;
-      outline-offset: 2px;
     }
 
     .video-description-input:hover::placeholder {
@@ -1539,17 +1537,19 @@
       font-size: 16px;
       font-weight: bold;
       line-height: 23px;
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       z-index: 10;
-      transition: all 0.15s ease;
-      pointer-events: auto;
+      transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      pointer-events: none;
+      opacity: 0;
     }
 
     .timeline-label-add-btn.visible {
-      display: flex;
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .timeline-label-add-btn:hover {
@@ -1573,17 +1573,19 @@
       font-size: 16px;
       font-weight: bold;
       line-height: 23px;
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       z-index: 10;
-      transition: all 0.15s ease;
-      pointer-events: auto;
+      transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      pointer-events: none;
+      opacity: 0;
     }
 
     .section-divider-add-btn.visible {
-      display: flex;
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .section-divider-add-btn:hover {
@@ -1753,7 +1755,7 @@
       opacity: 0;
       pointer-events: none;
       padding: 0;
-      transition: opacity 0.2s ease, background 0.15s ease, border-color 0.15s ease;
+      transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1811,6 +1813,11 @@
       display: grid;
       grid-template-columns: minmax(220px, 1fr) 80px 80px var(--table-easing-width, 200px);
       padding-right: 0;
+    }
+
+    .timeline-ruler.table-row.table-row--header {
+      border-left: 1px solid #2a2a2a;
+      margin-left: -1px;
     }
 
     .timeline-track.table-row {
@@ -1902,6 +1909,12 @@
     .table-row--header .table-cell--easing {
       font-size: 12px;
       font-family: inherit;
+    }
+
+    .table-row--header .table-cell--desc,
+    .table-row--header .table-cell--delay,
+    .table-row--header .table-cell--duration {
+      border-right: 1px solid #2a2a2a;
     }
 
     .table-row--layer .table-cell {
