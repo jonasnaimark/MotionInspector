@@ -197,7 +197,7 @@
       transform: translateY(-50%);
       width: 1px;
       height: 20px;
-      background: #555;
+      background: #fff;
     }
 
     /* Hide divider when first button is selected */
@@ -1377,7 +1377,7 @@
     }
 
     .timeline-container::-webkit-scrollbar-thumb:hover {
-      background: #555;
+      background: #fff;
     }
 
     .timeline-labels-column {
@@ -1646,9 +1646,92 @@
       position: relative;
     }
 
+    .timeline-label.indented .timeline-label-text {
+      opacity: 0.7;
+    }
+
     .timeline-label.indented.selected {
       color: #ffffff;
       font-weight: 600;
+    }
+
+    /* ===== Child Layer Nesting Connectors ===== */
+
+    /* Vertical line on rows that are part of a parent with children */
+    .timeline-label.indented.has-child-line::before {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: -4px;
+      bottom: -1px; /* Extend slightly to connect to next row */
+      width: 1px;
+      background: #fff;
+      z-index: 0;
+    }
+
+    /* Child layer header - same indent as other param rows */
+    .timeline-label.child-layer-header {
+      padding-left: 32px;
+      font-weight: 600;
+      color: #e0e0e0;
+      position: relative;
+    }
+
+    /* Vertical line segment connecting from top to the curve */
+    .timeline-label.child-layer-header::before {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: -4px;
+      height: calc(50% - 10px + 4px);
+      width: 1px;
+      background: #fff;
+      z-index: 0;
+    }
+
+    /* Curved branch connector (L-shape with rounded corner) */
+    .timeline-label.child-layer-header::after {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: calc(50% - 10px);
+      width: 9px;
+      height: 10px;
+      border-left: 1px solid #fff;
+      border-bottom: 1px solid #fff;
+      border-bottom-left-radius: 5px;
+      background: transparent;
+      z-index: 0;
+    }
+
+    /* Child's inherited properties row - extra indent */
+    .timeline-label.child-inherited-row {
+      padding-left: 48px;
+    }
+
+    /* When there are more siblings below, extend vertical line to bottom */
+    .timeline-label.child-layer-header.has-siblings::before {
+      height: auto;
+      top: -4px;
+      bottom: -1px;
+    }
+
+    /* Continue vertical line through child rows when more children below */
+    .timeline-label.indented.child-continues::before {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: -4px;
+      bottom: -1px;
+      width: 1px;
+      background: #fff;
+      z-index: 0;
+    }
+
+    /* Child rows are not draggable - remove grab cursor */
+    .timeline-label.child-layer-header,
+    .timeline-label.child-inherited-row {
+      cursor: default !important;
     }
 
     /* Red circle button for parameters */
@@ -1660,8 +1743,9 @@
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: rgba(231, 76, 60, 0.15);
+      background: #3d2a2a;
       border: 1px solid rgba(231, 76, 60, 0.4);
+      box-shadow: 0 0 0 2px #0a0a0a;
       cursor: pointer;
       opacity: 0;
       pointer-events: none;
@@ -1683,7 +1767,7 @@
     }
 
     .param-action-btn:hover {
-      background: rgba(231, 76, 60, 0.25);
+      background: #4d2f2f;
       border-color: rgba(231, 76, 60, 0.6);
     }
 
@@ -1877,6 +1961,10 @@
     body.table-view-active .timeline-label.indented {
       padding-left: 32px;
       border-bottom: 1px solid #1a1a1a;
+    }
+
+    body.table-view-active .timeline-label.indented.child-inherited-row {
+      padding-left: 48px;
     }
 
     body.table-view-active .timeline-track.table-row {
@@ -2381,7 +2469,7 @@
     }
 
     .detail-value-input::-webkit-scrollbar-thumb:hover {
-      background: #555;
+      background: #fff;
     }
 
     .detail-grid {
@@ -4975,6 +5063,18 @@
 
       const timelineContent = document.getElementById('timelineContent');
 
+      // Build map of parent name -> child layers for nesting
+      const childrenByParent = {};
+      specData.layers.forEach((layer, index) => {
+        if (layer.parenting) {
+          const parentName = layer.parenting.parentName;
+          if (!childrenByParent[parentName]) {
+            childrenByParent[parentName] = [];
+          }
+          childrenByParent[parentName].push({ layer, index });
+        }
+      });
+
       // Build table view HTML - must match timeline structure exactly
       let html = '';
 
@@ -5004,10 +5104,24 @@
       html += `<div class="timeline-labels-column" style="border-right: 1px solid #2a2a2a;">`;
 
       // Labels
+      // Track which layers have been rendered as children (to skip in main loop)
+      const renderedAsChild = new Set();
+
       specData.layers.forEach((layer, layerIndex) => {
-        // Layer header label
+        // Skip layers that have parenting - they'll be rendered under their parent
+        if (layer.parenting) {
+          return;
+        }
+
+        // Check if this layer has children
+        const children = childrenByParent[layer.layerName] || [];
+        const hasChildren = children.length > 0;
+
+        // Determine divider class - skip divider if previous visible layer was our parent
+        // For now, keep standard divider logic
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
-        const isParentedLayer = layer.parenting && layer.animations.length === 0;
+
+        // Layer header label
         html += `<div class="timeline-label layer-header${dividerClass}"
                       data-row-type="layer"
                       data-layer-index="${layerIndex}"
@@ -5015,46 +5129,79 @@
                       data-drag-type="layer"
                       data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
-          ${!isParentedLayer ? '<button class="timeline-label-add-btn edit-only" draggable="false">+</button>' : ''}
+          <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
-        // Check for parented layer with no animations
-        if (isParentedLayer) {
-          // Use custom label if set, otherwise capitalize inherited properties
-          const defaultLabel = layer.parenting.animatingProperties
-            .map(p => p.charAt(0).toUpperCase() + p.slice(1))
-            .join(', ');
-          const propertyLabel = layer.parentingPropertyLabel || defaultLabel;
-
-          html += `<div class="timeline-label indented"
-                        data-row-type="parented"
-                        data-layer-index="${layerIndex}"
-                        draggable="false">
-            <span class="timeline-label-text">${propertyLabel}</span>
-            <button class="param-action-btn edit-only" draggable="false" onclick="deleteParentedLayer(${layerIndex}); event.stopPropagation();"></button>
-          </div>`;
-        } else {
-          // Animation labels
-          layer.animations.forEach((anim, animIndexInLayer) => {
-            // Calculate global animation index
-            let globalAnimIndex = 0;
-            for (let i = 0; i < layerIndex; i++) {
+        // Animation labels for this parent layer
+        layer.animations.forEach((anim, animIndexInLayer) => {
+          // Calculate global animation index
+          let globalAnimIndex = 0;
+          for (let i = 0; i < layerIndex; i++) {
+            if (!specData.layers[i].parenting) {
               globalAnimIndex += specData.layers[i].animations.length;
             }
-            globalAnimIndex += animIndexInLayer;
+          }
+          globalAnimIndex += animIndexInLayer;
 
-            html += `<div class="timeline-label indented"
-                          data-row-type="animation"
-                          data-layer-index="${layerIndex}"
-                          data-anim-index="${animIndexInLayer}"
-                          draggable="${isEditMode}"
-                          data-drag-type="animation"
-                          data-anim-in-layer="${animIndexInLayer}">
-              <span class="timeline-label-text">${anim.property}</span>
-              <button class="param-action-btn edit-only" draggable="false"></button>
-              <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+          // Add has-child-line class if this layer has children
+          const childLineClass = hasChildren ? ' has-child-line' : '';
+
+          html += `<div class="timeline-label indented${childLineClass}"
+                        data-row-type="animation"
+                        data-layer-index="${layerIndex}"
+                        data-anim-index="${animIndexInLayer}"
+                        draggable="${isEditMode}"
+                        data-drag-type="animation"
+                        data-anim-in-layer="${animIndexInLayer}">
+            <span class="timeline-label-text">${anim.property}</span>
+            <button class="param-action-btn edit-only" draggable="false"></button>
+            <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
+          </div>`;
+        });
+
+        // Render children nested under this parent
+        if (hasChildren) {
+          children.forEach((childInfo, childIdx) => {
+            const childLayer = childInfo.layer;
+            const childLayerIndex = childInfo.index;
+            const isLastChild = childIdx === children.length - 1;
+            const hasSiblings = !isLastChild;
+
+            // Child layer header with connector
+            const siblingClass = hasSiblings ? ' has-siblings' : '';
+            html += `<div class="timeline-label child-layer-header${siblingClass}"
+                          data-row-type="child-layer"
+                          data-layer-index="${childLayerIndex}"
+                          data-parent-layer="${layerIndex}"
+                          draggable="false">
+              <span class="timeline-label-text">${childLayer.layerName}</span>
             </div>`;
+
+            // Child's "Inherited:" row
+            const childContinueClass = hasSiblings ? ' child-continues' : '';
+
+            html += `<div class="timeline-label indented child-inherited-row${childContinueClass}"
+                          data-row-type="parented"
+                          data-layer-index="${childLayerIndex}"
+                          draggable="false">
+              <span class="timeline-label-text">Inherited:</span>
+              <button class="param-action-btn edit-only" draggable="false"></button>
+            </div>`;
+
+            // Child's own animations (if any)
+            childLayer.animations.forEach((anim, animIdx) => {
+              html += `<div class="timeline-label indented${childContinueClass}"
+                            data-row-type="child-animation"
+                            data-layer-index="${childLayerIndex}"
+                            data-anim-index="${animIdx}"
+                            draggable="false">
+                <span class="timeline-label-text">${anim.property}</span>
+                <button class="param-action-btn edit-only" draggable="false"></button>
+              </div>`;
+            });
+
+            renderedAsChild.add(childLayerIndex);
           });
         }
       });
@@ -5069,8 +5216,100 @@
       // ===== RIGHT COLUMN - Table data (header is now in header row above) =====
       html += `<div class="timeline-content-column">`;
 
+      // Helper function to render animation row cells
+      function renderAnimationRowCells(anim, layerIndex, animIndex, layerName, extraClasses = '') {
+        const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layerName);
+        const isFitToShape = anim.isFitToShape || anim.fitToShape;
+        let delay, duration, easingText;
+
+        if (isFitToShape) {
+          delay = '-';
+          duration = '-';
+          easingText = '-';
+        } else {
+          delay = anim.timing.delay + 'ms';
+          const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+          const userSetDuration = anim.durationUserSet === true;
+          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+          duration = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration + 'ms' : '-');
+
+          if (anim.customEasing !== undefined && anim.customEasing !== null) {
+            easingText = formatSpringPreset(anim.customEasing);
+          } else if (anim.easing.type === 'spring') {
+            const spring = anim.easing.spring;
+            const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
+            const springLinks = {
+              'Standard Spring': 'https://air.bb/standard-spring',
+              'Slow Spring': 'https://air.bb/slow-spring',
+              'Fast Spring': 'https://air.bb/fast-spring',
+              'Slow Bounce Spring': 'https://air.bb/slow-bounce-spring',
+              'Medium Bounce Spring': 'https://air.bb/medium-bounce-spring',
+              'Fast Bounce Spring': 'https://air.bb/fast-bounce-spring'
+            };
+            const isPreset = presetSprings.includes(spring.preset);
+            if (isPreset) {
+              const link = springLinks[spring.preset];
+              easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
+            } else {
+              if (isEditMode) {
+                easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>, Damping:&nbsp;<span class="num">${spring.custom.damping}</span>, Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>, Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
+              } else {
+                easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>,&nbsp;Damping:&nbsp;<span class="num">${spring.custom.damping}</span>,&nbsp;Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>,&nbsp;Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
+              }
+            }
+          } else if (anim.easing.type === 'cubic-bezier') {
+            const bezierValue = anim.easing.cubicBezier;
+            let presetName = anim.easing.cubicBezierPreset;
+            if (!presetName && bezierValue) {
+              const normalizedBezier = bezierValue.replace(/\s+/g, '').replace('cubic-bezier(', '').replace(')', '');
+              const presetMap = {
+                '0.20,0.07,0.20,1.00': 'Standard Curve',
+                '0.12,0.00,0.12,1.00': 'Enter Curve',
+                '0.33,0.00,0.50,1.00': 'Exit Curve'
+              };
+              presetName = presetMap[normalizedBezier];
+            }
+            const curveLinks = {
+              'Standard Curve': 'https://air.bb/standard-curve',
+              'Enter Curve': 'https://air.bb/enter-curve',
+              'Exit Curve': 'https://air.bb/exit-curve'
+            };
+            if (presetName && curveLinks[presetName]) {
+              const link = curveLinks[presetName];
+              easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
+            } else {
+              if (bezierValue.includes('cubic-bezier')) {
+                easingText = wrapNumbers(bezierValue.replace('cubic-bezier', ''));
+              } else {
+                easingText = wrapNumbers(`(${bezierValue})`);
+              }
+            }
+          } else if (anim.easing.type === 'linear') {
+            easingText = 'linear';
+          } else {
+            easingText = anim.easing.type || '-';
+          }
+        }
+
+        return `<div class="timeline-track table-row${extraClasses}" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
+          <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="description"><span class="table-desc-text">${description}</span></div>
+          <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="delay">${delay}</div>
+          <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="duration">${duration}</div>
+          <div class="table-cell table-cell--easing editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="easing">${easingText}</div>
+        </div>`;
+      }
+
       // Table rows - each row exactly 32px to match timeline tracks
       specData.layers.forEach((layer, layerIndex) => {
+        // Skip layers that have parenting - they'll be rendered under their parent
+        if (layer.parenting) {
+          return;
+        }
+
+        // Check if this layer has children
+        const children = childrenByParent[layer.layerName] || [];
+        const hasChildren = children.length > 0;
+
         // Layer header row (empty cells to match left column layer header)
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
         html += `<div class="timeline-track layer-header${dividerClass} table-row table-row--layer" data-layer-index="${layerIndex}">
@@ -5080,120 +5319,43 @@
           <div class="table-cell table-cell--easing"></div>
         </div>`;
 
-        // Check for parented layer with no animations
-        if (layer.parenting && layer.animations.length === 0) {
-          // Generate parenting description (use custom if set)
-          const propertiesText = layer.parenting.animatingProperties.join(', ');
-          const parentingDescription = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
+        // Animation rows for this parent layer
+        const childLineClass = hasChildren ? ' has-child-line' : '';
+        layer.animations.forEach((anim, animIndex) => {
+          html += renderAnimationRowCells(anim, layerIndex, animIndex, layer.layerName, childLineClass);
+        });
 
-          html += `<div class="timeline-track table-row" data-row-type="parented" data-layer-index="${layerIndex}">
-            <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${parentingDescription}</span></div>
-            <div class="table-cell table-cell--delay">—</div>
-            <div class="table-cell table-cell--duration">—</div>
-            <div class="table-cell table-cell--easing">—</div>
+        // Render children immediately after parent's animations
+        children.forEach((childData, childIdx) => {
+          const childLayer = childData.layer;
+          const childLayerIndex = childData.index;
+          const isLastChild = childIdx === children.length - 1;
+          const siblingClass = isLastChild ? '' : ' has-siblings';
+          const childContinueClass = isLastChild ? '' : ' child-continues';
+
+          // Child layer header row (empty cells to match left column)
+          html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}" data-layer-index="${childLayerIndex}" data-row-type="parented" data-parent-name="${layer.layerName}">
+            <div class="table-cell table-cell--desc"></div>
+            <div class="table-cell table-cell--delay"></div>
+            <div class="table-cell table-cell--duration"></div>
+            <div class="table-cell table-cell--easing"></div>
           </div>`;
-        } else {
-          // Animation rows
-          layer.animations.forEach((anim, animIndex) => {
-            const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layer.layerName);
 
-            // For Fit to Shape or other special animations, only show description
-            const isFitToShape = anim.isFitToShape || anim.fitToShape;
+          // Child's "Inherits" row (always shown to match left column)
+          const propertiesText = childLayer.parenting.animatingProperties.join(', ');
+          const inheritsDescription = childLayer.parentingDescription || `Attached to ${layer.layerName}, inherits ${propertiesText}`;
+          html += `<div class="timeline-track table-row${childContinueClass}" data-row-type="parented" data-layer-index="${childLayerIndex}">
+            <div class="table-cell table-cell--desc"><span class="table-desc-text">${inheritsDescription}</span></div>
+            <div class="table-cell table-cell--delay">-</div>
+            <div class="table-cell table-cell--duration">-</div>
+            <div class="table-cell table-cell--easing">-</div>
+          </div>`;
 
-            let delay, duration, easingText;
-
-            if (isFitToShape) {
-              delay = '-';
-              duration = '-';
-              easingText = '-';
-            } else {
-              delay = anim.timing.delay + 'ms';
-              // Display duration: show "-" for imported springs (not yet edited)
-              const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
-              const userSetDuration = anim.durationUserSet === true;
-              const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
-              duration = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration + 'ms' : '-');
-
-              // Check for custom easing first
-              if (anim.customEasing !== undefined && anim.customEasing !== null) {
-                easingText = formatSpringPreset(anim.customEasing);
-              } else if (anim.easing.type === 'spring') {
-                const spring = anim.easing.spring;
-                const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
-                const springLinks = {
-                  'Standard Spring': 'https://air.bb/standard-spring',
-                  'Slow Spring': 'https://air.bb/slow-spring',
-                  'Fast Spring': 'https://air.bb/fast-spring',
-                  'Slow Bounce Spring': 'https://air.bb/slow-bounce-spring',
-                  'Medium Bounce Spring': 'https://air.bb/medium-bounce-spring',
-                  'Fast Bounce Spring': 'https://air.bb/fast-bounce-spring'
-                };
-                const isPreset = presetSprings.includes(spring.preset);
-
-                if (isPreset) {
-                  const link = springLinks[spring.preset];
-                  easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
-                } else {
-                  // Wrap numbers in spans for styling with non-breaking spaces
-                  if (isEditMode) {
-                    easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>, Damping:&nbsp;<span class="num">${spring.custom.damping}</span>, Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>, Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
-                  } else {
-                    easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>,&nbsp;Damping:&nbsp;<span class="num">${spring.custom.damping}</span>,&nbsp;Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>,&nbsp;Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
-                  }
-                }
-              } else if (anim.easing.type === 'cubic-bezier') {
-                const bezierValue = anim.easing.cubicBezier;
-
-                // Check if preset name is already provided in JSON
-                let presetName = anim.easing.cubicBezierPreset;
-
-                // If not provided, detect from the bezier values
-                if (!presetName) {
-                  // Normalize the bezier string by removing spaces and parsing numbers
-                  const normalized = bezierValue.replace(/\s+/g, '').toLowerCase();
-                  const curvePresets = {
-                    'cubic-bezier(0.2,0,0.2,1)': 'Standard Curve',
-                    'cubic-bezier(0.20,0.00,0.20,1.00)': 'Standard Curve',
-                    'cubic-bezier(0.1,1,0.2,1)': 'Enter Curve',
-                    'cubic-bezier(0.10,1.00,0.20,1.00)': 'Enter Curve',
-                    'cubic-bezier(0.4,0,1,1)': 'Exit Curve',
-                    'cubic-bezier(0.40,0.00,1.00,1.00)': 'Exit Curve'
-                  };
-                  presetName = curvePresets[normalized];
-                }
-
-                const curveLinks = {
-                  'Standard Curve': 'https://air.bb/standard-curve',
-                  'Enter Curve': 'https://air.bb/enter-curve',
-                  'Exit Curve': 'https://air.bb/exit-curve'
-                };
-
-                if (presetName && curveLinks[presetName]) {
-                  const link = curveLinks[presetName];
-                  easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
-                } else {
-                  // Extract just the numbers from "cubic-bezier(x, y, z, w)" to "(x, y, z, w)"
-                  if (bezierValue.includes('cubic-bezier')) {
-                    easingText = wrapNumbers(bezierValue.replace('cubic-bezier', ''));
-                  } else {
-                    easingText = wrapNumbers(`(${bezierValue})`);
-                  }
-                }
-              } else if (anim.easing.type === 'linear') {
-                easingText = 'linear';
-              } else {
-                easingText = anim.easing.type || '-';
-              }
-            }
-
-            html += `<div class="timeline-track table-row" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
-              <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="description"><span class="table-desc-text">${description}</span></div>
-              <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="delay">${delay}</div>
-              <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="duration">${duration}</div>
-              <div class="table-cell table-cell--easing editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="easing">${easingText}</div>
-            </div>`;
+          // Child's own animation rows (if any)
+          childLayer.animations.forEach((anim, animIndex) => {
+            html += renderAnimationRowCells(anim, childLayerIndex, animIndex, childLayer.layerName, childContinueClass);
           });
-        }
+        });
       });
 
       // Bottom divider for right column to match left column
@@ -5284,8 +5446,15 @@
             e.stopPropagation();
             e.preventDefault();
 
-            // Calculate global animation index
             const layerIndex = parseInt(row.dataset.layerIndex);
+
+            // Handle parented rows differently
+            if (row.dataset.rowType === 'parented') {
+              deleteParentedLayer(layerIndex);
+              return;
+            }
+
+            // Calculate global animation index for regular animation rows
             const animInLayer = parseInt(row.dataset.animInLayer);
 
             let globalAnimIndex = 0;
@@ -7374,44 +7543,92 @@ ${cleanedScript}
       // Left column - labels (no playhead-time, it's in header now)
       html += `<div class="timeline-labels-column">`;
 
+      // Build map of children by parent name for nesting
+      const childrenByParent = {};
+      specData.layers.forEach((layer, index) => {
+        if (layer.parenting) {
+          const parentName = layer.parenting.parentName;
+          if (!childrenByParent[parentName]) {
+            childrenByParent[parentName] = [];
+          }
+          childrenByParent[parentName].push({ layer, index });
+        }
+      });
+
       let animIndex = 0;
       specData.layers.forEach((layer, layerIndex) => {
+        // Skip layers that have parenting - they'll be rendered under their parent
+        // Don't count animations here - they'll be counted when rendering under parent
+        if (layer.parenting) {
+          return;
+        }
+
+        // Check if this layer has children
+        const children = childrenByParent[layer.layerName] || [];
+        const hasChildren = children.length > 0;
+
         // Layer header label (add divider class if not first layer)
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
-        const isParentedLayer = layer.parenting && layer.animations.length === 0;
         html += `<div class="timeline-label layer-header${dividerClass}"
                       draggable="${isEditMode}"
                       data-drag-type="layer"
                       data-layer-index="${layerIndex}"
                       data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
-          ${!isParentedLayer ? '<button class="timeline-label-add-btn edit-only" draggable="false">+</button>' : ''}
+          <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
-        // Check for parented layer with no animations
-        if (isParentedLayer) {
-          // Use custom label if set, otherwise capitalize inherited properties
-          const defaultLabel = layer.parenting.animatingProperties
-            .map(p => p.charAt(0).toUpperCase() + p.slice(1))
-            .join(', ');
-          const propertyLabel = layer.parentingPropertyLabel || defaultLabel;
-
-          html += `<div class="timeline-label indented"
-                        data-row-type="parented"
+        // Animation labels for this parent layer
+        const childLineClass = hasChildren ? ' has-child-line' : '';
+        layer.animations.forEach((anim, animIndexInLayer) => {
+          html += `<div class="timeline-label indented${childLineClass}"
+                        draggable="${isEditMode}"
+                        data-drag-type="animation"
+                        data-anim-index="${animIndex}"
                         data-layer-index="${layerIndex}"
-                        draggable="false">
-            <span class="timeline-label-text">${propertyLabel}</span>
-            <button class="param-action-btn edit-only" draggable="false" onclick="deleteParentedLayer(${layerIndex}); event.stopPropagation();"></button>
+                        data-anim-in-layer="${animIndexInLayer}">
+            <span class="timeline-label-text">${anim.property}</span>
+            <button class="param-action-btn edit-only" draggable="false"></button>
+            <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
-        } else {
-          // Animation labels for this layer
-          layer.animations.forEach((anim, animIndexInLayer) => {
-            html += `<div class="timeline-label indented"
+          animIndex++;
+        });
+
+        // Render children immediately after parent's animations
+        children.forEach((childData, childIdx) => {
+          const childLayer = childData.layer;
+          const childLayerIndex = childData.index;
+          const isLastChild = childIdx === children.length - 1;
+          const siblingClass = isLastChild ? '' : ' has-siblings';
+
+          // Child layer header (with tree connector)
+          html += `<div class="timeline-label child-layer-header${siblingClass}"
+                        data-layer-index="${childLayerIndex}"
+                        data-row-type="parented"
+                        data-parent-name="${layer.layerName}"
+                        draggable="false">
+            <span class="timeline-label-text">${childLayer.layerName}</span>
+            <button class="param-action-btn edit-only" draggable="false"></button>
+          </div>`;
+
+          // Child's inherited properties row (always shown)
+          const childContinueClass = isLastChild ? '' : ' child-continues';
+
+          html += `<div class="timeline-label indented child-inherited-row${childContinueClass}"
+                        data-row-type="parented"
+                        data-layer-index="${childLayerIndex}"
+                        draggable="false">
+            <span class="timeline-label-text">Inherited:</span>
+          </div>`;
+
+          // Child's own animations (if any)
+          childLayer.animations.forEach((anim, animIndexInLayer) => {
+            html += `<div class="timeline-label indented${childContinueClass}"
                           draggable="${isEditMode}"
                           data-drag-type="animation"
                           data-anim-index="${animIndex}"
-                          data-layer-index="${layerIndex}"
+                          data-layer-index="${childLayerIndex}"
                           data-anim-in-layer="${animIndexInLayer}">
               <span class="timeline-label-text">${anim.property}</span>
               <button class="param-action-btn edit-only" draggable="false"></button>
@@ -7419,7 +7636,7 @@ ${cleanedScript}
             </div>`;
             animIndex++;
           });
-        }
+        });
       });
 
       // Bottom section divider for adding new sections at the end
@@ -7481,182 +7698,181 @@ ${cleanedScript}
         };
       }
 
+      // Helper function to render a single animation bar track
+      function renderAnimationBarTrack(anim, layerIndex, globalAnimIndex, layerName) {
+        let startPercent, widthPercent, description, springClass;
+
+        // Handle Fit to Shape animations - use parent layer's timing
+        if (anim.isFitToShape && anim.fitToShape) {
+          const parentInfo = getParentLayerInfo(anim.fitToShape.containerLayerName);
+          startPercent = (parentInfo.delay / currentViewDuration) * 100;
+          widthPercent = (parentInfo.duration / currentViewDuration) * 100;
+          description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layerName);
+          springClass = parentInfo.hasSpring ? ' bar-spring' : '';
+        } else {
+          // Normal animation - use its own timing
+          startPercent = (anim.timing.delay / currentViewDuration) * 100;
+
+          // Determine styling based on duration value
+          const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+          const durationIsString = typeof anim.timing.duration === 'string';
+
+          // Check if user has explicitly set duration, or if it's an imported spring
+          const userSetDuration = anim.durationUserSet === true;
+          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+
+          if (durationIsString) {
+            // Duration is "-" - spring style
+            let springDuration = anim.calculatedSpringDuration;
+            if (!springDuration && anim.customEasing) {
+              const params = parseSpringParams(anim.customEasing);
+              if (params) {
+                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+              } else {
+                const presetParams = springPresetParams[anim.customEasing];
+                if (presetParams) {
+                  springDuration = calculateSpringDuration(presetParams.stiffness, presetParams.damping, presetParams.mass);
+                }
+              }
+            }
+            widthPercent = springDuration ? (springDuration * 2 / currentViewDuration) * 100 : 40;
+            springClass = ' bar-spring';
+          } else if (isImportedSpring) {
+            let calculatedDuration = null;
+            const spring = anim.easing.spring;
+            if (spring) {
+              if (spring.preset && springPresetParams[spring.preset]) {
+                const params = springPresetParams[spring.preset];
+                calculatedDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+              } else if (spring.custom) {
+                calculatedDuration = calculateSpringDuration(spring.custom.stiffness, spring.custom.damping, spring.custom.mass || 1);
+              }
+            }
+            widthPercent = calculatedDuration ? (calculatedDuration * 2 / currentViewDuration) * 100 : (anim.timing.duration * 2 / currentViewDuration) * 100;
+            springClass = ' bar-spring';
+          } else if (durationIsNumeric) {
+            widthPercent = (anim.timing.duration / currentViewDuration) * 100;
+            springClass = '';
+          } else {
+            widthPercent = 40;
+            springClass = ' bar-spring';
+          }
+
+          description = getAnimationDescription(anim.property, anim.values, null, anim.description, layerName);
+        }
+
+        // Cap width so bars don't extend past the edge
+        const maxWidth = 100 - startPercent;
+        widthPercent = Math.min(widthPercent, maxWidth);
+
+        const colorClass = getPropertyColorClass(anim.property);
+        const currentVideoId = getCurrentVideoId();
+        const animCustomColor = getAnimationColorForVideo(anim, currentVideoId);
+        let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
+        if (animCustomColor) {
+          if (springClass) {
+            const rgb = animCustomColor.match(/\w\w/g).map(x => parseInt(x, 16));
+            customStyle += ` background: linear-gradient(90deg, ${animCustomColor} 0%, ${animCustomColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
+          } else {
+            customStyle += ` background: ${animCustomColor};`;
+          }
+        }
+
+        // Determine if this is a spring
+        const durationIsNumericFinal = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+        const durationIsStringFinal = typeof anim.timing.duration === 'string';
+        const userSetDurationFinal = anim.durationUserSet === true;
+        const isImportedSpringFinal = !userSetDurationFinal && anim.easing.type === 'spring' && durationIsNumericFinal;
+        const isSpring = durationIsStringFinal || isImportedSpringFinal;
+
+        return `<div class="timeline-track">
+          <div class="timeline-bar ${colorClass}${springClass}"
+               style="${customStyle}"
+               data-anim-index="${globalAnimIndex}"
+               data-is-spring="${isSpring}">
+            <span class="timeline-bar-text edit-only" contenteditable="true" data-anim-index="${globalAnimIndex}">${description}</span>
+            <span class="timeline-bar-text export-only">${description}</span>
+            <div class="timeline-bar-resize-handle left edit-only" data-handle="left"></div>
+            ${!isSpring ? '<div class="timeline-bar-resize-handle right edit-only" data-handle="right"></div>' : ''}
+          </div>
+        </div>`;
+      }
+
+      // Helper function to render parented layer bar track
+      function renderParentedBarTrack(childLayer, childLayerIndex, parentName) {
+        const parentInfo = getParentLayerInfo(parentName);
+        const startPercent = (parentInfo.delay / currentViewDuration) * 100;
+        let widthPercent = (parentInfo.duration / currentViewDuration) * 100;
+        const maxWidth = 100 - startPercent;
+        widthPercent = Math.min(widthPercent, maxWidth);
+
+        const propertiesText = childLayer.parenting.animatingProperties.join(', ');
+        const description = childLayer.parentingDescription || `Attached to ${parentName}, inherits ${propertiesText}`;
+        const springClass = parentInfo.hasSpring ? ' bar-spring' : '';
+        const colorClass = 'bar-blur';
+
+        const currentVideoId = getCurrentVideoId();
+        const customColor = childLayer.parentingColor && childLayer.parentingColor[currentVideoId];
+        let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
+        if (customColor) {
+          if (springClass) {
+            const rgb = customColor.match(/\w\w/g).map(x => parseInt(x, 16));
+            customStyle += ` background: linear-gradient(90deg, ${customColor} 0%, ${customColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
+          } else {
+            customStyle += ` background: ${customColor};`;
+          }
+        }
+
+        return `<div class="timeline-track">
+          <div class="timeline-bar ${colorClass}${springClass}"
+               style="${customStyle}"
+               data-is-parented="true"
+               data-layer-index="${childLayerIndex}"
+               onclick="showParentedLayerDetails(${childLayerIndex})">
+            <span class="timeline-bar-text">${description}</span>
+          </div>
+        </div>`;
+      }
+
       // Timeline tracks
       animIndex = 0;
       specData.layers.forEach((layer, layerIndex) => {
+        // Skip layers that have parenting - they'll be rendered under their parent
+        // Don't count animations here - they'll be counted when rendering under parent
+        if (layer.parenting) {
+          return;
+        }
+
+        // Check if this layer has children
+        const children = childrenByParent[layer.layerName] || [];
+
         // Empty track for layer header (add divider class if not first layer)
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
         html += `<div class="timeline-track layer-header${dividerClass}"></div>`;
 
-        // Check for parented layer with no animations
-        if (layer.parenting && layer.animations.length === 0) {
-          // Get parent layer's timing info
-          const parentInfo = getParentLayerInfo(layer.parenting.parentName);
-          const startPercent = (parentInfo.delay / currentViewDuration) * 100;
-          let widthPercent = (parentInfo.duration / currentViewDuration) * 100;
-
-          // Cap width so bars don't extend past the edge
-          const maxWidth = 100 - startPercent;
-          widthPercent = Math.min(widthPercent, maxWidth);
-
-          // Generate parenting description (use custom if set)
-          const propertiesText = layer.parenting.animatingProperties.join(', ');
-          const description = layer.parentingDescription || `Attached to ${layer.parenting.parentName}, inherits ${propertiesText}`;
-
-          // Use spring class if parent has spring
-          const springClass = parentInfo.hasSpring ? ' bar-spring' : '';
-
-          // Get custom color if set, otherwise use grey for parented layers
-          const colorClass = 'bar-blur';
-          const currentVideoId = getCurrentVideoId();
-          const customColor = layer.parentingColor && layer.parentingColor[currentVideoId];
-          let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
-          if (customColor) {
-            if (springClass) {
-              const rgb = customColor.match(/\w\w/g).map(x => parseInt(x, 16));
-              customStyle += ` background: linear-gradient(90deg, ${customColor} 0%, ${customColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
-            } else {
-              customStyle += ` background: ${customColor};`;
-            }
-          }
-
-          html += `<div class="timeline-track">`;
-          html += `
-            <div class="timeline-bar ${colorClass}${springClass}"
-                 style="${customStyle}"
-                 data-is-parented="true"
-                 data-layer-index="${layerIndex}"
-                 onclick="showParentedLayerDetails(${layerIndex})">
-              <span class="timeline-bar-text">${description}</span>
-            </div>
-          `;
-          html += `</div>`;
-        } else {
-          // Animation tracks for this layer
-          layer.animations.forEach(anim => {
-          let startPercent, widthPercent, description, springClass;
-
-          // Handle Fit to Shape animations - use parent layer's timing
-          if (anim.isFitToShape && anim.fitToShape) {
-            const parentInfo = getParentLayerInfo(anim.fitToShape.containerLayerName);
-            startPercent = (parentInfo.delay / currentViewDuration) * 100;
-            widthPercent = (parentInfo.duration / currentViewDuration) * 100;
-            description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layer.layerName);
-            springClass = parentInfo.hasSpring ? ' bar-spring' : '';
-          } else {
-            // Normal animation - use its own timing
-            startPercent = (anim.timing.delay / currentViewDuration) * 100;
-
-            // Determine styling based on duration value
-            const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
-            const durationIsString = typeof anim.timing.duration === 'string';
-
-            // Check if user has explicitly set duration, or if it's an imported spring
-            const userSetDuration = anim.durationUserSet === true;
-            const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
-
-            if (durationIsString) {
-              // Duration is "-" - spring style
-              // Use calculated spring duration if available, otherwise try to parse from customEasing
-              let springDuration = anim.calculatedSpringDuration;
-              if (!springDuration && anim.customEasing) {
-                // Try to calculate from customEasing text (handles edits that didn't recalculate)
-                const params = parseSpringParams(anim.customEasing);
-                if (params) {
-                  springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
-                } else {
-                  // Check if it's a preset name
-                  const presetParams = springPresetParams[anim.customEasing];
-                  if (presetParams) {
-                    springDuration = calculateSpringDuration(presetParams.stiffness, presetParams.damping, presetParams.mass);
-                  }
-                }
-              }
-              widthPercent = springDuration
-                ? (springDuration * 2 / currentViewDuration) * 100
-                : 40;
-              springClass = ' bar-spring';
-            } else if (isImportedSpring) {
-              // Imported spring - calculate duration from physics params for consistency
-              let calculatedDuration = null;
-              const spring = anim.easing.spring;
-              if (spring) {
-                if (spring.preset && springPresetParams[spring.preset]) {
-                  // Preset spring - use our preset params
-                  const params = springPresetParams[spring.preset];
-                  calculatedDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
-                } else if (spring.custom) {
-                  // Custom spring - use imported params
-                  calculatedDuration = calculateSpringDuration(
-                    spring.custom.stiffness,
-                    spring.custom.damping,
-                    spring.custom.mass || 1
-                  );
-                }
-              }
-              widthPercent = calculatedDuration
-                ? (calculatedDuration * 2 / currentViewDuration) * 100
-                : (anim.timing.duration * 2 / currentViewDuration) * 100;
-              springClass = ' bar-spring';
-            } else if (durationIsNumeric) {
-              // Numeric duration (curve or user-edited) - curve style
-              widthPercent = (anim.timing.duration / currentViewDuration) * 100;
-              springClass = '';
-            } else {
-              // Fallback - spring style
-              widthPercent = 40;
-              springClass = ' bar-spring';
-            }
-
-            description = getAnimationDescription(anim.property, anim.values, null, anim.description, layer.layerName);
-          }
-
-          // Cap width so bars don't extend past the edge (shows rounded corners naturally)
-          const maxWidth = 100 - startPercent;
-          widthPercent = Math.min(widthPercent, maxWidth);
-
-          const colorClass = getPropertyColorClass(anim.property);
-
-          // Build inline style for custom colors (per-video)
-          const currentVideoId = getCurrentVideoId();
-          const animCustomColor = getAnimationColorForVideo(anim, currentVideoId);
-          let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
-          if (animCustomColor) {
-            if (springClass) {
-              // Spring gradient with custom color (matches springClass determination)
-              const rgb = animCustomColor.match(/\w\w/g).map(x => parseInt(x, 16));
-              customStyle += ` background: linear-gradient(90deg, ${animCustomColor} 0%, ${animCustomColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
-            } else {
-              // Solid custom color for curves
-              customStyle += ` background: ${animCustomColor};`;
-            }
-          }
-
-          html += `<div class="timeline-track">`;
-
-          // Determine if this is a spring
-          const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
-          const durationIsString = typeof anim.timing.duration === 'string';
-          const userSetDuration = anim.durationUserSet === true;
-          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
-          const isSpring = durationIsString || isImportedSpring;
-
-          html += `
-            <div class="timeline-bar ${colorClass}${springClass}"
-                 style="${customStyle}"
-                 data-anim-index="${animIndex}"
-                 data-is-spring="${isSpring}">
-              <span class="timeline-bar-text edit-only" contenteditable="true" data-anim-index="${animIndex}">${description}</span>
-              <span class="timeline-bar-text export-only">${description}</span>
-              <div class="timeline-bar-resize-handle left edit-only" data-handle="left"></div>
-              ${!isSpring ? '<div class="timeline-bar-resize-handle right edit-only" data-handle="right"></div>' : ''}
-            </div>
-          `;
-          html += `</div>`;
-
+        // Animation tracks for this parent layer
+        layer.animations.forEach(anim => {
+          html += renderAnimationBarTrack(anim, layerIndex, animIndex, layer.layerName);
           animIndex++;
+        });
+
+        // Render children immediately after parent's animations
+        children.forEach((childData, childIdx) => {
+          const childLayer = childData.layer;
+          const childLayerIndex = childData.index;
+
+          // Child layer header track (empty, to match label column)
+          html += `<div class="timeline-track child-layer-header"></div>`;
+
+          // Child's "Inherits" bar (always shown to match left column)
+          html += renderParentedBarTrack(childLayer, childLayerIndex, layer.layerName);
+
+          // Child's own animation bars (if any)
+          childLayer.animations.forEach(anim => {
+            html += renderAnimationBarTrack(anim, childLayerIndex, animIndex, childLayer.layerName);
+            animIndex++;
           });
-        }
+        });
       });
 
       // Bottom divider track to match left column
@@ -9788,7 +10004,10 @@ ${cleanedScript}
 
     // Close parented layer details panel
     function closeParentedDetails() {
-      document.getElementById('detailPanel').innerHTML = '';
+      const detailPanel = document.getElementById('detailPanel');
+      if (detailPanel) {
+        detailPanel.innerHTML = '';
+      }
       document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
       document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
       requestAnimationFrame(() => updatePlayhead());
@@ -9796,6 +10015,14 @@ ${cleanedScript}
 
     // Delete a parented layer (removes the entire layer)
     function deleteParentedLayer(layerIndex) {
+      const layer = specData.layers[layerIndex];
+      if (!layer) return;
+
+      const layerName = layer.layerName;
+      if (!confirm(`Delete "${layerName}" section?`)) {
+        return;
+      }
+
       saveSnapshot();
 
       // Close the detail panel
@@ -9803,6 +10030,9 @@ ${cleanedScript}
 
       // Remove the layer from specData
       specData.layers.splice(layerIndex, 1);
+
+      // Update the tab's specData to reflect the changes
+      setCurrentSpecData(specData);
 
       // Re-render based on current view mode
       if (viewMode === 'table') {

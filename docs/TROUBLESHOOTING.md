@@ -312,6 +312,81 @@ Search for these patterns to find potential similar bugs:
 
 ---
 
+## Bug: DOM Elements Missing in Different View Modes (Nov 2025)
+
+### Symptoms
+- Function works in timeline mode but crashes in table mode (or vice versa)
+- Console shows: `Cannot set properties of null (setting 'innerHTML')`
+- Delete/edit operations silently fail
+
+### Root Cause
+**Table view and timeline view have different DOM structures.** Elements that exist in one view may not exist in the other.
+
+Example: `detailPanel` element exists in timeline view but not in table view. Functions that access DOM elements without null checks will crash when called from the "wrong" view.
+
+### The Bug
+Located in `closeParentedDetails()` function:
+
+```javascript
+// WRONG - No null check, crashes if element doesn't exist
+function closeParentedDetails() {
+  document.getElementById('detailPanel').innerHTML = ''; // ← Crashes in table view!
+  // ...
+}
+```
+
+### The Fix
+```javascript
+// CORRECT - Always check if element exists
+function closeParentedDetails() {
+  const detailPanel = document.getElementById('detailPanel');
+  if (detailPanel) {
+    detailPanel.innerHTML = '';
+  }
+  // ...
+}
+```
+
+### Prevention
+
+**Rule: Always null-check DOM elements before accessing their properties.**
+
+✅ **DO:**
+```javascript
+const element = document.getElementById('someElement');
+if (element) {
+  element.innerHTML = '';
+  element.classList.add('active');
+}
+```
+
+❌ **DON'T:**
+```javascript
+document.getElementById('someElement').innerHTML = ''; // Crashes if null!
+```
+
+### Elements That Differ Between Views
+
+| Element | Timeline View | Table View |
+|---------|--------------|------------|
+| `detailPanel` | ✅ Exists | ❌ Missing |
+| `timeline-bar` elements | ✅ Exists | ❌ Missing |
+| `table-cell` elements | ❌ Missing | ✅ Exists |
+
+### How to Debug
+1. Check console for `Cannot set properties of null` errors
+2. Identify which element is null
+3. Verify if that element exists in the current view mode
+4. Add null check before accessing the element
+
+### Related Functions to Audit
+Search for these patterns that might need null checks:
+- `document.getElementById('...').innerHTML`
+- `document.querySelector('...').classList`
+- Any DOM access without `if (element)` guard
+
+---
+
 ## Debugging Best Practices
 
 ### When Event Handlers Don't Fire
@@ -377,6 +452,16 @@ const value = a || b || c;  // Which one was actually used?
 const value = a !== undefined ? a : (b !== undefined ? b : c);
 ```
 
+### 5. DOM Elements That Don't Exist in All Views
+❌ `document.getElementById('x').innerHTML = ''` crashes if element doesn't exist
+✅ Always null-check: `const el = document.getElementById('x'); if (el) el.innerHTML = '';`
+✅ Remember: Table and Timeline views have different DOM structures
+
+### 6. Forgetting to Sync Tab Data After Modifications
+❌ `specData.layers.splice(i, 1)` without `setCurrentSpecData(specData)` won't persist
+✅ Always call `setCurrentSpecData(specData)` after modifying specData
+✅ Check how similar functions (like `deleteAnimation`) handle data sync
+
 ---
 
 ## Quick Debug Checklist
@@ -394,4 +479,4 @@ When a feature "doesn't work":
 
 ---
 
-*Last updated: Nov 26, 2025 - Added bar jumping after text editing bug*
+*Last updated: Nov 29, 2025 - Added DOM elements missing in different view modes bug*
