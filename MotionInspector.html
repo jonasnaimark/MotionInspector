@@ -986,6 +986,118 @@
       transform: translateX(16px);
     }
 
+    /* Help tooltips (export only) */
+    .help-btn {
+      font-size: 16px;
+      font-weight: 400;
+      color: white;
+    }
+
+    .help-btn.active {
+      background: #4a90e2;
+      border-color: #4a90e2;
+      color: white;
+    }
+
+    .help-tooltip {
+      position: fixed;
+      background: #2a2a2a;
+      border: 1px solid #888;
+      border-radius: 8px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 10001;
+      display: none;
+      font-size: 15px;
+      color: white;
+      line-height: 1.4;
+    }
+
+    .help-tooltip.visible {
+      display: block;
+    }
+
+    .help-tooltip a {
+      color: #4a90e2;
+      text-decoration: none;
+    }
+
+    .help-tooltip a:hover {
+      text-decoration: underline;
+    }
+
+    .help-tooltip::before {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #2a2a2a;
+      border-left: 1px solid #888;
+      border-top: 1px solid #888;
+    }
+
+    .help-tooltip.arrow-up::before {
+      top: -6px;
+      left: 20px;
+      transform: rotate(45deg);
+    }
+
+    .help-tooltip.arrow-down::before {
+      bottom: -6px;
+      left: 20px;
+      transform: rotate(225deg);
+    }
+
+    .help-tooltip.arrow-left::before {
+      left: -6px;
+      top: 50%;
+      margin-top: -5px;
+      transform: rotate(-45deg);
+    }
+
+    .help-tooltip.arrow-right::before {
+      right: -6px;
+      top: 50%;
+      margin-top: -5px;
+      transform: rotate(135deg);
+    }
+
+    .help-tooltip.arrow-up-right::before {
+      top: -6px;
+      right: 20px;
+      left: auto;
+      transform: rotate(45deg);
+    }
+
+    .help-tooltip.arrow-up-center::before {
+      top: -6px;
+      left: 50%;
+      margin-left: -5px;
+      transform: rotate(45deg);
+    }
+
+    .help-tooltip.arrow-down-center::before {
+      bottom: -6px;
+      left: 50%;
+      margin-left: -5px;
+      transform: rotate(225deg);
+    }
+
+    .help-scrim {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      display: none;
+    }
+
+    .help-scrim.visible {
+      display: block;
+    }
+
     /* Zoom controls */
     .zoom-controls {
       position: absolute;
@@ -4474,6 +4586,146 @@
       }
     });
 
+    // Toggle help tooltips (export only)
+    let helpTooltipsVisible = false;
+    function toggleHelpTooltips() {
+      helpTooltipsVisible = !helpTooltipsVisible;
+      const helpBtn = document.getElementById('helpBtn');
+      const tooltips = document.querySelectorAll('.help-tooltip');
+      const scrim = document.getElementById('helpScrim');
+
+      if (helpTooltipsVisible) {
+        helpBtn.classList.add('active');
+        if (scrim) scrim.classList.add('visible');
+        positionHelpTooltips();
+        // Only show tooltips that weren't hidden by positioning
+        tooltips.forEach(t => {
+          if (!t.classList.contains('tooltip-hidden')) {
+            t.classList.add('visible');
+          }
+        });
+      } else {
+        helpBtn.classList.remove('active');
+        if (scrim) scrim.classList.remove('visible');
+        tooltips.forEach(t => t.classList.remove('visible'));
+      }
+    }
+
+    function positionHelpTooltips() {
+      // First make all tooltips visible so we can measure them
+      const allTooltips = document.querySelectorAll('.help-tooltip');
+      allTooltips.forEach(t => {
+        t.style.visibility = 'hidden';
+        t.style.display = 'block';
+        t.style.whiteSpace = 'nowrap';
+      });
+
+      // Playhead - use the handle element which shows the time, position ABOVE (timeline only)
+      const playheadHandle = document.getElementById('playheadTimeDisplay') || document.querySelector('.playhead-handle');
+      const playheadTooltip = document.getElementById('helpTooltipPlayhead');
+      if (playheadTooltip) {
+        playheadTooltip.classList.remove('tooltip-hidden');
+        // Only show if playhead is visible (timeline mode)
+        if (playheadHandle && playheadHandle.offsetParent !== null) {
+          const rect = playheadHandle.getBoundingClientRect();
+          playheadTooltip.style.top = (rect.top - playheadTooltip.offsetHeight - 14) + 'px';
+          playheadTooltip.style.left = (rect.left + rect.width/2 - playheadTooltip.offsetWidth/2) + 'px';
+        } else {
+          playheadTooltip.classList.add('tooltip-hidden');
+        }
+      }
+
+      // View mode toggle - centered horizontally
+      const viewModeControl = document.querySelector('.view-mode-control');
+      const viewModeTooltip = document.getElementById('helpTooltipViewMode');
+      if (viewModeControl && viewModeTooltip) {
+        const rect = viewModeControl.getBoundingClientRect();
+        viewModeTooltip.style.top = (rect.bottom + 14) + 'px';
+        viewModeTooltip.style.left = (rect.left + rect.width/2 - viewModeTooltip.offsetWidth/2) + 'px';
+      }
+
+      // Check if playhead and view mode tooltips overlap - if so, flip playhead to below
+      if (playheadTooltip && viewModeTooltip && playheadHandle && !playheadTooltip.classList.contains('tooltip-hidden')) {
+        const playheadRect = playheadTooltip.getBoundingClientRect();
+        const viewModeRect = viewModeTooltip.getBoundingClientRect();
+        const overlaps = !(playheadRect.right < viewModeRect.left ||
+                          playheadRect.left > viewModeRect.right ||
+                          playheadRect.bottom < viewModeRect.top ||
+                          playheadRect.top > viewModeRect.bottom);
+        if (overlaps) {
+          // Flip playhead tooltip to below
+          const handleRect = playheadHandle.getBoundingClientRect();
+          playheadTooltip.style.top = (handleRect.bottom + 14) + 'px';
+          playheadTooltip.classList.remove('arrow-down-center');
+          playheadTooltip.classList.add('arrow-up-center');
+        } else {
+          playheadTooltip.classList.remove('arrow-up-center');
+          playheadTooltip.classList.add('arrow-down-center');
+        }
+      }
+
+      // First color bar - below and centered (timeline only)
+      const firstBar = document.querySelector('.timeline-bar');
+      const colorBarTooltip = document.getElementById('helpTooltipColorBar');
+      if (colorBarTooltip) {
+        colorBarTooltip.classList.remove('tooltip-hidden');
+        // Only show if timeline bar is visible (timeline mode)
+        if (firstBar && firstBar.offsetParent !== null) {
+          const rect = firstBar.getBoundingClientRect();
+          colorBarTooltip.style.top = (rect.bottom + 14) + 'px';
+          colorBarTooltip.style.left = (rect.left + rect.width/2 - colorBarTooltip.offsetWidth/2) + 'px';
+        } else {
+          colorBarTooltip.classList.add('tooltip-hidden');
+        }
+      }
+
+      // Slack link - to the left of help button with caret on right
+      const helpBtn = document.getElementById('helpBtn');
+      const slackTooltip = document.getElementById('helpTooltipSlack');
+      if (helpBtn && slackTooltip) {
+        const rect = helpBtn.getBoundingClientRect();
+        slackTooltip.style.top = (rect.top + rect.height/2 - slackTooltip.offsetHeight/2) + 'px';
+        slackTooltip.style.left = (rect.left - slackTooltip.offsetWidth - 14) + 'px';
+      }
+
+      // Video navigation - only show if video nav arrows exist and are visible
+      const videoRightArrow = document.querySelector('.video-nav-right');
+      const videosTooltip = document.getElementById('helpTooltipVideos');
+      if (videosTooltip) {
+        videosTooltip.classList.remove('tooltip-hidden');
+        const arrowVisible = videoRightArrow &&
+          window.getComputedStyle(videoRightArrow).display !== 'none' &&
+          videoRightArrow.offsetParent !== null;
+        if (arrowVisible) {
+          const rect = videoRightArrow.getBoundingClientRect();
+          videosTooltip.style.top = (rect.bottom + 14) + 'px';
+          videosTooltip.style.left = (rect.left + rect.width/2 - videosTooltip.offsetWidth/2) + 'px';
+        } else {
+          videosTooltip.classList.add('tooltip-hidden');
+        }
+      }
+
+      // Now hide them again (toggle function will show them)
+      allTooltips.forEach(t => {
+        t.style.visibility = '';
+        t.style.display = '';
+      });
+    }
+
+    // Close help tooltips when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!helpTooltipsVisible) return;
+      const helpBtn = document.getElementById('helpBtn');
+      if (e.target.closest('#helpBtn')) return;
+      if (e.target.closest('.help-tooltip')) return;
+
+      helpTooltipsVisible = false;
+      helpBtn.classList.remove('active');
+      const scrim = document.getElementById('helpScrim');
+      if (scrim) scrim.classList.remove('visible');
+      document.querySelectorAll('.help-tooltip').forEach(t => t.classList.remove('visible'));
+    });
+
     // Toggle loop video
     let isLoopEnabled = false;
     let loopTimeoutId = null;
@@ -4784,7 +5036,11 @@
       });
 
       renderTimeline();
-      requestAnimationFrame(() => updateVideoAlignment());
+      requestAnimationFrame(() => {
+        updateVideoAlignment();
+        updateTimeDisplays();
+        updatePlayhead();
+      });
       console.log('[TABLE] Timeline re-rendered');
     }
 
@@ -6524,6 +6780,7 @@
         <button class="view-mode-btn" data-view="table" onclick="switchToView('table')">Table</button>
       </div>
       <div class="controls">
+        <button class="btn btn-secondary btn-circular help-btn export-only" id="helpBtn" onclick="toggleHelpTooltips()" data-tooltip="Help">?</button>
         <button class="btn btn-secondary btn-circular" onclick="copySpecJson()" data-tooltip="Copy Spec">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -6734,6 +6991,15 @@ ${cleanedScript}
       console.log('[EXPORT] Tabs and timeline rendered');
     });
   <\/script>
+
+  <!-- Help tooltips -->
+  <div id="helpScrim" class="help-scrim"></div>
+  <div id="helpTooltipPlayhead" class="help-tooltip arrow-down-center">Drag playhead to scrub the video</div>
+  <div id="helpTooltipViewMode" class="help-tooltip arrow-up-center">Switch between view modes</div>
+  <div id="helpTooltipColorBar" class="help-tooltip arrow-up-center">Click to see animation details</div>
+  <div id="helpTooltipSlack" class="help-tooltip arrow-right">Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a></div>
+  <div id="helpTooltipVideos" class="help-tooltip arrow-up-center">See related videos here</div>
+
 </body>
 </html>`;
 
@@ -10646,5 +10912,14 @@ ${cleanedScript}
     // Load timeline description for initial tab
     loadTimelineDescription();
   </script>
+
+  <!-- Help tooltips (export only) -->
+  <div id="helpScrim" class="help-scrim export-only"></div>
+  <div id="helpTooltipPlayhead" class="help-tooltip arrow-down-center export-only">Drag playhead to scrub the video</div>
+  <div id="helpTooltipViewMode" class="help-tooltip arrow-up-center export-only">Switch between view modes</div>
+  <div id="helpTooltipColorBar" class="help-tooltip arrow-up-center export-only">Click to see animation details</div>
+  <div id="helpTooltipSlack" class="help-tooltip arrow-right export-only">Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a></div>
+  <div id="helpTooltipVideos" class="help-tooltip arrow-up-center export-only">See related videos here</div>
+
 </body>
 </html>
