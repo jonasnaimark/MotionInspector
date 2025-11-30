@@ -59,9 +59,12 @@
     h1[contenteditable="true"] {
       cursor: text;
       outline: none;
-      padding: 2px 8px;
-      margin: -2px -8px;
-      border-radius: 4px;
+      padding: 0 12px 0 20px;
+      margin: -2px -12px -2px -20px;
+      border-radius: 8px;
+      height: 44px;
+      display: flex;
+      align-items: center;
       min-width: 190px; /* fits "Motion Inspector" */
       max-width: calc(100% - 20px); /* 20px gap before toggle */
       overflow: hidden;
@@ -71,8 +74,6 @@
 
     h1[contenteditable="true"]:hover {
       background: #222222;
-      outline: 1px solid #3a3a3a;
-      outline-offset: 2px;
     }
 
     h1[contenteditable="true"]:focus {
