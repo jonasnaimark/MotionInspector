@@ -118,6 +118,7 @@
       background: #333;
       color: #e0e0e0;
       border: 1px solid rgba(85, 85, 85, 0.8);
+      padding-bottom: 2px;
     }
 
     .btn-secondary:hover {
@@ -6899,8 +6900,8 @@ ${cleanedScript}
 
       // For springs, IGNORE duration (it's calculated from physics), only check spring parameters
       if (anim1.easing.type === 'spring') {
-        const spring1 = anim1.easing.spring;
-        const spring2 = anim2.easing.spring;
+        const spring1 = anim1.easing.spring?.custom;
+        const spring2 = anim2.easing.spring?.custom;
         console.log(`[GROUPING]         (Ignoring duration for springs - calculated from physics)`);
         console.log(`[GROUPING]         Comparing spring values:`);
         console.log(`[GROUPING]           stiffness: ${spring1?.stiffness} === ${spring2?.stiffness}`);
@@ -7103,7 +7104,7 @@ ${cleanedScript}
       if (fitToShape) {
         const alignment = getAlignmentText(fitToShape.alignment);
         const scaleTo = getScaleToText(fitToShape.scaleTo);
-        description = `Parented to ${fitToShape.containerLayerName}, fit to ${scaleTo} and aligned to ${alignment}`;
+        description = `Scales to fit ${scaleTo} of "${fitToShape.containerLayerName}" — aligned ${alignment}`;
       }
       // Handle cases where values is null
       else if (!values || values.change === undefined || values.change === null) {
@@ -7160,19 +7161,24 @@ ${cleanedScript}
           const widthAction = widthChange > 0 ? 'expands' : 'shrinks';
           const heightAction = heightChange > 0 ? 'expands' : 'shrinks';
 
-          // Check if both dimensions change the same way
-          if (widthAction === heightAction) {
-            description = `Width and Height ${widthAction}`;
-          } else {
-            description = `Width ${widthAction} and Height ${heightAction}`;
-          }
+          // Get formatted values (stored as newline-separated)
+          const startVals = values.formatted?.startValue?.split('\n') || ['-', '-'];
+          const endVals = values.formatted?.endValue?.split('\n') || ['-', '-'];
+          const widthStart = startVals[0] || '-';
+          const widthEnd = endVals[0] || '-';
+          const heightStart = startVals[1] || '-';
+          const heightEnd = endVals[1] || '-';
+
+          description = `Width ${widthAction} from ${widthStart} – ${widthEnd} and Height ${heightAction} from ${heightStart} – ${heightEnd}`;
         }
         else if (prop.includes('width')) {
           if (changeValue === 0) {
             description = `width stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
           } else {
             const action = changeValue > 0 ? 'expands' : 'shrinks';
-            description = `width ${action}`;
+            const startVal = values.formatted?.startValue || Math.round(values.startValue) + 'px';
+            const endVal = values.formatted?.endValue || Math.round(values.endValue) + 'px';
+            description = `width ${action} from ${startVal} – ${endVal}`;
           }
         }
         else if (prop.includes('height')) {
@@ -7180,7 +7186,9 @@ ${cleanedScript}
             description = `height stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
           } else {
             const action = changeValue > 0 ? 'expands' : 'shrinks';
-            description = `height ${action}`;
+            const startVal = values.formatted?.startValue || Math.round(values.startValue) + 'px';
+            const endVal = values.formatted?.endValue || Math.round(values.endValue) + 'px';
+            description = `height ${action} from ${startVal} – ${endVal}`;
           }
         }
         else if (prop.includes('blur radius')) {
