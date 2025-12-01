@@ -1506,7 +1506,7 @@
     }
 
     .timeline-outer-wrapper::-webkit-scrollbar-track {
-      background: #111;
+      background: #0a0a0a;
       border-radius: 0 4px 4px 0;
     }
 
@@ -1650,9 +1650,13 @@
 
     .timeline-label.layer-header.has-divider,
     .timeline-track.layer-header.has-divider {
-      border-top: 1px solid #4a4a4a;
-      padding-top: 3px;
-      margin-top: 4px;
+      border-top: 1px solid #666;
+      margin-top: 0;
+    }
+
+    .timeline-label.layer-header.has-divider {
+      padding-top: 0;
+      padding-bottom: 0;
     }
 
     .timeline-label.layer-header:hover {
@@ -2139,15 +2143,15 @@
     }
 
     .timeline-track.table-row.table-row--layer.has-divider {
-      margin-top: 7px;
+      margin-top: 0;
       padding-top: 0;
-      border-top: 1px solid #4a4a4a;
+      border-top: 1px solid #666;
     }
 
     body.table-view-active .timeline-label.layer-header.has-divider {
-      margin-top: 7px;
+      margin-top: 0;
       padding-top: 0;
-      border-top: 1px solid #4a4a4a;
+      border-top: 1px solid #666;
     }
 
     body.table-view-active .timeline-label.layer-header {
@@ -2252,7 +2256,7 @@
     }
 
     .timeline-bar.selected {
-      filter: brightness(1.2);
+      filter: brightness(1.15);
       z-index: 2;
       box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.4);
     }
@@ -2330,37 +2334,37 @@
     }
 
     .timeline-bar.has-text-overflow.bar-opacity::after {
-      background: linear-gradient(to right, rgba(4, 92, 69, 0) 0%, rgba(4, 92, 69, 1) 100%);
+      background: linear-gradient(to right, rgba(5, 110, 83, 0) 0%, rgba(5, 110, 83, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-scale::after {
-      background: linear-gradient(to right, rgba(168, 41, 104, 0) 0%, rgba(168, 41, 104, 1) 100%);
+      background: linear-gradient(to right, rgba(202, 49, 125, 0) 0%, rgba(202, 49, 125, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-rotation::after {
-      background: linear-gradient(to right, rgba(104, 34, 133, 0) 0%, rgba(104, 34, 133, 1) 100%);
+      background: linear-gradient(to right, rgba(125, 41, 160, 0) 0%, rgba(125, 41, 160, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-position-x::after,
     .timeline-bar.has-text-overflow.bar-position-y::after {
-      background: linear-gradient(to right, rgba(4, 92, 125, 0) 0%, rgba(4, 92, 125, 1) 100%);
+      background: linear-gradient(to right, rgba(5, 110, 150, 0) 0%, rgba(5, 110, 150, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-width::after,
     .timeline-bar.has-text-overflow.bar-height::after {
-      background: linear-gradient(to right, rgba(4, 92, 69, 0) 0%, rgba(4, 92, 69, 1) 100%);
+      background: linear-gradient(to right, rgba(5, 110, 83, 0) 0%, rgba(5, 110, 83, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-blur::after {
-      background: linear-gradient(to right, rgba(74, 74, 74, 0) 0%, rgba(74, 74, 74, 1) 100%);
+      background: linear-gradient(to right, rgba(89, 89, 89, 0) 0%, rgba(89, 89, 89, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-transform::after {
-      background: linear-gradient(to right, rgba(90, 23, 120, 0) 0%, rgba(90, 23, 120, 1) 100%);
+      background: linear-gradient(to right, rgba(108, 28, 144, 0) 0%, rgba(108, 28, 144, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-default::after {
-      background: linear-gradient(to right, rgba(4, 76, 125, 0) 0%, rgba(4, 76, 125, 1) 100%);
+      background: linear-gradient(to right, rgba(5, 91, 150, 0) 0%, rgba(5, 91, 150, 1) 100%);
     }
 
     /* Spring bars already fade out, so hide text overflow gradient overlay */
@@ -2373,29 +2377,29 @@
       overflow: visible;
     }
 
-    /* Property-specific colors */
-    .bar-opacity { background: #045c45; }
-    .bar-scale { background: #a82968; }
-    .bar-rotation { background: #682285; }
-    .bar-position-x { background: #045c7d; }
-    .bar-position-y { background: #045c7d; }
-    .bar-width { background: #045c45; }
-    .bar-height { background: #045c45; }
-    .bar-blur { background: #4a4a4a; }
-    .bar-transform { background: #5a1778; }
-    .bar-default { background: #044c7d; }
+    /* Property-specific colors (1.2x brighter defaults) */
+    .bar-opacity { background: #056e53; }
+    .bar-scale { background: #ca317d; }
+    .bar-rotation { background: #7d29a0; }
+    .bar-position-x { background: #056e96; }
+    .bar-position-y { background: #056e96; }
+    .bar-width { background: #056e53; }
+    .bar-height { background: #056e53; }
+    .bar-blur { background: #595959; }
+    .bar-transform { background: #6c1c90; }
+    .bar-default { background: #055b96; }
 
-    /* Spring gradient fade-out */
-    .bar-spring.bar-opacity { background: linear-gradient(90deg, #045c45 0%, #045c45 50%, rgba(4, 92, 69, 0) 100%); }
-    .bar-spring.bar-scale { background: linear-gradient(90deg, #a82968 0%, #a82968 50%, rgba(168, 41, 104, 0) 100%); }
-    .bar-spring.bar-rotation { background: linear-gradient(90deg, #682285 0%, #682285 50%, rgba(104, 34, 133, 0) 100%); }
-    .bar-spring.bar-position-x { background: linear-gradient(90deg, #045c7d 0%, #045c7d 50%, rgba(4, 92, 125, 0) 100%); }
-    .bar-spring.bar-position-y { background: linear-gradient(90deg, #045c7d 0%, #045c7d 50%, rgba(4, 92, 125, 0) 100%); }
-    .bar-spring.bar-width { background: linear-gradient(90deg, #045c45 0%, #045c45 50%, rgba(4, 92, 69, 0) 100%); }
-    .bar-spring.bar-height { background: linear-gradient(90deg, #045c45 0%, #045c45 50%, rgba(4, 92, 69, 0) 100%); }
-    .bar-spring.bar-blur { background: linear-gradient(90deg, #4a4a4a 0%, #4a4a4a 50%, rgba(74, 74, 74, 0) 100%); }
-    .bar-spring.bar-transform { background: linear-gradient(90deg, #5a1778 0%, #5a1778 50%, rgba(90, 23, 120, 0) 100%); }
-    .bar-spring.bar-default { background: linear-gradient(90deg, #044c7d 0%, #044c7d 50%, rgba(4, 76, 125, 0) 100%); }
+    /* Spring gradient fade-out (1.2x brighter defaults) */
+    .bar-spring.bar-opacity { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
+    .bar-spring.bar-scale { background: linear-gradient(90deg, #ca317d 0%, #ca317d 50%, rgba(202, 49, 125, 0) 100%); }
+    .bar-spring.bar-rotation { background: linear-gradient(90deg, #7d29a0 0%, #7d29a0 50%, rgba(125, 41, 160, 0) 100%); }
+    .bar-spring.bar-position-x { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
+    .bar-spring.bar-position-y { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
+    .bar-spring.bar-width { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
+    .bar-spring.bar-height { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
+    .bar-spring.bar-blur { background: linear-gradient(90deg, #595959 0%, #595959 50%, rgba(89, 89, 89, 0) 100%); }
+    .bar-spring.bar-transform { background: linear-gradient(90deg, #6c1c90 0%, #6c1c90 50%, rgba(108, 28, 144, 0) 100%); }
+    .bar-spring.bar-default { background: linear-gradient(90deg, #055b96 0%, #055b96 50%, rgba(5, 91, 150, 0) 100%); }
 
     /* Spring bars - remove base box-shadow, use gradient border instead */
     .bar-spring { box-shadow: none; }
@@ -7516,18 +7520,18 @@ ${cleanedScript}
     // Get hex color for property color class
     function getPropertyColor(colorClass) {
       const colorMap = {
-        'bar-opacity': '#045c45',
-        'bar-scale': '#a82968',
-        'bar-rotation': '#5a1778',
-        'bar-position-x': '#045c7d',
-        'bar-position-y': '#045c7d',
-        'bar-width': '#045c45',
-        'bar-height': '#045c45',
-        'bar-blur': '#4a4a4a',
-        'bar-transform': '#5a1778',
-        'bar-default': '#045c7d'
+        'bar-opacity': '#056e53',
+        'bar-scale': '#ca317d',
+        'bar-rotation': '#6c1c90',
+        'bar-position-x': '#056e96',
+        'bar-position-y': '#056e96',
+        'bar-width': '#056e53',
+        'bar-height': '#056e53',
+        'bar-blur': '#595959',
+        'bar-transform': '#6c1c90',
+        'bar-default': '#056e96'
       };
-      return colorMap[colorClass] || '#045c7d';
+      return colorMap[colorClass] || '#056e96';
     }
 
     // Brighten a hex color to match the selected state (1.2x brightness)
@@ -8325,15 +8329,8 @@ ${cleanedScript}
       ticks.forEach(time => {
         if (time >= currentViewDuration) return;
         const position = (time / currentViewDuration) * 100;
-        html += `<div style="position: absolute; left: ${position}%; top: 0; bottom: 15px; width: 1px; background: rgba(255, 255, 255, 0.12);"></div>`;
+        html += `<div style="position: absolute; left: ${position}%; top: 0; bottom: 15px; width: 1px; background: #2a2a2a;"></div>`;
       });
-
-      // Subtle halfway markers between main grid lines (stop at bottom divider)
-      for (let i = 0; i < ticks.length - 1; i++) {
-        const midTime = (ticks[i] + ticks[i + 1]) / 2;
-        const position = (midTime / currentViewDuration) * 100;
-        html += `<div style="position: absolute; left: ${position}%; top: 0; bottom: 15px; width: 1px; background: rgba(255, 255, 255, 0.06);"></div>`;
-      }
 
       html += `</div>`;
 
@@ -10228,16 +10225,16 @@ ${cleanedScript}
       const barColor = customColor || defaultBarColor;
       const brightColor = brightenColor(barColor);
 
-      // Define available colors for picker (sorted cool to warm)
+      // Define available colors for picker (sorted cool to warm, 1.2x brighter)
       const colorOptions = [
-        '#045c7d', // blue (coolest)
-        '#045c45', // teal
-        '#4c7a4c', // green
-        '#5a1778', // purple
-        '#a82968', // pink
-        '#a82929', // red
-        '#ae4715', // orange
-        '#4a4a4a'  // dark grey
+        '#056e96', // blue (coolest)
+        '#056e53', // teal
+        '#5b925b', // green
+        '#6c1c90', // purple
+        '#ca317d', // pink
+        '#ca3131', // red
+        '#d15519', // orange
+        '#595959'  // dark grey
       ];
 
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
@@ -10732,16 +10729,16 @@ ${cleanedScript}
       const barColor = customColor || defaultBarColor;
       const brightColor = brightenColor(barColor);
 
-      // Define available colors for picker (sorted cool to warm)
+      // Define available colors for picker (sorted cool to warm, 1.2x brighter)
       const colorOptions = [
-        '#045c7d', // blue (coolest)
-        '#045c45', // teal
-        '#4c7a4c', // green
-        '#5a1778', // purple
-        '#a82968', // pink
-        '#a82929', // red
-        '#ae4715', // orange
-        '#4a4a4a'  // dark grey
+        '#056e96', // blue (coolest)
+        '#056e53', // teal
+        '#5b925b', // green
+        '#6c1c90', // purple
+        '#ca317d', // pink
+        '#ca3131', // red
+        '#d15519', // orange
+        '#595959'  // dark grey
       ];
 
       let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
