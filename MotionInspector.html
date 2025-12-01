@@ -13,13 +13,6 @@
       padding: 0;
     }
 
-    @font-face {
-      font-family: 'Airbnb Cereal VF';
-      src: url('https://a0.muscache.com/airbnb/static/fonts/CircularAirPro-Book.woff2') format('woff2');
-      font-weight: 400;
-      font-style: normal;
-    }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #171717;
@@ -2797,7 +2790,7 @@
     <div class="main-content">
       <div class="timeline-wrapper">
         <div class="timeline-description-container">
-          <textarea id="timelineDescription" class="timeline-description-input" placeholder="Add optional description" rows="1" oninput="console.log('INPUT FIRED'); try { saveTimelineDescription(this.value); console.log('SAVE DONE'); } catch(e) { console.error('SAVE ERROR', e); } try { autoResizeTextarea(this); console.log('RESIZE DONE'); } catch(e) { console.error('RESIZE ERROR', e); }" onfocus="this.select()"></textarea>
+          <textarea id="timelineDescription" class="timeline-description-input" placeholder="Add optional description" rows="1" oninput="try { saveTimelineDescription(this.value); } catch(e) { } try { autoResizeTextarea(this); } catch(e) { }" onfocus="this.select()"></textarea>
         </div>
         <div class="tabs-container">
           <div class="tabs-bar">
@@ -3107,29 +3100,22 @@
       const textarea = document.getElementById('timelineDescription');
       if (!textarea) return;
       const specData = getCurrentSpecData();
-      console.log('[LOAD DESC] specData:', specData);
-      console.log('[LOAD DESC] specData.description:', specData ? specData.description : 'no specData');
       textarea.value = specData && specData.description ? specData.description : '';
-      console.log('[LOAD DESC] textarea.value set to:', textarea.value);
       autoResizeTextarea(textarea);
     }
 
     // Auto-resize textarea to fit content
     function autoResizeTextarea(textarea) {
       if (!textarea) return;
-      console.log('[RESIZE] Before - textarea height:', textarea.style.height, 'scrollHeight:', textarea.scrollHeight);
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
-      console.log('[RESIZE] After - textarea height:', textarea.style.height);
 
       // Update backing container position based on description container height
       const descContainer = textarea.closest('.timeline-description-container');
       const timelineWrapper = document.querySelector('.timeline-wrapper');
       if (descContainer && timelineWrapper) {
-        console.log('[RESIZE] Container offsetHeight:', descContainer.offsetHeight);
         const descHeight = descContainer.offsetHeight + 10; // +10 for margin-bottom
         timelineWrapper.style.setProperty('--description-height', descHeight + 'px');
-        console.log('[RESIZE] Set --description-height to:', descHeight + 'px');
       }
 
       // Update playhead position after timeline resizes
@@ -4487,9 +4473,7 @@
       if (document.fullscreenElement) {
         document.exitFullscreen();
       } else {
-        videoElement.requestFullscreen().catch(err => {
-          console.log('Fullscreen error:', err);
-        });
+        videoElement.requestFullscreen().catch(() => {});
       }
     }
 
@@ -4884,7 +4868,6 @@
     async function pasteSpec() {
       try {
         const text = await navigator.clipboard.readText();
-        console.log('Clipboard text:', text);
         const data = JSON.parse(text);
 
         // If no tabs exist, create the first tab
@@ -5024,7 +5007,6 @@
         updateTimeDisplays();
         updatePlayhead();
       });
-      console.log('[TABLE] Timeline re-rendered');
     }
 
     function updateTableEasingWidth() {
@@ -5099,6 +5081,39 @@
       // This ensures "Stiffness: 80" keeps the space after the colon
       result = result.replace(/:\s/g, ':&nbsp;');
       return result;
+    }
+
+    // Match cubic-bezier values to presets with tolerance (0.15)
+    // AE's internal representation isn't perfectly precise, so we need tolerance matching
+    function matchCubicBezierWithTolerance(bezierValue) {
+      if (!bezierValue) return null;
+
+      // Parse the bezier values
+      const match = bezierValue.match(/cubic-bezier\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/i);
+      if (!match) return null;
+
+      const [_, x1, y1, x2, y2] = match.map(v => typeof v === 'string' ? parseFloat(v) : v);
+
+      // Known presets with their values
+      const presets = [
+        { name: 'Standard Curve', values: [0.2, 0, 0.2, 1] },
+        { name: 'Enter Curve', values: [0.12, 0, 0.12, 1] },
+        { name: 'Exit Curve', values: [0.33, 0, 0.5, 1] }
+      ];
+
+      const tolerance = 0.15;
+
+      for (const preset of presets) {
+        const [px1, py1, px2, py2] = preset.values;
+        if (Math.abs(x1 - px1) <= tolerance &&
+            Math.abs(y1 - py1) <= tolerance &&
+            Math.abs(x2 - px2) <= tolerance &&
+            Math.abs(y2 - py2) <= tolerance) {
+          return preset.name;
+        }
+      }
+
+      return null;
     }
 
     // Helper function to format easing preset names (springs and curves) with hyperlinks
@@ -5211,7 +5226,6 @@
         e.stopPropagation();
 
         const presetName = item.dataset.preset;
-        console.log('Selected preset:', presetName, 'Element type:', inputElement.tagName);
 
         hideEasingAutocomplete();
 
@@ -5226,7 +5240,6 @@
           const match = onblurAttr.match(/updateAnimationField\((\d+),\s*'easing'/);
           if (match) {
             const animIndex = parseInt(match[1]);
-            console.log('Extracted animIndex:', animIndex);
 
             // Find the animation in specData
             let currentIndex = 0;
@@ -5285,7 +5298,6 @@
           const animIndex = parseInt(row.dataset.animIndex);
 
           inputElement.textContent = presetName;
-          console.log('Set contenteditable to:', inputElement.textContent);
 
           // Manually trigger save for table mode
           const layer = specData.layers[layerIndex];
@@ -5325,7 +5337,6 @@
               // Always mark as user-set to clear isImportedSpring flag
               anim.durationUserSet = true;
 
-              console.log('Saved to specData:', presetName);
               renderTableView();
             }
           }
@@ -5358,9 +5369,7 @@
 
     // Render table view
     function renderTableView() {
-      console.log('[TABLE] renderTableView called');
       if (!specData) {
-        console.log('[TABLE] No specData, returning');
         return;
       }
 
@@ -5585,14 +5594,8 @@
             const bezierValue = anim.easing.cubicBezier;
             let presetName = anim.easing.cubicBezierPreset;
             if (!presetName && bezierValue) {
-              const normalizedBezier = bezierValue.replace(/\s+/g, '').replace('cubic-bezier(', '').replace(')', '');
-              const presetMap = {
-                '0.20,0.00,0.20,1.00': 'Standard Curve',
-                '0.2,0,0.2,1': 'Standard Curve',
-                '0.12,0.00,0.12,1.00': 'Enter Curve',
-                '0.33,0.00,0.50,1.00': 'Exit Curve'
-              };
-              presetName = presetMap[normalizedBezier];
+              // Use tolerance-based matching (0.15) to handle AE's imprecise bezier values
+              presetName = matchCubicBezierWithTolerance(bezierValue);
             }
             const curveLinks = {
               'Standard Curve': 'https://air.bb/standard-curve',
@@ -5693,7 +5696,6 @@
       html += `</div>`; // timeline-outer-wrapper
 
       timelineContent.innerHTML = html;
-      console.log('[TABLE] Table view rendered');
 
       updateTableEasingWidth();
       syncTableRowHeights();
@@ -6728,7 +6730,6 @@
       // Get all the script content (we'll extract just the functions we need)
       const scriptElement = document.querySelector('script:not([src])');
       const scriptContent = scriptElement ? scriptElement.textContent : '';
-      console.log('[GET_EXPORT_TEMPLATE] Script content length:', scriptContent.length);
 
       // Remove the exportZip and getExportTemplate functions from the script
       const cleanedScript = scriptContent
@@ -6739,10 +6740,7 @@
         .replace(/let isEditMode = true;/g, 'let isEditMode = false;')
         .replace(/\/\/ Initialize with default spec[\s\S]*?\/\/ Render the default timeline\s*\n\s*renderTimeline\(\);\s*\n/m, '');
 
-      console.log('[GET_EXPORT_TEMPLATE] Cleaned script length after replacements:', cleanedScript.length);
 
-      console.log('[GET_EXPORT_TEMPLATE] Cleaned script length:', cleanedScript.length);
-      console.log('[GET_EXPORT_TEMPLATE] First 500 chars of cleaned script:', cleanedScript.substring(0, 500));
 
       const result = `<!DOCTYPE html>
 <html lang="en">
@@ -6852,7 +6850,6 @@ ${cleanedScript}
           groupAnimations(tab.specData);
         }
       });
-      console.log('[EXPORT] Tabs loaded:', tabs);
 
       // Update page title (always use Tab 1's title)
       const pageTitle = document.getElementById('pageTitle');
@@ -6875,18 +6872,14 @@ ${cleanedScript}
         }
 
         const onVideoReady = () => {
-          console.log('[EXPORT] onVideoReady called, readyState:', video.readyState, 'videoWidth:', video.videoWidth);
           videoDuration = video.duration * 1000;
           video.currentTime = 0;
           // Triple RAF to ensure layout is fully updated after potential padding change
           requestAnimationFrame(() => {
-            console.log('[EXPORT] RAF 1 updateVideoAlignment');
             updateVideoAlignment();
             requestAnimationFrame(() => {
-              console.log('[EXPORT] RAF 2 updateVideoAlignment');
               updateVideoAlignment();
               requestAnimationFrame(() => {
-                console.log('[EXPORT] RAF 3 updateVideoAlignment');
                 updateVideoAlignment();
               });
             });
@@ -6894,12 +6887,9 @@ ${cleanedScript}
         };
 
         // Check if video metadata is already loaded (cached video)
-        console.log('[EXPORT] video.readyState:', video.readyState);
         if (video.readyState >= 1) {
-          console.log('[EXPORT] Video already loaded, calling onVideoReady immediately');
           onVideoReady();
         } else {
-          console.log('[EXPORT] Video not loaded yet, adding loadedmetadata listener');
           video.addEventListener('loadedmetadata', onVideoReady, { once: true });
         }
       }
@@ -6922,10 +6912,8 @@ ${cleanedScript}
 
       // Set specData from current tab (required for renderTimeline)
       specData = tabs[currentTabIndex].specData;
-      console.log('[EXPORT] Set specData from current tab:', specData);
 
       // Render tabs and timeline
-      console.log('[EXPORT] About to render tabs and timeline');
       renderTabs();
 
       // Check if all tabs have empty descriptions
@@ -6970,7 +6958,6 @@ ${cleanedScript}
       }
 
       renderTimeline();
-      console.log('[EXPORT] Tabs and timeline rendered');
     });
   <\/script>
 
@@ -6984,7 +6971,6 @@ ${cleanedScript}
 </body>
 </html>`;
 
-      console.log('[GET_EXPORT_TEMPLATE] Result length:', result.length);
       return result;
     }
 
@@ -7018,7 +7004,6 @@ ${cleanedScript}
 
                 // Add video to zip
                 zip.file(videoFileName, video.file);
-                console.log(`[EXPORT] Added ${videoFileName} for tab ${tab.id}`);
 
                 const exportVideo = {
                   id: video.id || generateVideoId(),
@@ -7081,7 +7066,6 @@ ${cleanedScript}
 
         // Generate clean HTML template
         const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), exportRatio);
-        console.log('[EXPORT] Generated HTML length:', exportHtml.length);
 
         // Create download link with spec name
         const specName = tabs[0].specData.compName;
@@ -7109,12 +7093,10 @@ ${cleanedScript}
     function groupAnimations(specData) {
       if (!specData || !specData.layers) return;
 
-      console.log('[GROUPING] Starting animation grouping');
 
       specData.layers.forEach((layer, layerIdx) => {
         if (!layer.animations || layer.animations.length < 2) return;
 
-        console.log(`[GROUPING] Checking layer "${layer.layerName}" with ${layer.animations.length} animations`);
 
         const toRemove = [];
         const toAdd = [];
@@ -7125,11 +7107,9 @@ ${cleanedScript}
 
           const anim1 = layer.animations[i];
           const prop1 = anim1.property.toLowerCase();
-          console.log(`[GROUPING]   Checking "${anim1.property}" (index ${i})`);
 
           // Check for X Position + Y Position
           if (prop1.includes('x position')) {
-            console.log(`[GROUPING]     Found X Position, looking for Y Position`);
             for (let j = i + 1; j < layer.animations.length; j++) {
               if (toRemove.includes(j)) continue;
 
@@ -7137,18 +7117,13 @@ ${cleanedScript}
               const prop2 = anim2.property.toLowerCase();
 
               if (prop2.includes('y position')) {
-                console.log(`[GROUPING]     Found Y Position at index ${j}, checking if they match`);
-                console.log(`[GROUPING]       anim1 delay: ${anim1.timing.delay}, duration: ${anim1.timing.duration}, easing: ${anim1.easing.type}`);
-                console.log(`[GROUPING]       anim2 delay: ${anim2.timing.delay}, duration: ${anim2.timing.duration}, easing: ${anim2.easing.type}`);
 
                 if (animationsMatch(anim1, anim2)) {
-                  console.log(`[GROUPING]     ✓ Animations match! Creating Position group`);
                   // Create combined Position animation
                   toAdd.push(createGroupedAnimation(anim1, anim2, 'Position', 'position'));
                   toRemove.push(i, j);
                   break;
                 } else {
-                  console.log(`[GROUPING]     ✗ Animations don't match`);
                 }
               }
             }
@@ -7156,7 +7131,6 @@ ${cleanedScript}
 
           // Check for Width + Height
           if (prop1.includes('width') && !prop1.includes('x position')) {
-            console.log(`[GROUPING]     Found Width, looking for Height`);
             for (let j = i + 1; j < layer.animations.length; j++) {
               if (toRemove.includes(j)) continue;
 
@@ -7164,18 +7138,13 @@ ${cleanedScript}
               const prop2 = anim2.property.toLowerCase();
 
               if (prop2.includes('height') && !prop2.includes('y position')) {
-                console.log(`[GROUPING]     Found Height at index ${j}, checking if they match`);
-                console.log(`[GROUPING]       anim1 delay: ${anim1.timing.delay}, duration: ${anim1.timing.duration}, easing: ${anim1.easing.type}`);
-                console.log(`[GROUPING]       anim2 delay: ${anim2.timing.delay}, duration: ${anim2.timing.duration}, easing: ${anim2.easing.type}`);
 
                 if (animationsMatch(anim1, anim2)) {
-                  console.log(`[GROUPING]     ✓ Animations match! Creating Width & Height group`);
                   // Create combined Width & Height animation
                   toAdd.push(createGroupedAnimation(anim1, anim2, 'Width & Height', 'size'));
                   toRemove.push(i, j);
                   break;
                 } else {
-                  console.log(`[GROUPING]     ✗ Animations don't match`);
                 }
               }
             }
@@ -7184,7 +7153,6 @@ ${cleanedScript}
 
         // Remove grouped animations and add combined ones at the original position
         if (toRemove.length > 0) {
-          console.log(`[GROUPING] Removing indices ${toRemove} and adding ${toAdd.length} grouped animations`);
 
           // Sort toRemove to process from highest to lowest index
           toRemove.sort((a, b) => b - a);
@@ -7202,20 +7170,17 @@ ${cleanedScript}
         }
       });
 
-      console.log('[GROUPING] Grouping complete');
     }
 
     // Check if two animations match (same delay, duration, easing)
     function animationsMatch(anim1, anim2) {
       // Always check delay
       if (anim1.timing.delay !== anim2.timing.delay) {
-        console.log(`[GROUPING]         Delay mismatch: ${anim1.timing.delay} !== ${anim2.timing.delay}`);
         return false;
       }
 
       // Check easing type
       if (anim1.easing.type !== anim2.easing.type) {
-        console.log(`[GROUPING]         Easing type mismatch: ${anim1.easing.type} !== ${anim2.easing.type}`);
         return false;
       }
 
@@ -7223,13 +7188,11 @@ ${cleanedScript}
       if (anim1.easing.type === 'cubic-bezier') {
         // Check duration for cubic-bezier animations
         if (anim1.timing.duration !== anim2.timing.duration) {
-          console.log(`[GROUPING]         Duration mismatch: ${anim1.timing.duration} !== ${anim2.timing.duration}`);
           return false;
         }
 
         const match = anim1.easing.cubicBezier === anim2.easing.cubicBezier;
         if (!match) {
-          console.log(`[GROUPING]         Cubic-bezier mismatch: ${anim1.easing.cubicBezier} !== ${anim2.easing.cubicBezier}`);
         }
         return match;
       }
@@ -7238,12 +7201,6 @@ ${cleanedScript}
       if (anim1.easing.type === 'spring') {
         const spring1 = anim1.easing.spring?.custom;
         const spring2 = anim2.easing.spring?.custom;
-        console.log(`[GROUPING]         (Ignoring duration for springs - calculated from physics)`);
-        console.log(`[GROUPING]         Comparing spring values:`);
-        console.log(`[GROUPING]           stiffness: ${spring1?.stiffness} === ${spring2?.stiffness}`);
-        console.log(`[GROUPING]           damping: ${spring1?.damping} === ${spring2?.damping}`);
-        console.log(`[GROUPING]           dampingRatio: ${spring1?.dampingRatio} === ${spring2?.dampingRatio}`);
-        console.log(`[GROUPING]           mass: ${spring1?.mass} === ${spring2?.mass}`);
 
         const match = spring1?.stiffness === spring2?.stiffness &&
                spring1?.damping === spring2?.damping &&
@@ -7251,7 +7208,6 @@ ${cleanedScript}
                spring1?.mass === spring2?.mass;
 
         if (!match) {
-          console.log(`[GROUPING]         Spring values don't match`);
         }
 
         return match;
@@ -7694,12 +7650,9 @@ ${cleanedScript}
 
     // Helper function to refresh the active view
     function refreshActiveView() {
-      console.log('[REFRESH] refreshActiveView called, viewMode:', viewMode);
       if (viewMode === 'table') {
-        console.log('[REFRESH] Calling renderTableView');
         renderTableView();
       } else {
-        console.log('[REFRESH] Calling renderTimeline');
         renderTimeline();
       }
       // If an animation is selected, refresh its detail panel and re-apply selected state
@@ -7711,7 +7664,6 @@ ${cleanedScript}
         if (bar) bar.classList.add('selected');
         if (label) label.classList.add('selected');
       }
-      console.log('[REFRESH] refreshActiveView complete');
     }
 
     // Auto-resize title input fields to fit content
@@ -7967,14 +7919,11 @@ ${cleanedScript}
 
     // Render the timeline
     function renderTimeline() {
-      console.log('[RENDER] renderTimeline called, specData:', specData);
       if (!specData) {
-        console.log('[RENDER] No specData, returning');
         return;
       }
 
       const content = document.getElementById('timelineContent');
-      console.log('[RENDER] timelineContent element:', content);
 
       // Update the main title with the spec name
       document.querySelector('h1').textContent = specData.compName;
@@ -8393,7 +8342,6 @@ ${cleanedScript}
       html += `<div id="detailPanel"></div>`;
 
       content.innerHTML = html;
-      console.log('[RENDER] HTML set, length:', html.length);
 
       // Setup playhead dragging
       setupPlayheadDragging();
@@ -10199,19 +10147,9 @@ ${cleanedScript}
           // Check if preset name is already provided in JSON
           let presetName = anim.easing.cubicBezierPreset;
 
-          // If not provided, detect from the bezier values
+          // If not provided, use tolerance-based matching (0.15) to handle AE's imprecise bezier values
           if (!presetName) {
-            // Normalize the bezier string by removing spaces and parsing numbers
-            const normalized = bezierValue.replace(/\s+/g, '').toLowerCase();
-            const curvePresets = {
-              'cubic-bezier(0.2,0,0.2,1)': 'Standard Curve',
-              'cubic-bezier(0.20,0.00,0.20,1.00)': 'Standard Curve',
-              'cubic-bezier(0.1,1,0.2,1)': 'Enter Curve',
-              'cubic-bezier(0.10,1.00,0.20,1.00)': 'Enter Curve',
-              'cubic-bezier(0.4,0,1,1)': 'Exit Curve',
-              'cubic-bezier(0.40,0.00,1.00,1.00)': 'Exit Curve'
-            };
-            presetName = curvePresets[normalized];
+            presetName = matchCubicBezierWithTolerance(bezierValue);
           }
 
           easingTextPlain = presetName || bezierValue;
