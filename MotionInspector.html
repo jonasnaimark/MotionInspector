@@ -5608,7 +5608,7 @@
               easingText = wrapNumbers(cleanBezier.startsWith('(') ? cleanBezier : `(${cleanBezier})`);
             }
           } else if (anim.easing.type === 'linear') {
-            easingText = 'linear';
+            easingText = 'Linear';
           } else {
             easingText = anim.easing.type || '-';
           }
@@ -7277,6 +7277,24 @@ ${cleanedScript}
         const xChange = xAnim.values?.change || 0;
         const yChange = yAnim.values?.change || 0;
 
+        // Only show values that changed, with (X)/(Y) labels
+        const xStart = xAnim.values?.startValue;
+        const xEnd = xAnim.values?.endValue;
+        const yStart = yAnim.values?.startValue;
+        const yEnd = yAnim.values?.endValue;
+
+        const startParts = [];
+        const endParts = [];
+
+        if (xChange !== 0) {
+          startParts.push(`${Math.round(xStart)}px (X)`);
+          endParts.push(`${Math.round(xEnd)}px (X)`);
+        }
+        if (yChange !== 0) {
+          startParts.push(`${Math.round(yStart)}px (Y)`);
+          endParts.push(`${Math.round(yEnd)}px (Y)`);
+        }
+
         grouped.values = {
           change: [xChange, yChange],
           animatingAxes: {
@@ -7285,8 +7303,8 @@ ${cleanedScript}
             y: true
           },
           formatted: {
-            startValue: `${xAnim.values?.formatted?.startValue || '-'}\n${yAnim.values?.formatted?.startValue || '-'}`,
-            endValue: `${xAnim.values?.formatted?.endValue || '-'}\n${yAnim.values?.formatted?.endValue || '-'}`
+            startValue: startParts.join('\n') || '-',
+            endValue: endParts.join('\n') || '-'
           }
         };
       } else if (groupType === 'size') {
@@ -10232,6 +10250,77 @@ ${cleanedScript}
         let endValue = anim.customEndValue !== undefined && anim.customEndValue !== null
           ? anim.customEndValue
           : formatDecimalValue(anim.values.formatted.endValue);
+
+        // For grouped Position, only show values that changed with (X)/(Y) labels
+        if (anim.isGrouped && anim.groupType === 'position' && Array.isArray(anim.values.change)) {
+          const [xChange, yChange] = anim.values.change;
+          const groupedAnims = anim.groupedAnimations || [];
+          const xAnim = groupedAnims.find(a => a.property?.toLowerCase().includes('x position'));
+          const yAnim = groupedAnims.find(a => a.property?.toLowerCase().includes('y position'));
+
+          const startParts = [];
+          const endParts = [];
+
+          if (xChange !== 0 && xAnim?.values) {
+            startParts.push(`${Math.round(xAnim.values.startValue)}px (X)`);
+            endParts.push(`${Math.round(xAnim.values.endValue)}px (X)`);
+          }
+          if (yChange !== 0 && yAnim?.values) {
+            startParts.push(`${Math.round(yAnim.values.startValue)}px (Y)`);
+            endParts.push(`${Math.round(yAnim.values.endValue)}px (Y)`);
+          }
+
+          startValue = startParts.length > 0 ? startParts.join('\n') : '-';
+          endValue = endParts.length > 0 ? endParts.join('\n') : '-';
+        }
+        // Handle pre-combined Position format like "(197px, 538px)" from JSON
+        else if (anim.property?.toLowerCase() === 'position' && startValue.includes(',')) {
+          // Parse "(Xpx, Ypx)" format
+          const parsePositionValue = (val) => {
+            const match = val.match(/\(?\s*(-?\d+\.?\d*)px?\s*,\s*(-?\d+\.?\d*)px?\s*\)?/);
+            if (match) return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+            return null;
+          };
+          const startPos = parsePositionValue(startValue);
+          const endPos = parsePositionValue(endValue);
+
+          if (startPos && endPos) {
+            const xChanged = Math.round(startPos.x) !== Math.round(endPos.x);
+            const yChanged = Math.round(startPos.y) !== Math.round(endPos.y);
+
+            const startParts = [];
+            const endParts = [];
+
+            if (xChanged) {
+              startParts.push(`${Math.round(startPos.x)}px (X)`);
+              endParts.push(`${Math.round(endPos.x)}px (X)`);
+            }
+            if (yChanged) {
+              startParts.push(`${Math.round(startPos.y)}px (Y)`);
+              endParts.push(`${Math.round(endPos.y)}px (Y)`);
+            }
+
+            startValue = startParts.length > 0 ? startParts.join('\n') : '-';
+            endValue = endParts.length > 0 ? endParts.join('\n') : '-';
+          }
+        }
+        // Handle Scale format like "100%, 100%" - simplify to single value if X and Y are same
+        else if (anim.property?.toLowerCase().includes('scale') && startValue.includes(',')) {
+          const parseScaleValue = (val) => {
+            const match = val.match(/(-?\d+\.?\d*)%?\s*,\s*(-?\d+\.?\d*)%?/);
+            if (match) return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+            return null;
+          };
+          const startScale = parseScaleValue(startValue);
+          const endScale = parseScaleValue(endValue);
+
+          if (startScale && startScale.x === startScale.y) {
+            startValue = `${Math.round(startScale.x)}%`;
+          }
+          if (endScale && endScale.x === endScale.y) {
+            endValue = `${Math.round(endScale.x)}%`;
+          }
+        }
 
         // Show "-" if empty
         if (startValue === '') startValue = '-';
