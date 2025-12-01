@@ -2178,6 +2178,10 @@
       cursor: grabbing;
     }
 
+    .timeline-bar[data-is-fit-to-shape="true"] {
+      cursor: default;
+    }
+
     .timeline-bar::before {
       content: '';
       position: absolute;
@@ -2252,6 +2256,10 @@
       right: 0;
     }
 
+    .timeline-bar[data-is-fit-to-shape="true"] .timeline-bar-resize-handle {
+      cursor: default !important;
+    }
+
     /* Text fade overlays - match each bar's background color */
     .timeline-bar.has-text-overflow::after {
       content: '';
@@ -2297,6 +2305,20 @@
 
     .timeline-bar.has-text-overflow.bar-default::after {
       background: linear-gradient(to right, rgba(4, 76, 125, 0) 0%, rgba(4, 76, 125, 1) 100%);
+    }
+
+    /* Spring bars already fade out, so hide text overflow gradient overlay */
+    .timeline-bar.bar-spring.has-text-overflow::after {
+      display: none;
+    }
+
+    /* Fade the text itself on spring bars using mask */
+    .timeline-bar.bar-spring .timeline-bar-text {
+      position: absolute;
+      left: 8px;
+      right: 0;
+      -webkit-mask-image: linear-gradient(to right, black 0%, black 50%, transparent 100%);
+      mask-image: linear-gradient(to right, black 0%, black 50%, transparent 100%);
     }
 
     /* Property-specific colors */
@@ -8283,12 +8305,14 @@ ${cleanedScript}
         const userSetDurationFinal = anim.durationUserSet === true;
         const isImportedSpringFinal = !userSetDurationFinal && anim.easing.type === 'spring' && durationIsNumericFinal;
         const isSpring = durationIsStringFinal || isImportedSpringFinal;
+        const isFitToShape = anim.isFitToShape || anim.fitToShape;
 
         return `<div class="timeline-track">
           <div class="timeline-bar ${colorClass}${springClass}"
                style="${customStyle}"
                data-anim-index="${globalAnimIndex}"
-               data-is-spring="${isSpring}">
+               data-is-spring="${isSpring}"
+               data-is-fit-to-shape="${!!isFitToShape}">
             <span class="timeline-bar-text edit-only" contenteditable="true" data-anim-index="${globalAnimIndex}">${description}</span>
             <span class="timeline-bar-text export-only">${description}</span>
             <div class="timeline-bar-resize-handle left edit-only" data-handle="left"></div>
@@ -9093,10 +9117,14 @@ ${cleanedScript}
           // Disable resize in export mode
           if (isExportMode) return;
 
+          const bar = handle.closest('.timeline-bar');
+
+          // Disable resize for Fit to Shape animations
+          if (bar.dataset.isFitToShape === 'true') return;
+
           e.stopPropagation();
           e.preventDefault();
 
-          const bar = handle.closest('.timeline-bar');
           const animIndex = parseInt(bar.dataset.animIndex);
           const handleType = handle.dataset.handle; // 'left' or 'right'
           const isSpring = bar.dataset.isSpring === 'true';
@@ -9222,6 +9250,9 @@ ${cleanedScript}
         bar.addEventListener('mousedown', (e) => {
           // Don't allow dragging in read mode
           if (!isEditMode) return;
+
+          // Disable dragging for Fit to Shape animations
+          if (bar.dataset.isFitToShape === 'true') return;
 
           // Don't interfere with resize handles
           if (e.target.classList.contains('timeline-bar-resize-handle')) return;
