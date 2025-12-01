@@ -6370,6 +6370,10 @@
           // Insert the new animation
           layer.animations.splice(insertIndex, 0, newAnimation);
 
+          // Save scroll position before re-render
+          const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+          const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
           // Re-render table
           renderTableView();
 
@@ -6382,12 +6386,20 @@
 
           // Show the info box for the newly added animation
           setTimeout(() => {
+            // Restore scroll position first
+            const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+            if (newTimelineOuter) {
+              newTimelineOuter.scrollTop = scrollTop;
+            }
+
             showAnimationDetails(globalAnimIndex);
 
             // Add selected class to the new label
             const newLabel = document.querySelector(`.timeline-label[data-layer-index="${layerIndex}"][data-anim-in-layer="${insertIndex}"]`);
             if (newLabel) {
               newLabel.classList.add('selected');
+              // Scroll the new row into view from current position
+              newLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
           }, 50);
         });
@@ -6450,6 +6462,10 @@
           // Insert the new layer
           specData.layers.splice(insertIndex, 0, newLayer);
 
+          // Save scroll position before re-render
+          const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+          const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
           // Re-render table
           renderTableView();
 
@@ -6462,12 +6478,20 @@
 
           // Show the info box for the newly added animation
           setTimeout(() => {
+            // Restore scroll position first
+            const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+            if (newTimelineOuter) {
+              newTimelineOuter.scrollTop = scrollTop;
+            }
+
             showAnimationDetails(globalAnimIndex);
 
             // Add selected class to the new layer header
             const newLayerHeader = document.querySelector(`.timeline-label.layer-header[data-layer-index="${insertIndex}"]`);
             if (newLayerHeader) {
               newLayerHeader.classList.add('selected');
+              // Scroll the new section into view from current position
+              newLayerHeader.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
           }, 50);
         });
@@ -9027,6 +9051,10 @@ ${cleanedScript}
           // Insert the new animation
           layer.animations.splice(insertIndex, 0, newAnimation);
 
+          // Save scroll position before re-render
+          const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+          const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
           // Re-render timeline
           renderTimeline();
 
@@ -9039,13 +9067,23 @@ ${cleanedScript}
 
           // Show the info box for the newly added animation
           setTimeout(() => {
+            // Restore scroll position first
+            const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+            if (newTimelineOuter) {
+              newTimelineOuter.scrollTop = scrollTop;
+            }
+
             showAnimationDetails(globalAnimIndex);
 
             // Add selected class to the new bar and label
             const newBar = document.querySelector(`.timeline-bar[data-anim-index="${globalAnimIndex}"]`);
             const newLabel = document.querySelector(`.timeline-label.indented[data-anim-index="${globalAnimIndex}"]`);
             if (newBar) newBar.classList.add('selected');
-            if (newLabel) newLabel.classList.add('selected');
+            if (newLabel) {
+              newLabel.classList.add('selected');
+              // Scroll the new row into view from current position
+              newLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
           }, 0);
         });
       });
@@ -9107,6 +9145,10 @@ ${cleanedScript}
           // Insert the new layer
           specData.layers.splice(insertIndex, 0, newLayer);
 
+          // Save scroll position before re-render
+          const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+          const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
           // Re-render timeline
           renderTimeline();
 
@@ -9119,13 +9161,23 @@ ${cleanedScript}
 
           // Show the info box for the newly added animation
           setTimeout(() => {
+            // Restore scroll position first
+            const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+            if (newTimelineOuter) {
+              newTimelineOuter.scrollTop = scrollTop;
+            }
+
             showAnimationDetails(globalAnimIndex);
 
             // Add selected class to the new bar and label
             const newBar = document.querySelector(`.timeline-bar[data-anim-index="${globalAnimIndex}"]`);
             const newLabel = document.querySelector(`.timeline-label.indented[data-anim-index="${globalAnimIndex}"]`);
             if (newBar) newBar.classList.add('selected');
-            if (newLabel) newLabel.classList.add('selected');
+            if (newLabel) {
+              newLabel.classList.add('selected');
+              // Scroll the new row into view from current position
+              newLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
           }, 0);
         });
       });
@@ -11104,8 +11156,20 @@ ${cleanedScript}
       // Sync the changes back to legacy specData variable
       syncLegacyVariables();
 
+      // Save scroll position before re-render
+      const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+      const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
       // Re-render based on current view mode
       refreshActiveView();
+
+      // Restore scroll position after re-render
+      requestAnimationFrame(() => {
+        const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+        if (newTimelineOuter) {
+          newTimelineOuter.scrollTop = scrollTop;
+        }
+      });
     }
 
     // Render the default timeline
