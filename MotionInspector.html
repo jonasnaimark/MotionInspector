@@ -5604,7 +5604,8 @@
             if (!presetName && bezierValue) {
               const normalizedBezier = bezierValue.replace(/\s+/g, '').replace('cubic-bezier(', '').replace(')', '');
               const presetMap = {
-                '0.20,0.07,0.20,1.00': 'Standard Curve',
+                '0.20,0.00,0.20,1.00': 'Standard Curve',
+                '0.2,0,0.2,1': 'Standard Curve',
                 '0.12,0.00,0.12,1.00': 'Enter Curve',
                 '0.33,0.00,0.50,1.00': 'Exit Curve'
               };
@@ -5619,11 +5620,9 @@
               const link = curveLinks[presetName];
               easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
             } else {
-              if (bezierValue.includes('cubic-bezier')) {
-                easingText = wrapNumbers(bezierValue.replace('cubic-bezier', ''));
-              } else {
-                easingText = wrapNumbers(`(${bezierValue})`);
-              }
+              // Strip spaces from bezier display for cleaner look
+              const cleanBezier = bezierValue.replace(/\s+/g, '').replace('cubic-bezier', '');
+              easingText = wrapNumbers(cleanBezier.startsWith('(') ? cleanBezier : `(${cleanBezier})`);
             }
           } else if (anim.easing.type === 'linear') {
             easingText = 'linear';
@@ -7014,13 +7013,6 @@ ${cleanedScript}
         return;
       }
 
-      // Check if at least one tab has a video
-      const hasAnyVideo = tabs.some(tab => tab.videos && tab.videos.some(v => v.file));
-      if (!hasAnyVideo) {
-        alert('Please upload a video first (Upload Video button)');
-        return;
-      }
-
       try {
         // Export the user's ratio setting (null if never manually resized, number if they did)
         // This preserves the user's intent in the exported file
@@ -7501,7 +7493,7 @@ ${cleanedScript}
         else if (prop.includes('x position')) {
           // Check for zero change
           if (changeValue === 0) {
-            description = `Position X stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+            description = `X Position stays at ${Math.round(values.startValue)}px`;
           } else {
             const direction = changeValue < 0 ? 'left' : 'right';
             description = `Moves ${direction} ${Math.round(absChange)}px`;
@@ -7510,7 +7502,7 @@ ${cleanedScript}
         else if (prop.includes('y position')) {
           // Check for zero change
           if (changeValue === 0) {
-            description = `Position Y stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+            description = `Y Position stays at ${Math.round(values.startValue)}px`;
           } else {
             const direction = changeValue < 0 ? 'up' : 'down';
             description = `Moves ${direction} ${Math.round(absChange)}px`;
@@ -7631,8 +7623,10 @@ ${cleanedScript}
           const startPercent = `${Math.round(typeof startValue === 'string' ? parseFloat(startValue) : startValue)}%`;
           const endPercent = `${Math.round(typeof endValue === 'string' ? parseFloat(endValue) : endValue)}%`;
 
-          // Special cases
-          if (startValue === 0 && endValue === 100) {
+          // Special cases - check zero change FIRST before other conditions
+          if (changeValue === 0) {
+            description = `opacity stays at ${startPercent}`;
+          } else if (startValue === 0 && endValue === 100) {
             description = `alpha animates from 0% – 100%`;
           } else if (startValue === 100 && endValue === 0) {
             description = `alpha animates from 100% – 0%`;
@@ -7640,8 +7634,6 @@ ${cleanedScript}
             description = `fades in to ${endPercent}`;
           } else if (endValue === 0) {
             description = `fades out from ${startPercent}`;
-          } else if (changeValue === 0) {
-            description = `opacity stays at ${startPercent}`;
           } else {
             description = `alpha animates from ${startPercent} – ${endPercent}`;
           }
@@ -7672,7 +7664,12 @@ ${cleanedScript}
           }
         }
         else {
-          description = property;
+          // Generic fallback for unknown properties
+          if (changeValue === 0) {
+            description = `${property} does not change`;
+          } else {
+            description = property;
+          }
         }
       }
 
