@@ -4843,6 +4843,53 @@
       renderTimeline();
     }
 
+    // Calculate timeline duration based on last animation end, rounded to 250ms
+    function calculateTimelineDuration(data) {
+      if (!data || !data.layers) return data;
+
+      let maxEnd = 0;
+
+      data.layers.forEach(layer => {
+        if (!layer.animations) return;
+        layer.animations.forEach(anim => {
+          if (!anim.timing) return;
+
+          const animStart = anim.timing.delay || 0;
+          let animDuration = anim.timing.duration || 0;
+
+          // Account for spring durations
+          const durationIsNumeric = typeof animDuration === 'number' && !isNaN(animDuration);
+          const durationIsString = typeof animDuration === 'string';
+          const userSetDuration = anim.durationUserSet === true;
+          const isImportedSpring = !userSetDuration && anim.easing && anim.easing.type === 'spring' && durationIsNumeric;
+
+          if (durationIsString || isImportedSpring) {
+            // Spring animation - estimate visual duration
+            let springDuration = anim.calculatedSpringDuration;
+            if (!springDuration && anim.easing && anim.easing.spring) {
+              const spring = anim.easing.spring;
+              if (spring.preset && springPresetParams[spring.preset]) {
+                const params = springPresetParams[spring.preset];
+                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+              } else if (spring.custom) {
+                springDuration = calculateSpringDuration(spring.custom.stiffness, spring.custom.damping, spring.custom.mass || 1);
+              }
+            }
+            animDuration = springDuration ? springDuration * 2 : animDuration;
+          }
+
+          const animEnd = animStart + animDuration;
+          maxEnd = Math.max(maxEnd, animEnd);
+        });
+      });
+
+      // Round up to nearest 250ms increment
+      const rounded = Math.ceil(maxEnd / 250) * 250;
+      data.workArea.duration = Math.max(250, rounded); // Minimum 250ms
+
+      return data;
+    }
+
     // Toggle layout between vertical (400px | 1fr) and 50/50 split
     function toggleLayout() {
       const mainContent = document.querySelector('.main-content');
@@ -4976,6 +5023,9 @@
       try {
         const text = await navigator.clipboard.readText();
         const data = JSON.parse(text);
+
+        // Calculate timeline duration based on last animation end
+        calculateTimelineDuration(data);
 
         // If no tabs exist, create the first tab
         if (tabs.length === 0) {
