@@ -1164,12 +1164,37 @@
       border-right: none;
     }
 
-    .zoom-controls:hover .zoom-duration {
-      max-width: 160px;
+    .zoom-controls:hover .zoom-duration,
+    .zoom-controls.input-focused .zoom-duration {
+      max-width: 200px;
       opacity: 1;
       padding: 0 8px;
       margin-right: 4px;
       border-right: 1px solid #444;
+    }
+
+    .zoom-duration-input {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      font-size: 11px;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+      min-width: 3ch;
+      text-align: center;
+      outline: none;
+      padding: 3px 5px;
+      margin: -2px 2px;
+      border-radius: 6px;
+      box-sizing: content-box;
+    }
+
+    .zoom-duration-input:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .zoom-duration-input:focus {
+      background: rgba(255, 255, 255, 0.2);
     }
 
     /* Color picker */
@@ -4802,6 +4827,26 @@
       renderTimeline();
     }
 
+    function setTimelineDuration(value) {
+      if (!specData) return;
+
+      // Parse the input value
+      const parsed = parseInt(value, 10);
+      if (isNaN(parsed) || parsed < 100) {
+        // Invalid input, reset to current value
+        renderTimeline();
+        return;
+      }
+
+      // Set the new duration
+      specData.workArea.duration = parsed;
+
+      // Reset view duration to show full timeline
+      viewDuration = null;
+
+      renderTimeline();
+    }
+
     // Toggle layout between vertical (400px | 1fr) and 50/50 split
     function toggleLayout() {
       const mainContent = document.querySelector('.main-content');
@@ -8042,8 +8087,9 @@ ${cleanedScript}
       }
 
       html += `<div class="timeline-ruler">`;
+      const inputWidth = String(specDuration).length;
       html += `<div class="zoom-controls edit-only">
-        <span class="zoom-duration">Timeline duration: ${specDuration}ms</span>
+        <span class="zoom-duration">Timeline duration: <input type="text" class="zoom-duration-input" style="width: ${inputWidth}ch" value="${specDuration}" onchange="setTimelineDuration(this.value)" oninput="this.style.width = this.value.length + 'ch'" onkeydown="if(event.key==='Enter'){this.blur()}" onfocus="this.closest('.zoom-controls').classList.add('input-focused')" onblur="this.closest('.zoom-controls').classList.remove('input-focused')" />ms</span>
         <button class="zoom-btn" onclick="zoomOut()">−</button>
         <button class="zoom-btn" onclick="zoomIn()">+</button>
       </div>`;
@@ -8204,12 +8250,43 @@ ${cleanedScript}
 
         parentLayer.animations.forEach(anim => {
           const animStart = anim.timing.delay;
-          const animEnd = anim.timing.delay + anim.timing.duration;
-          minDelay = Math.min(minDelay, animStart);
-          maxEnd = Math.max(maxEnd, animEnd);
+
+          // Calculate actual duration (accounting for springs)
+          let animDuration = anim.timing.duration;
+          const durationIsNumeric = typeof animDuration === 'number' && !isNaN(animDuration);
+          const durationIsString = typeof animDuration === 'string';
+          const userSetDuration = anim.durationUserSet === true;
+          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+
+          if (durationIsString || isImportedSpring) {
+            // Spring animation - calculate visual duration
+            let springDuration = anim.calculatedSpringDuration;
+            if (!springDuration && anim.easing.spring) {
+              const spring = anim.easing.spring;
+              if (spring.preset && springPresetParams[spring.preset]) {
+                const params = springPresetParams[spring.preset];
+                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+              } else if (spring.custom) {
+                springDuration = calculateSpringDuration(spring.custom.stiffness, spring.custom.damping, spring.custom.mass || 1);
+              }
+            }
+            if (!springDuration && anim.customEasing) {
+              const params = parseSpringParams(anim.customEasing);
+              if (params) {
+                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+              }
+            }
+            animDuration = springDuration ? springDuration * 2 : animDuration;
+            hasSpring = true;
+          }
+
           if (anim.easing.type === 'spring') {
             hasSpring = true;
           }
+
+          const animEnd = animStart + animDuration;
+          minDelay = Math.min(minDelay, animStart);
+          maxEnd = Math.max(maxEnd, animEnd);
         });
 
         return {
