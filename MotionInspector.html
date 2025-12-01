@@ -1500,6 +1500,26 @@
       border-radius: 4px 4px 6px 6px;
     }
 
+    /* Dark theme scrollbar styling for timeline */
+    .timeline-outer-wrapper::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    .timeline-outer-wrapper::-webkit-scrollbar-track {
+      background: #111;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .timeline-outer-wrapper::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 6px;
+      border: 2px solid #111;
+    }
+
+    .timeline-outer-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #666;
+    }
+
     .timeline-header-row {
       display: grid;
       grid-template-columns: 180px 1fr;
@@ -1631,8 +1651,8 @@
     .timeline-label.layer-header.has-divider,
     .timeline-track.layer-header.has-divider {
       border-top: 1px solid #4a4a4a;
-      padding-top: 8px;
-      margin-top: 15px;
+      padding-top: 3px;
+      margin-top: 4px;
     }
 
     .timeline-label.layer-header:hover {
@@ -2119,13 +2139,13 @@
     }
 
     .timeline-track.table-row.table-row--layer.has-divider {
-      margin-top: 15px;
+      margin-top: 7px;
       padding-top: 0;
       border-top: 1px solid #4a4a4a;
     }
 
     body.table-view-active .timeline-label.layer-header.has-divider {
-      margin-top: 15px;
+      margin-top: 7px;
       padding-top: 0;
       border-top: 1px solid #4a4a4a;
     }
