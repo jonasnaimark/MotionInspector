@@ -1002,7 +1002,7 @@
     .help-tooltip {
       position: fixed;
       background: #2a2a2a;
-      border: 1px solid #888;
+      border: 1px solid #666;
       border-radius: 8px;
       padding: 10px 14px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -1032,8 +1032,8 @@
       width: 10px;
       height: 10px;
       background: #2a2a2a;
-      border-left: 1px solid #888;
-      border-top: 1px solid #888;
+      border-left: 1px solid #666;
+      border-top: 1px solid #666;
     }
 
     .help-tooltip.arrow-up::before {
@@ -4688,23 +4688,6 @@
         slackTooltip.style.left = (rect.left - slackTooltip.offsetWidth - 14) + 'px';
       }
 
-      // Video navigation - only show if video nav arrows exist and are visible
-      const videoRightArrow = document.querySelector('.video-nav-right');
-      const videosTooltip = document.getElementById('helpTooltipVideos');
-      if (videosTooltip) {
-        videosTooltip.classList.remove('tooltip-hidden');
-        const arrowVisible = videoRightArrow &&
-          window.getComputedStyle(videoRightArrow).display !== 'none' &&
-          videoRightArrow.offsetParent !== null;
-        if (arrowVisible) {
-          const rect = videoRightArrow.getBoundingClientRect();
-          videosTooltip.style.top = (rect.bottom + 14) + 'px';
-          videosTooltip.style.left = (rect.left + rect.width/2 - videosTooltip.offsetWidth/2) + 'px';
-        } else {
-          videosTooltip.classList.add('tooltip-hidden');
-        }
-      }
-
       // Now hide them again (toggle function will show them)
       allTooltips.forEach(t => {
         t.style.visibility = '';
@@ -6997,7 +6980,6 @@ ${cleanedScript}
   <div id="helpTooltipViewMode" class="help-tooltip arrow-up-center">Switch between view modes</div>
   <div id="helpTooltipColorBar" class="help-tooltip arrow-up-center">Click to see animation details</div>
   <div id="helpTooltipSlack" class="help-tooltip arrow-right">Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a></div>
-  <div id="helpTooltipVideos" class="help-tooltip arrow-up-center">See related videos here</div>
 
 </body>
 </html>`;
@@ -10916,7 +10898,6 @@ ${cleanedScript}
   <div id="helpTooltipViewMode" class="help-tooltip arrow-up-center export-only">Switch between view modes</div>
   <div id="helpTooltipColorBar" class="help-tooltip arrow-up-center export-only">Click to see animation details</div>
   <div id="helpTooltipSlack" class="help-tooltip arrow-right export-only">Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a></div>
-  <div id="helpTooltipVideos" class="help-tooltip arrow-up-center export-only">See related videos here</div>
 
 </body>
 </html>
