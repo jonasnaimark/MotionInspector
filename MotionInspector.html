@@ -1633,7 +1633,7 @@
 
     .timeline-row {
       min-height: 32px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid #222222;
       position: relative;
     }
 
@@ -1653,17 +1653,16 @@
     }
 
     .timeline-label.layer-header {
-      background: rgba(255, 255, 255, 0.03);
       font-weight: 600;
       font-size: 12.5px;
-      border-bottom: 1px solid #262626;
+      border-bottom: 1px solid #222222;
       height: 32px;
     }
 
     .timeline-track.layer-header {
       background: transparent;
       font-weight: 600;
-      border-bottom: 1px solid #2a2a2a;
+      border-bottom: 1px solid #222222;
       height: 32px;
     }
 
@@ -1704,7 +1703,7 @@
       overflow: visible;
       text-overflow: ellipsis;
       height: 32px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid #222222;
       position: relative;
       box-sizing: border-box;
       cursor: grab;
@@ -1909,22 +1908,25 @@
       position: absolute;
       left: 15px;
       top: -4px;
-      bottom: -1px; /* Extend slightly to connect to next row */
+      bottom: -9px; /* Extend to bridge 8px margin gap before first child layer */
       width: 1px;
       background: #fff;
       z-index: 0;
     }
 
-    /* Child layer header - same indent as other param rows, with lighter background like parent layers */
+    /* Child layer header - same indent as other param rows */
     .timeline-label.child-layer-header {
       padding-left: 32px;
       font-weight: 600;
       font-size: 12.5px;
       color: #ffffff;
       position: relative;
-      background: rgba(255, 255, 255, 0.03);
-      border-top: 1px solid #222;
-      border-bottom: 1px solid #222;
+    }
+
+    /* Only first child layer gets top margin and border (visual separation from param rows above) */
+    .timeline-label.child-layer-header.first-child-layer {
+      margin-top: 8px;
+      border-top: 1px solid #222222;
     }
 
     .timeline-label.child-layer-header:hover {
@@ -1941,9 +1943,22 @@
       position: relative;
     }
 
+    /* Only first child layer track gets top margin and border (matching left column) */
+    .timeline-track.child-layer-header.first-child-layer:not(.table-row) {
+      margin-top: 8px;
+      border-top: 1px solid #222222;
+    }
+
     /* In table mode, child layer header should use normal table row layout */
     body.table-view-active .timeline-track.child-layer-header.table-row {
       display: grid;
+    }
+
+    /* Only first child layer gets top margin and border in table mode */
+    body.table-view-active .timeline-label.child-layer-header.first-child-layer,
+    body.table-view-active .timeline-track.child-layer-header.table-row.first-child-layer {
+      margin-top: 8px;
+      border-top: 1px solid #222222;
     }
 
     /* Vertical line segment connecting from top to the curve */
@@ -1956,6 +1971,12 @@
       width: 1px;
       background: #fff;
       z-index: 0;
+    }
+
+    /* Extend line for first child layer (has 8px margin-top) */
+    .timeline-label.child-layer-header.first-child-layer::before {
+      top: -14px;
+      height: calc(50% - 10px + 14px);
     }
 
     /* Curved branch connector (L-shape with rounded corner) */
@@ -1978,6 +1999,11 @@
       height: auto;
       top: -6px;
       bottom: -1px;
+    }
+
+    /* Extend line for first child with siblings (has 8px margin-top) */
+    .timeline-label.child-layer-header.first-child-layer.has-siblings::before {
+      top: -14px;
     }
 
     /* Continue vertical line through child rows when more children below */
@@ -2048,7 +2074,7 @@
     .timeline-track {
       position: relative;
       height: 32px;
-      border-bottom: 1px solid #2a2a2a;
+      border-bottom: 1px solid #222222;
       display: flex;
       align-items: center;
       padding-right: 80px;
@@ -2074,7 +2100,7 @@
     }
 
     .timeline-ruler.table-row.table-row--header {
-      border-left: 1px solid #2a2a2a;
+      border-left: 1px solid #222222;
       margin-left: -1px;
     }
 
@@ -2118,7 +2144,7 @@
       height: 100%;
       padding-left: 0;
       padding-right: 12px;
-      border-right: 1px solid #2a2a2a;
+      border-right: 1px solid #222222;
       color: #c0c0c0;
       white-space: normal;
       overflow: hidden;
@@ -2139,7 +2165,7 @@
 
     .table-cell--delay,
     .table-cell--duration {
-      border-right: 1px solid #2a2a2a;
+      border-right: 1px solid #222222;
       color: #c0c0c0;
     }
 
@@ -2172,13 +2198,13 @@
     .table-row--header .table-cell--desc,
     .table-row--header .table-cell--delay,
     .table-row--header .table-cell--duration {
-      border-right: 1px solid #2a2a2a;
+      border-right: 1px solid #222222;
     }
 
     .table-row--layer .table-cell {
       font-weight: 600;
       color: inherit;
-      border-right: 1px solid #2a2a2a;
+      border-right: 1px solid #222222;
     }
 
     .table-row--layer .table-cell:last-child {
@@ -2225,28 +2251,27 @@
     }
 
     body.table-view-active .timeline-label.layer-header {
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid #222222;
       padding: 0 12px;
     }
 
     body.table-view-active .timeline-label {
       height: 32px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid #222222;
       box-sizing: border-box;
     }
 
     body.table-view-active .timeline-label.layer-header {
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid #222222;
     }
 
     body.table-view-active .timeline-label.indented {
       padding-left: 32px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid #222222;
     }
 
-    /* Child layer header in table mode - same background as parent layer headers */
+    /* Child layer header in table mode */
     body.table-view-active .timeline-label.child-layer-header {
-      background: rgba(255, 255, 255, 0.03);
       padding: 0 12px;
       padding-left: 32px;
     }
@@ -2274,13 +2299,13 @@
     .table-gap-row {
       height: 8px;
       min-height: 8px !important;
-      border-top: 1px solid #1a1a1a;
+      border-top: 1px solid #222222;
       border-bottom: none !important;
     }
 
     .table-gap-row .table-cell {
       padding: 0;
-      border-right: 1px solid #2a2a2a;
+      border-right: 1px solid #222222;
       height: 100%;
       min-height: inherit;
     }
@@ -5905,7 +5930,7 @@
       html += `<div class="timeline-container">`;
 
       // ===== LEFT COLUMN =====
-      html += `<div class="timeline-labels-column" style="border-right: 1px solid #2a2a2a;">`;
+      html += `<div class="timeline-labels-column" style="border-right: 1px solid #222222;">`;
 
       // Labels
       // Track which layers have been rendered as children (to skip in main loop)
@@ -5969,13 +5994,15 @@
           children.forEach((childInfo, childIdx) => {
             const childLayer = childInfo.layer;
             const childLayerIndex = childInfo.index;
+            const isFirstChild = childIdx === 0;
             const isLastChild = childIdx === children.length - 1;
             const hasSiblings = !isLastChild;
 
             // Child layer header with connector
             const siblingClass = hasSiblings ? ' has-siblings' : '';
+            const firstChildClass = isFirstChild ? ' first-child-layer' : '';
             const childContinueClass = hasSiblings ? ' child-continues' : '';
-            html += `<div class="timeline-label child-layer-header${siblingClass}"
+            html += `<div class="timeline-label child-layer-header${siblingClass}${firstChildClass}"
                           data-row-type="child-layer"
                           data-layer-index="${childLayerIndex}"
                           data-parent-layer="${layerIndex}"
@@ -6116,8 +6143,10 @@
         children.forEach((childData, childIdx) => {
           const childLayer = childData.layer;
           const childLayerIndex = childData.index;
+          const isFirstChild = childIdx === 0;
           const isLastChild = childIdx === children.length - 1;
           const siblingClass = isLastChild ? '' : ' has-siblings';
+          const firstChildClass = isFirstChild ? ' first-child-layer' : '';
           const childContinueClass = isLastChild ? '' : ' child-continues';
 
           // Child layer header row with attachment info in description
@@ -6139,7 +6168,7 @@
             childLayer.parentingDescription !== oldDefaultPattern &&
             !childLayer.parentingDescription.startsWith('Attached to "');
           const attachedDescription = hasCustomDesc ? childLayer.parentingDescription : defaultChildDesc;
-          html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-parent-name="${parentName}">
+          html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}${firstChildClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-parent-name="${parentName}">
             <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${attachedDescription}</span></div>
             <div class="table-cell table-cell--delay">—</div>
             <div class="table-cell table-cell--duration">—</div>
@@ -8558,12 +8587,14 @@ ${cleanedScript}
         children.forEach((childData, childIdx) => {
           const childLayer = childData.layer;
           const childLayerIndex = childData.index;
+          const isFirstChild = childIdx === 0;
           const isLastChild = childIdx === children.length - 1;
           const siblingClass = isLastChild ? '' : ' has-siblings';
+          const firstChildClass = isFirstChild ? ' first-child-layer' : '';
           const childContinueClass = isLastChild ? '' : ' child-continues';
 
           // Child layer header (with tree connector)
-          html += `<div class="timeline-label child-layer-header${siblingClass}"
+          html += `<div class="timeline-label child-layer-header${siblingClass}${firstChildClass}"
                         data-layer-index="${childLayerIndex}"
                         data-row-type="child-layer"
                         data-parent-name="${layer.layerName}"
@@ -8804,8 +8835,13 @@ ${cleanedScript}
           const attachedDescription = childLayer.parentingDescription || `Attached to ${parentName}`;
           const attachedColor = childLayer.parentingColor || '#595959';
 
+          const isFirstChildTrack = childIdx === 0;
+          const isLastChildTrack = childIdx === children.length - 1;
+          const firstChildTrackClass = isFirstChildTrack ? ' first-child-layer' : '';
+          const siblingTrackClass = isLastChildTrack ? '' : ' has-siblings';
+
           // Child layer header track with attached bar (uses standard timeline-bar structure)
-          html += `<div class="timeline-track child-layer-header" data-layer-index="${childLayerIndex}">
+          html += `<div class="timeline-track child-layer-header${firstChildTrackClass}${siblingTrackClass}" data-layer-index="${childLayerIndex}">
             <div class="timeline-bar bar-attached"
                  style="left: 0; width: auto; border-color: ${attachedColor};"
                  data-layer-index="${childLayerIndex}"
