@@ -830,7 +830,7 @@
     .settings-btn {
       padding: 0;
       background: #333;
-      border: 1px solid #444;
+      border: 1px solid #555;
       border-radius: 50%;
       width: 29px;
       height: 29px;
@@ -1696,7 +1696,7 @@
     .timeline-label {
       padding: 8px 12px;
       font-size: 12px;
-      color: #e0e0e0;
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1719,7 +1719,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: #e0e0e0;
+      color: #ffffff;
     }
 
     .timeline-label-text[contenteditable="true"] {
@@ -1867,12 +1867,11 @@
     }
 
     .timeline-label.indented .timeline-label-text {
-      opacity: 0.7;
+      opacity: 0.75;
     }
 
     .timeline-label.indented.selected {
       color: #ffffff;
-      font-weight: 600;
       background: rgba(255, 255, 255, 0.08);
     }
 
@@ -1894,7 +1893,12 @@
 
     /* Selected state for child layer header */
     .timeline-label.child-layer-header.selected {
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .timeline-label.child-layer-header.selected .timeline-label-text {
+      color: #ffffff;
+      font-weight: 700;
     }
 
     /* ===== Child Layer Nesting Connectors ===== */
@@ -1916,7 +1920,7 @@
       padding-left: 32px;
       font-weight: 600;
       font-size: 12.5px;
-      color: #e0e0e0;
+      color: #ffffff;
       position: relative;
       background: rgba(255, 255, 255, 0.03);
       border-top: 1px solid #222;
@@ -2155,7 +2159,7 @@
 
     .table-row--header .table-cell {
       font-weight: 600;
-      color: #e0e0e0;
+      color: #ffffff;
       font-family: inherit;
       font-size: 12.5px;
     }
@@ -2299,7 +2303,7 @@
       z-index: 1;
       white-space: nowrap;
       overflow: hidden;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
     }
 
     .timeline-bar:active {
@@ -2353,7 +2357,7 @@
       background: rgba(255, 255, 255, 0.03);
       border: 1px dashed #555;
       box-shadow: none;
-      color: #999;
+      color: #bbb;
       cursor: pointer;
     }
 
@@ -2368,11 +2372,10 @@
     }
 
     .timeline-bar.bar-attached.selected {
-      border-color: #888;
-      border-style: solid;
+      border: 1px solid transparent;
       background: rgba(255, 255, 255, 0.08);
-      color: #aaa;
-      box-shadow: none;
+      color: #fff;
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
       filter: none;
     }
 
@@ -2508,7 +2511,7 @@
     /* Spring gradient borders that fade out with the fill */
     .bar-spring::before {
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0);
-      background: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0) 100%);
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0) 100%);
       -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
@@ -3665,6 +3668,7 @@
     let videoDuration = 0;
     let isDraggingPlayhead = false;
     let selectedAnimation = null;
+    let selectedParentedLayerIndex = null; // Track selected child layer for info box refresh
     const isExportMode = false;
     let isEditMode = true; // Can be toggled in exported files
     let animationFrameId = null;
@@ -5101,53 +5105,6 @@
       renderTimeline();
     }
 
-    // Calculate timeline duration based on last animation end, rounded to 250ms
-    function calculateTimelineDuration(data) {
-      if (!data || !data.layers) return data;
-
-      let maxEnd = 0;
-
-      data.layers.forEach(layer => {
-        if (!layer.animations) return;
-        layer.animations.forEach(anim => {
-          if (!anim.timing) return;
-
-          const animStart = anim.timing.delay || 0;
-          let animDuration = anim.timing.duration || 0;
-
-          // Account for spring durations
-          const durationIsNumeric = typeof animDuration === 'number' && !isNaN(animDuration);
-          const durationIsString = typeof animDuration === 'string';
-          const userSetDuration = anim.durationUserSet === true;
-          const isImportedSpring = !userSetDuration && anim.easing && anim.easing.type === 'spring' && durationIsNumeric;
-
-          if (durationIsString || isImportedSpring) {
-            // Spring animation - estimate visual duration
-            let springDuration = anim.calculatedSpringDuration;
-            if (!springDuration && anim.easing && anim.easing.spring) {
-              const spring = anim.easing.spring;
-              if (spring.preset && springPresetParams[spring.preset]) {
-                const params = springPresetParams[spring.preset];
-                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
-              } else if (spring.custom) {
-                springDuration = calculateSpringDuration(spring.custom.stiffness, spring.custom.damping, spring.custom.mass || 1);
-              }
-            }
-            animDuration = springDuration ? springDuration * 2 : animDuration;
-          }
-
-          const animEnd = animStart + animDuration;
-          maxEnd = Math.max(maxEnd, animEnd);
-        });
-      });
-
-      // Round up to nearest 250ms increment
-      const rounded = Math.ceil(maxEnd / 250) * 250;
-      data.workArea.duration = Math.max(250, rounded); // Minimum 250ms
-
-      return data;
-    }
-
     // Toggle layout between vertical (400px | 1fr) and 50/50 split
     function toggleLayout() {
       const mainContent = document.querySelector('.main-content');
@@ -5282,8 +5239,7 @@
         const text = await navigator.clipboard.readText();
         const data = JSON.parse(text);
 
-        // Calculate timeline duration based on last animation end
-        calculateTimelineDuration(data);
+        // Use workArea.duration from JSON directly
 
         // If no tabs exist, create the first tab
         if (tabs.length === 0) {
@@ -6156,12 +6112,28 @@
 
           // Child layer header row with attachment info in description
           const parentName = layer.layerName;
-          const attachedDescription = childLayer.parentingDescription || `Attached to ${parentName}`;
+          // Get inheritable animating properties from parent (only these 4 matter for parenting)
+          const inheritableProps = ['position', 'scale', 'rotation', 'opacity'];
+          const allParentProps = layer.animations.map(a => a.property.toLowerCase());
+          const parentAnimatingProps = inheritableProps.filter(p => allParentProps.includes(p));
+          const childCapsProps = parentAnimatingProps.map(p => p.charAt(0).toUpperCase() + p.slice(1));
+          const childPropsDescDisplay = childCapsProps.length === 2
+            ? childCapsProps.join(' and ')
+            : childCapsProps.join(', ');
+          const defaultChildDesc = childPropsDescDisplay
+            ? `Attached to ${parentName}, inherits ${childPropsDescDisplay}`
+            : `Attached to ${parentName}`;
+          // Only use custom description if it's truly customized (not just old default format)
+          const oldDefaultPattern = `Attached to ${parentName}`;
+          const hasCustomDesc = childLayer.parentingDescription &&
+            childLayer.parentingDescription !== oldDefaultPattern &&
+            !childLayer.parentingDescription.startsWith('Attached to "');
+          const attachedDescription = hasCustomDesc ? childLayer.parentingDescription : defaultChildDesc;
           html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-parent-name="${parentName}">
             <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${attachedDescription}</span></div>
-            <div class="table-cell table-cell--delay"></div>
-            <div class="table-cell table-cell--duration"></div>
-            <div class="table-cell table-cell--easing"></div>
+            <div class="table-cell table-cell--delay">—</div>
+            <div class="table-cell table-cell--duration">—</div>
+            <div class="table-cell table-cell--easing">—</div>
           </div>`;
 
           // Child's own animation rows (if any)
@@ -7010,54 +6982,22 @@
 
     // Setup label editing for both timeline and table modes
     function setupLabelEditing() {
-      // Handle left column label editing with drag threshold
-      // Include both draggable labels and parented rows (which have draggable="false")
-      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"], .timeline-labels-column .timeline-label[data-row-type="parented"]');
+      // Handle left column label editing with double-click
+      // Include draggable labels, parented rows, and child layer headers
+      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"], .timeline-labels-column .timeline-label[data-row-type="parented"], .timeline-labels-column .timeline-label[data-row-type="child-layer"]');
 
       leftLabels.forEach(label => {
         const labelText = label.querySelector('.timeline-label-text');
         if (!labelText) return;
 
-        let mouseDownX = 0;
-        let mouseDownY = 0;
-        let isDragging = false;
-        let mouseDownTime = 0;
-
-        labelText.addEventListener('mousedown', (e) => {
+        // Double-click to enter edit mode
+        labelText.addEventListener('dblclick', (e) => {
           // Don't interfere with + buttons
           if (e.target.closest('.timeline-label-add-btn, .section-divider-add-btn')) return;
 
-          mouseDownX = e.clientX;
-          mouseDownY = e.clientY;
-          mouseDownTime = Date.now();
-          isDragging = false;
-        });
-
-        labelText.addEventListener('mousemove', (e) => {
-          if (mouseDownTime === 0) return;
-
-          const deltaX = Math.abs(e.clientX - mouseDownX);
-          const deltaY = Math.abs(e.clientY - mouseDownY);
-          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-          // If moved more than 5px, consider it a drag
-          if (distance > 5) {
-            isDragging = true;
-          }
-        });
-
-        labelText.addEventListener('mouseup', (e) => {
-          const clickDuration = Date.now() - mouseDownTime;
-          mouseDownTime = 0;
-
-          // If not dragging and was a quick click, enter edit mode
-          if (!isDragging && clickDuration < 300) {
-            e.stopPropagation();
-            e.preventDefault();
-            enterEditMode(label, labelText);
-          }
-
-          isDragging = false;
+          e.stopPropagation();
+          e.preventDefault();
+          enterEditMode(label, labelText);
         });
       });
 
@@ -7065,8 +7005,9 @@
       function enterEditMode(label, labelText) {
         const originalText = labelText.textContent.trim();
         const isLayerHeader = label.classList.contains('layer-header');
+        const isChildLayerHeader = label.classList.contains('child-layer-header');
         const layerIndex = parseInt(label.dataset.layerIndex);
-        const animIndex = isLayerHeader ? null : parseInt(label.dataset.animInLayer);
+        const animIndex = (isLayerHeader || isChildLayerHeader) ? null : parseInt(label.dataset.animInLayer);
 
         // Make the span contenteditable
         labelText.contentEditable = true;
@@ -7105,7 +7046,7 @@
 
           // Update specData if text changed
           if (newText && newText !== originalText) {
-            if (isLayerHeader) {
+            if (isLayerHeader || isChildLayerHeader) {
               updateLayerField(layerIndex, 'layerName', newText);
             } else {
               // Calculate global animation index
@@ -7874,9 +7815,9 @@ ${cleanedScript}
       b = Math.min(255, Math.round(b * 1.2));
 
       // Add more brightness to make it pop like the stroke
-      r = Math.min(255, Math.round(r * 1.3));
-      g = Math.min(255, Math.round(g * 1.3));
-      b = Math.min(255, Math.round(b * 1.3));
+      r = Math.min(255, Math.round(r * 1.5));
+      g = Math.min(255, Math.round(g * 1.5));
+      b = Math.min(255, Math.round(b * 1.5));
 
       // Convert back to hex
       return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
@@ -8211,6 +8152,15 @@ ${cleanedScript}
         // Re-apply selected class to timeline bar and label after re-render
         const bar = document.querySelector(`.timeline-bar[data-anim-index="${selectedAnimation}"]`);
         const label = document.querySelector(`.timeline-label.indented[data-anim-index="${selectedAnimation}"]`);
+        if (bar) bar.classList.add('selected');
+        if (label) label.classList.add('selected');
+      }
+      // If a parented layer is selected, refresh its detail panel and re-apply selected state
+      if (selectedParentedLayerIndex !== null) {
+        showParentedLayerDetails(selectedParentedLayerIndex);
+        // Re-apply selected class to bar and label after re-render
+        const bar = document.querySelector(`.timeline-bar[data-layer-index="${selectedParentedLayerIndex}"][data-is-attached="true"]`);
+        const label = document.querySelector(`.timeline-label.child-layer-header[data-layer-index="${selectedParentedLayerIndex}"]`);
         if (bar) bar.classList.add('selected');
         if (label) label.classList.add('selected');
       }
@@ -8806,7 +8756,7 @@ ${cleanedScript}
                data-anim-index="${globalAnimIndex}"
                data-is-spring="${isSpring}"
                data-is-fit-to-shape="${!!isFitToShape}">
-            <span class="timeline-bar-text edit-only" contenteditable="true" data-anim-index="${globalAnimIndex}">${description}</span>
+            <span class="timeline-bar-text edit-only" contenteditable="false" data-anim-index="${globalAnimIndex}">${description}</span>
             <span class="timeline-bar-text export-only">${description}</span>
             <div class="timeline-bar-resize-handle left edit-only" data-handle="left"></div>
             ${!isSpring ? '<div class="timeline-bar-resize-handle right edit-only" data-handle="right"></div>' : ''}
@@ -8850,7 +8800,7 @@ ${cleanedScript}
                  style="left: 0; width: auto; border-color: ${attachedColor};"
                  data-layer-index="${childLayerIndex}"
                  data-is-attached="true">
-              <span class="timeline-bar-text edit-only" contenteditable="true" data-layer-index="${childLayerIndex}">${attachedDescription}</span>
+              <span class="timeline-bar-text edit-only" contenteditable="false" data-layer-index="${childLayerIndex}">${attachedDescription}</span>
               <span class="timeline-bar-text export-only">${attachedDescription}</span>
             </div>
           </div>`;
@@ -10122,75 +10072,19 @@ ${cleanedScript}
 
     // Setup bar text editing
     function setupBarTextEditing() {
-      const textElements = document.querySelectorAll('.timeline-bar-text.edit-only[contenteditable="true"]');
+      const textElements = document.querySelectorAll('.timeline-bar-text.edit-only');
 
       textElements.forEach(textEl => {
-        let mouseDownX = 0;
-        let mouseDownY = 0;
-        let isDragging = false;
-        let mouseDownTime = 0;
         let isEditing = false;
 
-        textEl.addEventListener('mousedown', (e) => {
-          // If already editing, stop propagation to prevent bar dragging
-          if (isEditing) {
-            e.stopPropagation();
-            return;
-          }
+        // Double-click to enter edit mode
+        textEl.addEventListener('dblclick', (e) => {
+          if (isEditing) return;
 
-          // Prevent default text selection behavior
+          e.stopPropagation();
           e.preventDefault();
-
-          // Track mouse position for drag detection
-          mouseDownX = e.clientX;
-          mouseDownY = e.clientY;
-          mouseDownTime = Date.now();
-          isDragging = false;
-
-          // Don't stop propagation - let the bar handle it for potential dragging
-        });
-
-        textEl.addEventListener('mousemove', (e) => {
-          // If editing, block all mouse events
-          if (isEditing) {
-            e.stopPropagation();
-            return;
-          }
-
-          if (mouseDownTime === 0) return;
-
-          const deltaX = Math.abs(e.clientX - mouseDownX);
-          const deltaY = Math.abs(e.clientY - mouseDownY);
-          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-          // If moved more than 5px, consider it a drag
-          if (distance > 5) {
-            isDragging = true;
-          }
-        });
-
-        textEl.addEventListener('mouseup', (e) => {
-          // If editing, block all mouse events
-          if (isEditing) {
-            e.stopPropagation();
-            return;
-          }
-
-          const clickDuration = Date.now() - mouseDownTime;
-          mouseDownTime = 0;
-
-          // If not dragging and was a quick click, enter edit mode
-          if (!isDragging && clickDuration < 300) {
-            // Set flag IMMEDIATELY before entering edit mode to prevent bar dragging
-            // This must happen before the document-level mouseup handler runs
-            isBarTextBeingEdited = true;
-
-            e.stopPropagation();
-            e.preventDefault();
-            enterEditMode(textEl);
-          }
-
-          isDragging = false;
+          isBarTextBeingEdited = true;
+          enterEditMode(textEl);
         });
 
         // Enter edit mode function
@@ -10198,6 +10092,9 @@ ${cleanedScript}
           isEditing = true;
           isBarTextBeingEdited = true; // Set global flag
           const originalText = element.textContent.trim();
+
+          // Enable contenteditable on double-click
+          element.contentEditable = true;
 
           // Mark as editing with data attribute so bar dragging can detect it
           element.dataset.editing = 'true';
@@ -10243,6 +10140,9 @@ ${cleanedScript}
           // Save changes on blur
           const handleBlur = () => {
             const newText = element.textContent.trim();
+
+            // Disable contenteditable
+            element.contentEditable = false;
 
             // Remove event listeners
             element.removeEventListener('keydown', handleKeyDown);
@@ -10570,6 +10470,7 @@ ${cleanedScript}
     function showAnimationDetails(animIndex) {
       // Store the selected animation index
       selectedAnimation = animIndex;
+      selectedParentedLayerIndex = null; // Clear parented layer selection
 
       let currentIndex = 0;
       let anim = null;
@@ -11078,10 +10979,32 @@ ${cleanedScript}
       if (!layer || !layer.parenting) return;
 
       selectedAnimation = null; // Clear animation selection
+      selectedParentedLayerIndex = layerIndex; // Track for info box refresh
 
       const detailPanel = document.getElementById('detailPanel');
       const parentName = layer.parenting.parentName;
-      const description = layer.parentingDescription || `Attached to ${parentName}`;
+
+      // Find parent layer and get its inheritable animating properties (only these 4 matter for parenting)
+      const inheritableProps = ['position', 'scale', 'rotation', 'opacity'];
+      const parentLayer = specData.layers.find(l => l.layerName === parentName);
+      const allParentProps = parentLayer ? parentLayer.animations.map(a => a.property.toLowerCase()) : [];
+      const animatingProps = inheritableProps.filter(p => allParentProps.includes(p));
+      const capsProps = animatingProps.map(p => p.charAt(0).toUpperCase() + p.slice(1));
+      const propsDisplay = capsProps.join(', '); // Property field: always commas
+      const propsDescDisplay = capsProps.length === 2 // Description: "and" for 2 props
+        ? capsProps.join(' and ')
+        : capsProps.join(', ');
+
+      // Default description includes inherited properties (capitalized)
+      const defaultDescription = propsDescDisplay
+        ? `Attached to ${parentName}, inherits ${propsDescDisplay}`
+        : `Attached to ${parentName}`;
+      // Only use custom description if it's truly customized (not just old default format)
+      const oldDefaultPattern = `Attached to ${parentName}`;
+      const hasCustomDesc = layer.parentingDescription &&
+        layer.parentingDescription !== oldDefaultPattern &&
+        !layer.parentingDescription.startsWith('Attached to "');
+      const description = hasCustomDesc ? layer.parentingDescription : defaultDescription;
 
       // Use layer's custom color or a default grey
       const videoId = getCurrentVideoId();
@@ -11109,8 +11032,19 @@ ${cleanedScript}
           oninput="autoResizeTitleInput(this)"
           onkeydown="if(event.key === 'Enter') { this.blur(); }"
         />`;
+        html += `<span> › </span>`;
+        html += `<input
+          type="text"
+          class="detail-title-input detail-title-input-property"
+          value="${propsDisplay.replace(/"/g, '&quot;')}"
+          maxlength="40"
+          onfocus="this.select()"
+          onblur="updateParentedAnimatingProperties(${layerIndex}, this.value)"
+          oninput="autoResizeTitleInput(this)"
+          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+        />`;
       } else {
-        html += `<span>${layer.layerName}</span>`;
+        html += `<span>${layer.layerName} › ${propsDisplay}</span>`;
       }
 
       html += `</div>`;
@@ -11158,6 +11092,7 @@ ${cleanedScript}
 
     // Close the parented layer detail panel
     function closeParentedDetails() {
+      selectedParentedLayerIndex = null; // Clear selection tracking
       const detailPanel = document.getElementById('detailPanel');
       if (detailPanel) detailPanel.innerHTML = '';
       document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
@@ -11209,17 +11144,21 @@ ${cleanedScript}
 
     // Update parented layer property label (the layer name shown in the info box)
     function updateParentedPropertyLabel(layerIndex, value) {
+      // Use updateLayerField for consistency - it handles refreshActiveView
+      updateLayerField(layerIndex, 'layerName', value);
+    }
+
+    // Update parented layer's animating properties
+    function updateParentedAnimatingProperties(layerIndex, value) {
       saveSnapshot();
       const layer = specData.layers[layerIndex];
-      if (layer) {
-        layer.layerName = value;
+      if (layer && layer.parenting) {
+        // Parse comma-separated values and convert to lowercase for storage
+        const props = value.split(',')
+          .map(p => p.trim().toLowerCase())
+          .filter(p => p.length > 0);
+        layer.parenting.animatingProperties = props;
         setCurrentSpecData(specData);
-        // Update the left column label
-        const label = document.querySelector(`.timeline-label.child-layer-header[data-layer-index="${layerIndex}"]`);
-        if (label) {
-          const nameSpan = label.querySelector('.layer-text');
-          if (nameSpan) nameSpan.textContent = value;
-        }
       }
     }
 
