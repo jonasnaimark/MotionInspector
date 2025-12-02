@@ -2379,7 +2379,7 @@
 
     /* Attached bar style - dashed border for child layer attachment */
     .timeline-bar.bar-attached {
-      background: rgba(255, 255, 255, 0.03);
+      background: #1a1a1a;
       border: 1px dashed #555;
       box-shadow: none;
       color: #bbb;
@@ -10530,13 +10530,44 @@ ${cleanedScript}
       if (targetAnim) {
         const videoId = getCurrentVideoId();
         setAnimationColorForVideo(targetAnim, videoId, color);
-        renderTimeline();
 
-        // Re-show the info box with updated color
-        setTimeout(() => {
-          showAnimationDetails(animIndex);
-        }, 0);
+        // Update colors directly in DOM without re-rendering
+        const brightColor = brightenColor(color);
+
+        // Update timeline bar
+        const bar = document.querySelector(`.timeline-bar[data-anim-index="${animIndex}"]`);
+        if (bar) {
+          bar.style.background = color;
+          bar.style.borderColor = color;
+        }
+
+        // Update color picker dot
+        const dot = document.getElementById('colorPickerDot');
+        if (dot) dot.style.background = brightColor;
+
+        // Update detail panel border
+        const panel = document.querySelector('.detail-panel');
+        if (panel) panel.style.borderLeftColor = brightColor;
+
+        // Update selected state in color picker grid
+        const colorOptions = document.querySelectorAll('.color-option');
+        colorOptions.forEach(opt => {
+          opt.classList.toggle('selected', opt.style.background === color ||
+            opt.style.backgroundColor === color ||
+            rgbToHex(opt.style.backgroundColor) === color.toLowerCase());
+        });
       }
+    }
+
+    // Helper to convert rgb() to hex for color comparison
+    function rgbToHex(rgb) {
+      if (!rgb || rgb.startsWith('#')) return rgb;
+      const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+      if (!match) return rgb;
+      return '#' + [match[1], match[2], match[3]].map(x => {
+        const hex = parseInt(x).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('');
     }
 
     // Close color picker when clicking outside
@@ -11185,32 +11216,6 @@ ${cleanedScript}
       document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
       document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected'));
       requestAnimationFrame(() => updatePlayhead());
-    }
-
-    // Toggle color picker for parented layers
-    function toggleParentedColorPicker(event, layerIndex) {
-      event.stopPropagation();
-      const panel = document.getElementById('colorPickerPanel');
-      if (panel) {
-        panel.classList.toggle('visible');
-      }
-    }
-
-    // Change color for parented layer
-    function changeParentedLayerColor(layerIndex, color) {
-      saveSnapshot();
-      const layer = specData.layers[layerIndex];
-      if (layer) {
-        layer.parentingColor = color;
-        setCurrentSpecData(specData);
-        // Re-render and re-show the detail panel
-        if (viewMode === 'table') {
-          renderTableView();
-        } else {
-          renderTimeline();
-        }
-        showParentedLayerDetails(layerIndex);
-      }
     }
 
     // Update parented layer description
