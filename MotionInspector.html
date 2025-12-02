@@ -1875,6 +1875,11 @@
       position: relative;
     }
 
+    /* Child layer's own animations - extra indent to show hierarchy */
+    .timeline-label.indented.child-anim {
+      padding-left: 48px;
+    }
+
     .timeline-label.indented .timeline-label-text {
       opacity: 0.75;
     }
@@ -2278,6 +2283,10 @@
     body.table-view-active .timeline-label.indented {
       padding-left: 32px;
       border-bottom: 1px solid #222222;
+    }
+
+    body.table-view-active .timeline-label.indented.child-anim {
+      padding-left: 48px;
     }
 
     /* Child layer header in table mode */
@@ -6059,9 +6068,9 @@
               <span class="timeline-label-text">${childLayer.layerName}</span>
             </div>`;
 
-            // Child's own animations (if any)
+            // Child's own animations (if any) - extra indented under child header
             childLayer.animations.forEach((anim, animIdx) => {
-              html += `<div class="timeline-label indented${childContinueClass}"
+              html += `<div class="timeline-label indented child-anim${childContinueClass}"
                             data-row-type="child-animation"
                             data-layer-index="${childLayerIndex}"
                             data-anim-index="${animIdx}"
@@ -8652,9 +8661,9 @@ ${cleanedScript}
             <button class="param-action-btn edit-only" draggable="false"></button>
           </div>`;
 
-          // Child's own animations (if any)
+          // Child's own animations (if any) - extra indented under child header
           childLayer.animations.forEach((anim, animIndexInLayer) => {
-            html += `<div class="timeline-label indented${childContinueClass}"
+            html += `<div class="timeline-label indented child-anim${childContinueClass}"
                           draggable="${isEditMode}"
                           data-drag-type="animation"
                           data-anim-index="${animIndex}"
