@@ -5169,6 +5169,13 @@
       // Clear timeline content and render table
       timelineContent.innerHTML = '';
       renderTableView();
+
+      // Apply spacing class immediately to prevent flash
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+      if (outerWrapper && needsCompactSpacing) {
+        outerWrapper.classList.add('has-scroll');
+      }
+
       requestAnimationFrame(() => {
         updateVideoAlignment();
         updateTableEasingWidth();
@@ -5211,6 +5218,13 @@
       });
 
       renderTimeline();
+
+      // Apply spacing class immediately to prevent flash
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+      if (outerWrapper && needsCompactSpacing) {
+        outerWrapper.classList.add('has-scroll');
+      }
+
       requestAnimationFrame(() => {
         updateVideoAlignment();
         updateTimeDisplays();
@@ -7958,6 +7972,13 @@ ${cleanedScript}
       } else {
         renderTimeline();
       }
+
+      // Apply spacing class immediately to prevent flash
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+      if (outerWrapper && needsCompactSpacing) {
+        outerWrapper.classList.add('has-scroll');
+      }
+
       // If an animation is selected, refresh its detail panel and re-apply selected state
       if (selectedAnimation !== null) {
         showAnimationDetails(selectedAnimation);
