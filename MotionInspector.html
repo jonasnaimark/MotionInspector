@@ -1298,14 +1298,24 @@
       padding: 4px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       z-index: 1000;
-      display: none;
       min-width: 200px;
       max-height: 300px;
       overflow-y: auto;
+      opacity: 0;
+      transform: scale(0.95);
+      transform-origin: top center;
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
     }
 
     .easing-autocomplete.visible {
-      display: block;
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .easing-autocomplete.anchor-bottom {
+      transform-origin: bottom center;
     }
 
     .easing-autocomplete-item {
@@ -5643,6 +5653,7 @@
     // Easing autocomplete functionality
     let easingAutocomplete = null;
     let autocompleteTarget = null;
+    let easingShowPending = false;
 
     function createEasingAutocomplete() {
       const presets = [
@@ -5661,6 +5672,9 @@
       if (!easingAutocomplete) {
         easingAutocomplete = document.createElement('div');
         easingAutocomplete.className = 'easing-autocomplete';
+        // Position off-screen initially to prevent flash on first creation
+        easingAutocomplete.style.left = '-9999px';
+        easingAutocomplete.style.top = '-9999px';
         document.body.appendChild(easingAutocomplete);
       }
 
@@ -5668,6 +5682,13 @@
     }
 
     function showEasingAutocomplete(inputElement, filterText = '') {
+      // Skip if already showing or pending for this same input (prevents double animation from click+focus)
+      if (autocompleteTarget === inputElement && (easingShowPending ||
+          (easingAutocomplete && easingAutocomplete.classList.contains('visible')))) {
+        return;
+      }
+      easingShowPending = true;
+
       const { dropdown, presets } = createEasingAutocomplete();
       autocompleteTarget = inputElement;
 
@@ -5691,27 +5712,54 @@
 
       dropdown.innerHTML = html;
 
-      // Show dropdown first to get its height
-      dropdown.classList.add('visible');
-
-      // Position the dropdown
-      const rect = inputElement.getBoundingClientRect();
-      dropdown.style.left = (rect.left + window.scrollX) + 'px';
-
       // Use fixed width for consistent sizing
       dropdown.style.minWidth = '220px';
       dropdown.style.width = '220px';
 
+      // Position the dropdown
+      const rect = inputElement.getBoundingClientRect();
+      const dropdownWidth = 220;
+
+      // Reset classes before positioning
+      dropdown.classList.remove('anchor-bottom', 'visible');
+
+      // Get height (works because we use opacity, not display:none)
+      const dropdownHeight = dropdown.offsetHeight;
+
+      // Center horizontally relative to input
+      const inputCenterX = rect.left + (rect.width / 2);
+      const dropdownLeft = inputCenterX - (dropdownWidth / 2);
+      dropdown.style.left = (dropdownLeft + window.scrollX) + 'px';
+
       if (isInInfoBox) {
-        // Position above the input for info box
-        const dropdownHeight = dropdown.offsetHeight;
+        // Info box: always expand up from bottom center
+        dropdown.classList.add('anchor-bottom');
         dropdown.style.top = (rect.top + window.scrollY - dropdownHeight - 4) + 'px';
         dropdown.style.bottom = 'auto';
       } else {
-        // Position below the input for table mode
-        dropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
-        dropdown.style.bottom = 'auto';
+        // Table mode: expand down from top center, unless it would go off screen
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow >= dropdownHeight + 4 || spaceBelow >= spaceAbove) {
+          // Expand downward from top center
+          dropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+          dropdown.style.bottom = 'auto';
+        } else {
+          // Expand upward from bottom center
+          dropdown.classList.add('anchor-bottom');
+          dropdown.style.top = (rect.top + window.scrollY - dropdownHeight - 4) + 'px';
+          dropdown.style.bottom = 'auto';
+        }
       }
+
+      // Use double-RAF to ensure position is fully painted before transition starts
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          dropdown.classList.add('visible');
+          easingShowPending = false;
+        });
+      });
 
       // Use event delegation on the dropdown itself (prevents duplicate listeners)
       dropdown.onclick = (e) => {
@@ -5841,6 +5889,7 @@
     }
 
     function hideEasingAutocomplete() {
+      easingShowPending = false;
       if (easingAutocomplete) {
         easingAutocomplete.classList.remove('visible');
         autocompleteTarget = null;
