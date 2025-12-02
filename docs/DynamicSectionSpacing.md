@@ -361,3 +361,38 @@ Temporarily add visual debugging:
 console.log('Content:', contentHeight, 'Available:', availableHeight);
 timelineSection.style.outline = '2px solid red';  // See what we're measuring
 ```
+
+## Preserving Spacing During Re-renders
+
+### The Problem
+
+When `renderTimeline()` or `renderTableView()` is called (e.g., after dragging a bar, resizing, or reordering rows), the DOM is completely rebuilt. This clears the `has-scroll` class, causing the spacing to revert to expanded mode even though `needsCompactSpacing` is still true.
+
+### The Solution
+
+Both render functions must re-apply the spacing class at the end:
+
+```javascript
+// At the end of renderTimeline() and renderTableView()
+const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+if (outerWrapper && needsCompactSpacing) {
+  outerWrapper.classList.add('has-scroll');
+}
+```
+
+### Key Locations
+
+| Function | Approximate Line |
+|----------|-----------------|
+| `renderTimeline()` spacing preservation | ~9005 |
+| `renderTableView()` spacing preservation | ~7005 |
+
+### Why This Matters
+
+Operations that call render functions without this fix would cause visual glitches:
+- Dragging color bars horizontally
+- Resizing bar edges (duration/delay changes)
+- Reordering rows via drag and drop
+- Any edit that triggers a re-render
+
+The spacing would briefly flash to expanded mode before (potentially) being recalculated.

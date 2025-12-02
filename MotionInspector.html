@@ -7000,6 +7000,12 @@
 
       // Setup label editing
       setupLabelEditing();
+
+      // Preserve section spacing state after re-render
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+      if (outerWrapper && needsCompactSpacing) {
+        outerWrapper.classList.add('has-scroll');
+      }
     }
 
     // Setup label editing for both timeline and table modes
@@ -9000,6 +9006,12 @@ ${cleanedScript}
 
       // Setup label editing
       setupLabelEditing();
+
+      // Preserve section spacing state after re-render
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+      if (outerWrapper && needsCompactSpacing) {
+        outerWrapper.classList.add('has-scroll');
+      }
     }
 
     // Detect which bars have overflowing text and add fade class
