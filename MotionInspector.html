@@ -1649,15 +1649,22 @@
       height: 32px;
     }
 
+    /* Default: 16px section gap for short specs without scrollbar */
     .timeline-label.layer-header.has-divider,
     .timeline-track.layer-header.has-divider {
       border-top: 1px solid #555;
-      margin-top: 0;
+      margin-top: 15px;
     }
 
     .timeline-label.layer-header.has-divider {
       padding-top: 0;
       padding-bottom: 0;
+    }
+
+    /* Compact: 0px section gap for longer specs with scrollbar */
+    .timeline-outer-wrapper.has-scroll .timeline-label.layer-header.has-divider,
+    .timeline-outer-wrapper.has-scroll .timeline-track.layer-header.has-divider {
+      margin-top: 0;
     }
 
     .timeline-label.layer-header:hover {
@@ -2099,11 +2106,11 @@
       font-weight: 600;
       color: #e0e0e0;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 13px;
     }
 
     .table-row--header .table-cell--easing {
-      font-size: 12px;
+      font-size: 13px;
       font-family: inherit;
     }
 
@@ -2143,16 +2150,23 @@
       border-top: none;
     }
 
+    /* Default: 16px section gap for short specs */
     .timeline-track.table-row.table-row--layer.has-divider {
-      margin-top: 0;
+      margin-top: 15px;
       padding-top: 0;
       border-top: 1px solid #555;
     }
 
     body.table-view-active .timeline-label.layer-header.has-divider {
-      margin-top: 0;
+      margin-top: 15px;
       padding-top: 0;
       border-top: 1px solid #555;
+    }
+
+    /* Compact: 0px section gap for specs with scrollbar */
+    .timeline-outer-wrapper.has-scroll .timeline-track.table-row.table-row--layer.has-divider,
+    body.table-view-active .timeline-outer-wrapper.has-scroll .timeline-label.layer-header.has-divider {
+      margin-top: 0;
     }
 
     body.table-view-active .timeline-label.layer-header {
@@ -3596,6 +3610,10 @@
       const tab = getCurrentTab();
       if (tab) tab.specData = specData;
       refreshActiveView();
+      // Force recheck spacing since content may have changed
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => updateSectionSpacing(true));
+      });
     }
 
     function redo() {
@@ -3608,6 +3626,10 @@
       const tab = getCurrentTab();
       if (tab) tab.specData = specData;
       refreshActiveView();
+      // Force recheck spacing since content may have changed
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => updateSectionSpacing(true));
+      });
     }
 
     // Keyboard shortcuts for undo/redo
@@ -4062,30 +4084,6 @@
       });
     }
 
-    // Helper to refresh the active view (timeline or table)
-    function refreshActiveView() {
-      // Don't render if no tabs exist
-      if (currentTabIndex === -1) return;
-
-      // Use global viewMode
-      if (viewMode === 'table') {
-        switchToTableView();
-      } else {
-        if (typeof renderTimeline === 'function') {
-          renderTimeline();
-        }
-      }
-
-      // Update view mode buttons
-      document.querySelectorAll('.view-mode-btn').forEach(btn => {
-        btn.classList.remove('selected');
-      });
-      const selectedBtn = document.querySelector(`.view-mode-btn[data-view="${viewMode}"]`);
-      if (selectedBtn) {
-        selectedBtn.classList.add('selected');
-      }
-    }
-
     // ===== END TAB MANAGEMENT FUNCTIONS =====
 
     // Update the UI mode (edit vs read)
@@ -4506,6 +4504,9 @@
       // Resize timeline description textarea on window resize
       const timelineDesc = document.getElementById('timelineDescription');
       if (timelineDesc) autoResizeTextarea(timelineDesc);
+
+      // Update section spacing based on scroll presence
+      updateSectionSpacing();
     });
 
     // Resize handle functionality
@@ -5098,8 +5099,14 @@
           });
         }
 
+        // Reset section spacing state for new spec
+        needsCompactSpacing = false;
+
         renderTimeline();
         renderTabs(); // Update tabs display
+
+        // Check section spacing after render
+        requestAnimationFrame(() => updateSectionSpacing(true));
       } catch (err) {
         alert('Failed to paste or parse JSON.\n\nError: ' + err.message + '\n\nCheck the browser console for more details.');
         console.error('Parse error:', err);
@@ -5141,6 +5148,11 @@
       } else {
         switchToTimelineView();
       }
+
+      // Apply existing section spacing state (preserve across view switches)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => updateSectionSpacing(false));
+      });
     }
 
     // Switch to table view
@@ -5233,6 +5245,63 @@
         headerRow.style.setProperty('--table-easing-width', `${requiredWidth}px`);
       }
       requestAnimationFrame(syncTableRowHeights);
+    }
+
+    // Track if we need compact spacing (shared between timeline and table views)
+    let needsCompactSpacing = false;
+
+    // Detect if content would overflow and toggle class for section spacing
+    // Uses stable timeline-section height (ignores info box) for consistent behavior
+    // If forceRecheck is true, measure fresh. Otherwise, just apply current state.
+    function updateSectionSpacing(forceRecheck = true) {
+      const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+      const timelineSection = document.querySelector('.timeline-section');
+      if (!outerWrapper || !timelineSection) return;
+
+      if (forceRecheck) {
+        // In table mode, syncTableRowHeights sets explicit heights that prevent
+        // natural expansion when margins change. Clear them before measuring.
+        const isTableMode = viewMode === 'table';
+        const leftRows = isTableMode ? Array.from(document.querySelectorAll('.timeline-labels-column .timeline-label')) : [];
+        const rightRows = isTableMode ? Array.from(document.querySelectorAll('.timeline-content-column .timeline-track.table-row')) : [];
+
+        if (isTableMode) {
+          // Clear explicit heights so content can expand naturally
+          leftRows.forEach(row => {
+            row.style.removeProperty('height');
+            row.style.removeProperty('min-height');
+          });
+          rightRows.forEach(row => {
+            row.style.removeProperty('height');
+            row.style.removeProperty('min-height');
+          });
+        }
+
+        // Remove has-scroll to measure with expanded spacing (16px margins)
+        outerWrapper.classList.remove('has-scroll');
+
+        // Force reflow to get accurate measurement
+        void outerWrapper.offsetHeight;
+
+        // Get content height (includes header row since it's inside the scroll container)
+        const contentHeight = outerWrapper.scrollHeight;
+
+        // Calculate stable available height (ignoring info box)
+        // timeline-section has 8px padding top + bottom = 16px
+        // Header is inside outerWrapper so it's included in both scrollHeight and available space
+        const availableHeight = timelineSection.clientHeight - 16;
+
+        // If content would overflow the stable available height, use compact spacing
+        needsCompactSpacing = contentHeight > availableHeight;
+      }
+
+      // Apply the shared spacing state
+      outerWrapper.classList.toggle('has-scroll', needsCompactSpacing);
+
+      // In table mode, re-sync row heights after applying the spacing
+      if (viewMode === 'table') {
+        syncTableRowHeights();
+      }
     }
 
     function syncTableRowHeights() {
@@ -5896,6 +5965,9 @@
       html += `</div>`; // timeline-container
       html += `</div>`; // timeline-outer-wrapper
 
+      // Info box panel (must be sibling of timeline-outer-wrapper)
+      html += `<div id="detailPanel"></div>`;
+
       timelineContent.innerHTML = html;
 
       updateTableEasingWidth();
@@ -6428,15 +6500,13 @@
           }
           globalAnimIndex += insertIndex;
 
-          // Show the info box for the newly added animation
+          // Handle post-add actions
           setTimeout(() => {
             // Restore scroll position first
             const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
             if (newTimelineOuter) {
               newTimelineOuter.scrollTop = scrollTop;
             }
-
-            showAnimationDetails(globalAnimIndex);
 
             // Add selected class to the new label
             const newLabel = document.querySelector(`.timeline-label[data-layer-index="${layerIndex}"][data-anim-in-layer="${insertIndex}"]`);
@@ -6445,6 +6515,9 @@
               // Scroll the new row into view from current position
               newLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
+
+            // Update section spacing - call synchronously like resize handler does
+            updateSectionSpacing(true);
           }, 50);
         });
       });
@@ -6520,15 +6593,13 @@
           }
           // The new parameter is at index 0 in the new layer
 
-          // Show the info box for the newly added animation
+          // Handle post-add actions
           setTimeout(() => {
             // Restore scroll position first
             const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
             if (newTimelineOuter) {
               newTimelineOuter.scrollTop = scrollTop;
             }
-
-            showAnimationDetails(globalAnimIndex);
 
             // Add selected class to the new layer header
             const newLayerHeader = document.querySelector(`.timeline-label.layer-header[data-layer-index="${insertIndex}"]`);
@@ -6537,6 +6608,9 @@
               // Scroll the new section into view from current position
               newLayerHeader.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
+
+            // Update section spacing - call synchronously like resize handler does
+            updateSectionSpacing(true);
           }, 50);
         });
       });
@@ -7876,6 +7950,9 @@ ${cleanedScript}
 
     // Helper function to refresh the active view
     function refreshActiveView() {
+      // Don't render if no tabs exist
+      if (currentTabIndex === -1) return;
+
       if (viewMode === 'table') {
         renderTableView();
       } else {
@@ -7890,6 +7967,10 @@ ${cleanedScript}
         if (bar) bar.classList.add('selected');
         if (label) label.classList.add('selected');
       }
+      // Apply existing section spacing state (preserve across view switches)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => updateSectionSpacing(false));
+      });
     }
 
     // Auto-resize title input fields to fit content
@@ -9112,6 +9193,11 @@ ${cleanedScript}
               // Scroll the new row into view from current position
               newLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
+
+            // Update section spacing after layout completes
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => updateSectionSpacing(true));
+            });
           }, 0);
         });
       });
@@ -9206,6 +9292,11 @@ ${cleanedScript}
               // Scroll the new row into view from current position
               newLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
+
+            // Update section spacing after layout completes
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => updateSectionSpacing(true));
+            });
           }, 0);
         });
       });
@@ -10862,6 +10953,11 @@ ${cleanedScript}
       } else {
         renderTimeline();
       }
+
+      // Force recheck spacing since content was deleted
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => updateSectionSpacing(true));
+      });
     }
 
     // Toggle color picker for parented layers
@@ -11191,12 +11287,14 @@ ${cleanedScript}
       // Re-render based on current view mode
       refreshActiveView();
 
-      // Restore scroll position after re-render
+      // Restore scroll position and recheck spacing after re-render
       requestAnimationFrame(() => {
         const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
         if (newTimelineOuter) {
           newTimelineOuter.scrollTop = scrollTop;
         }
+        // Force recheck spacing since content was deleted
+        requestAnimationFrame(() => updateSectionSpacing(true));
       });
     }
 
