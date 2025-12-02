@@ -737,11 +737,11 @@
     }
 
     .timeline-section {
-      background: #242424;
+      background: #282828;
       border-radius: 8px;
       padding: 8px;
       overflow: visible;
-      border: 1px solid #383838;
+      border: 1px solid #3e3e3e;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       position: relative;
       z-index: 1;
@@ -1342,7 +1342,7 @@
       padding: 4px 12px;
       background: #2a2a2a;
       border: none;
-      border-bottom: 1px solid #383838;
+      border-bottom: 1px solid #3e3e3e;
       border-radius: 6px 6px 0 0;
       cursor: grab;
       transition: background 0.15s ease, box-shadow 0.15s ease;
@@ -1355,9 +1355,9 @@
     }
 
     .tab.active {
-      background: #242424;
-      border: 1px solid #383838;
-      border-bottom-color: #242424;
+      background: #282828;
+      border: 1px solid #3e3e3e;
+      border-bottom-color: #282828;
       z-index: 10;
       box-shadow: none;
     }
@@ -1374,12 +1374,12 @@
 
     .tab.active::before {
       left: -6px;
-      background: radial-gradient(circle at top left, transparent 5px, #383838 5px, #383838 6px, #242424 6px);
+      background: radial-gradient(circle at top left, transparent 5px, #3e3e3e 5px, #3e3e3e 6px, #282828 6px);
     }
 
     .tab.active::after {
       right: -6px;
-      background: radial-gradient(circle at top right, transparent 5px, #383838 5px, #383838 6px, #242424 6px);
+      background: radial-gradient(circle at top right, transparent 5px, #3e3e3e 5px, #3e3e3e 6px, #282828 6px);
     }
 
     .tab:hover:not(.active) {
@@ -1637,6 +1637,7 @@
     .timeline-label.layer-header {
       background: transparent;
       font-weight: 600;
+      font-size: 13px;
       border-bottom: 1px solid #1a1a1a;
       height: 32px;
     }
@@ -1650,7 +1651,7 @@
 
     .timeline-label.layer-header.has-divider,
     .timeline-track.layer-header.has-divider {
-      border-top: 1px solid #666;
+      border-top: 1px solid #555;
       margin-top: 0;
     }
 
@@ -2145,13 +2146,13 @@
     .timeline-track.table-row.table-row--layer.has-divider {
       margin-top: 0;
       padding-top: 0;
-      border-top: 1px solid #666;
+      border-top: 1px solid #555;
     }
 
     body.table-view-active .timeline-label.layer-header.has-divider {
       margin-top: 0;
       padding-top: 0;
-      border-top: 1px solid #666;
+      border-top: 1px solid #555;
     }
 
     body.table-view-active .timeline-label.layer-header {
@@ -2364,7 +2365,7 @@
     }
 
     .timeline-bar.has-text-overflow.bar-default::after {
-      background: linear-gradient(to right, rgba(5, 91, 150, 0) 0%, rgba(5, 91, 150, 1) 100%);
+      background: linear-gradient(to right, rgba(5, 110, 150, 0) 0%, rgba(5, 110, 150, 1) 100%);
     }
 
     /* Spring bars already fade out, so hide text overflow gradient overlay */
@@ -2387,7 +2388,7 @@
     .bar-height { background: #056e53; }
     .bar-blur { background: #595959; }
     .bar-transform { background: #6c1c90; }
-    .bar-default { background: #055b96; }
+    .bar-default { background: #056e96; }
 
     /* Spring gradient fade-out (1.2x brighter defaults) */
     .bar-spring.bar-opacity { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
@@ -2399,7 +2400,7 @@
     .bar-spring.bar-height { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
     .bar-spring.bar-blur { background: linear-gradient(90deg, #595959 0%, #595959 50%, rgba(89, 89, 89, 0) 100%); }
     .bar-spring.bar-transform { background: linear-gradient(90deg, #6c1c90 0%, #6c1c90 50%, rgba(108, 28, 144, 0) 100%); }
-    .bar-spring.bar-default { background: linear-gradient(90deg, #055b96 0%, #055b96 50%, rgba(5, 91, 150, 0) 100%); }
+    .bar-spring.bar-default { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
 
     /* Spring bars - remove base box-shadow, use gradient border instead */
     .bar-spring { box-shadow: none; }
@@ -5187,6 +5188,10 @@
       if (contentColumn) {
         contentColumn.style.removeProperty('--table-easing-width');
       }
+      const headerRow = document.querySelector('.timeline-ruler.table-row');
+      if (headerRow) {
+        headerRow.style.removeProperty('--table-easing-width');
+      }
 
       document.querySelectorAll('.timeline-label').forEach((label) => {
         label.style.removeProperty('height');
@@ -5205,6 +5210,7 @@
       if (viewMode !== 'table') return;
 
       const contentColumn = document.querySelector('.timeline-content-column');
+      const headerRow = document.querySelector('.timeline-ruler.table-row');
       if (!contentColumn) return;
 
       const easingCells = contentColumn.querySelectorAll('.table-cell--easing');
@@ -5223,6 +5229,9 @@
 
       requiredWidth = Math.max(200, Math.min(requiredWidth, 520));
       contentColumn.style.setProperty('--table-easing-width', `${requiredWidth}px`);
+      if (headerRow) {
+        headerRow.style.setProperty('--table-easing-width', `${requiredWidth}px`);
+      }
       requestAnimationFrame(syncTableRowHeights);
     }
 
@@ -7514,6 +7523,7 @@ ${cleanedScript}
       if (prop.includes('height')) return 'bar-height';
       if (prop.includes('blur')) return 'bar-blur';
       if (prop.includes('transform')) return 'bar-transform';
+      if (prop.includes('corner')) return 'bar-position-x'; // Corner radius/smoothing uses blue
       return 'bar-default';
     }
 
@@ -7948,19 +7958,9 @@ ${cleanedScript}
         return childLayer.parentingDescription;
       }
 
-      // Find the actual parent layer to get current properties
+      // Simple description with just parent name
       const parentName = childLayer.parenting.parentName;
-      const parentLayer = specData?.layers?.find(l => l.layerName === parentName);
-
-      if (parentLayer) {
-        // Get current property names from parent's animations
-        const propertiesText = parentLayer.animations.map(a => a.property).join(', ');
-        return `Attached to ${parentName}, inherits ${propertiesText}`;
-      } else {
-        // Fallback to stored data if parent not found
-        const propertiesText = childLayer.parenting.animatingProperties?.join(', ') || '';
-        return `Attached to ${parentName}, inherits ${propertiesText}`;
-      }
+      return `Attached to ${parentName}`;
     }
 
     // Get available parent layers for a given layer
