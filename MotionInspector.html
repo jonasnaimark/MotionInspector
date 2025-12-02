@@ -4386,6 +4386,16 @@
         videoOverlay.style.height = `calc(100% - ${bezelPadding}px)`;
       }
 
+      // Position fullscreen button proportionally with video size (size stays fixed)
+      const fullscreenBtn = videoWrapper.querySelector('.video-fullscreen-btn');
+      if (fullscreenBtn) {
+        const refBtnOffset = 20;
+        const btnOffset = Math.round(refBtnOffset * scaleFactor) + paddingPx;
+
+        fullscreenBtn.style.bottom = `${btnOffset}px`;
+        fullscreenBtn.style.right = `${btnOffset}px`;
+      }
+
       // If video is using full container width (within 5px threshold), it's width-constrained
       if (Math.abs(containerWidth - wrapperWidth) < 5) {
         videoContainer.classList.add('width-constrained');
@@ -6983,8 +6993,8 @@
     // Setup label editing for both timeline and table modes
     function setupLabelEditing() {
       // Handle left column label editing with double-click
-      // Include draggable labels, parented rows, and child layer headers
-      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"], .timeline-labels-column .timeline-label[data-row-type="parented"], .timeline-labels-column .timeline-label[data-row-type="child-layer"]');
+      // Include draggable labels and parented rows (not child layer headers - those are edited via info box)
+      const leftLabels = document.querySelectorAll('.timeline-labels-column .timeline-label[draggable="true"], .timeline-labels-column .timeline-label[data-row-type="parented"]');
 
       leftLabels.forEach(label => {
         const labelText = label.querySelector('.timeline-label-text');
@@ -8968,7 +8978,10 @@ ${cleanedScript}
     function detectTextOverflow() {
       const bars = document.querySelectorAll('.timeline-bar');
       bars.forEach(bar => {
-        const textElement = bar.querySelector('.timeline-bar-text');
+        // Select the visible text element based on mode (edit-only or export-only)
+        const textElement = isExportMode
+          ? bar.querySelector('.timeline-bar-text.export-only')
+          : bar.querySelector('.timeline-bar-text.edit-only');
         if (textElement) {
           // Check if text is wider than the container
           const textWidth = textElement.scrollWidth;
