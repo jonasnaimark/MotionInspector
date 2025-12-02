@@ -7016,7 +7016,7 @@
 
     // Get the base HTML template for export (without the export button and JSZip)
     // videoSectionRatio: null = default/minimum, number = user-specified ratio
-    function getExportTemplate(videoFileName, tabsJson, videoSectionRatio = null) {
+    function getExportTemplate(videoFileName, tabsJson, videoSectionRatio = null, compactSpacing = false) {
       // Get all the styles from this page
       const styleElement = document.querySelector('style');
       const styles = styleElement ? styleElement.textContent : '';
@@ -7139,6 +7139,7 @@ ${cleanedScript}
     // Auto-load embedded data
     const EMBEDDED_TABS = ${tabsJson};
     const EXPORT_VIDEO_RATIO = ${videoSectionRatio};
+    const EXPORT_COMPACT_SPACING = ${compactSpacing};
 
     window.addEventListener('DOMContentLoaded', () => {
       // Initialize grid based on exported ratio
@@ -7271,6 +7272,18 @@ ${cleanedScript}
       }
 
       renderTimeline();
+
+      // Apply compact spacing immediately if it was compact in the editor
+      if (EXPORT_COMPACT_SPACING) {
+        const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+        if (outerWrapper) {
+          outerWrapper.classList.add('has-scroll');
+        }
+        needsCompactSpacing = true;
+      }
+
+      // Re-check section spacing after render (handles window resize, etc.)
+      requestAnimationFrame(() => updateSectionSpacing(true));
     });
   <\/script>
 
@@ -7378,7 +7391,7 @@ ${cleanedScript}
         }
 
         // Generate clean HTML template
-        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), exportRatio);
+        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), exportRatio, needsCompactSpacing);
 
         // Create download link with spec name
         const specName = tabs[0].specData.compName;
