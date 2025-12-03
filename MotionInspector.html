@@ -2301,6 +2301,7 @@
     .table-cell--duration {
       border-right: 1px solid #2e2e2e; /* Lighter for data rows */
       color: #c0c0c0;
+      font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
     }
 
     .table-cell--easing {
@@ -3075,7 +3076,9 @@
       cursor: text;
       font-size: 12px;
       color: #ffffff;
-      line-height: 1.4;
+      line-height: 1.2;
+      padding: 4px 6px;
+      margin-left: -6px;
     }
 
     .detail-value.easing-editable:hover {
@@ -6327,7 +6330,9 @@
                             data-row-type="child-animation"
                             data-layer-index="${childLayerIndex}"
                             data-anim-index="${globalIdx}"
-                            draggable="false">
+                            data-anim-in-layer="${animIdx}"
+                            data-drag-type="animation"
+                            draggable="${isEditMode}">
                 <span class="timeline-label-text">${anim.property}</span>
                 <button class="param-action-btn edit-only" draggable="false"></button>
               </div>`;
