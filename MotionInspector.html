@@ -5304,6 +5304,12 @@
       // Extend timeline duration by 100ms
       specData.workArea.duration += 100;
 
+      // Ensure tab's specData is synced
+      const tab = getCurrentTab();
+      if (tab) {
+        tab.specData.workArea.duration = specData.workArea.duration;
+      }
+
       // Reset view duration to show full timeline
       viewDuration = null;
 
@@ -5316,6 +5322,12 @@
       // Shorten timeline duration by 100ms (minimum 100ms)
       const newDuration = Math.max(100, specData.workArea.duration - 100);
       specData.workArea.duration = newDuration;
+
+      // Ensure tab's specData is synced
+      const tab = getCurrentTab();
+      if (tab) {
+        tab.specData.workArea.duration = specData.workArea.duration;
+      }
 
       // Reset view duration to show full timeline
       viewDuration = null;
@@ -5336,6 +5348,12 @@
 
       // Set the new duration
       specData.workArea.duration = parsed;
+
+      // Ensure tab's specData is synced
+      const tab = getCurrentTab();
+      if (tab) {
+        tab.specData.workArea.duration = specData.workArea.duration;
+      }
 
       // Reset view duration to show full timeline
       viewDuration = null;
