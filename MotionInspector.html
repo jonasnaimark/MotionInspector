@@ -5876,8 +5876,8 @@
       return null;
     }
 
-    // Helper function to format easing preset names (springs and curves) with hyperlinks
-    function formatSpringPreset(text) {
+    // Helper function to format easing preset names (springs and curves) with optional hyperlinks
+    function formatSpringPreset(text, includeLinks = true) {
       const presetLinks = {
         // Spring presets
         'Standard Spring': 'https://air.bb/standard-spring',
@@ -5896,7 +5896,11 @@
       const trimmedText = text.trim();
       for (const [presetName, link] of Object.entries(presetLinks)) {
         if (trimmedText.toLowerCase() === presetName.toLowerCase()) {
-          return `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
+          if (includeLinks) {
+            return `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
+          } else {
+            return presetName;
+          }
         }
       }
 
@@ -6394,7 +6398,7 @@
           duration = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration + 'ms' : '-');
 
           if (anim.customEasing !== undefined && anim.customEasing !== null) {
-            easingText = formatSpringPreset(anim.customEasing);
+            easingText = formatSpringPreset(anim.customEasing, !isEditMode);
           } else if (anim.easing.type === 'spring') {
             const spring = anim.easing.spring;
             const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
@@ -6408,8 +6412,12 @@
             };
             const isPreset = presetSprings.includes(spring.preset);
             if (isPreset) {
-              const link = springLinks[spring.preset];
-              easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
+              if (isEditMode) {
+                easingText = spring.preset;
+              } else {
+                const link = springLinks[spring.preset];
+                easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${spring.preset}</a>`;
+              }
             } else {
               if (isEditMode) {
                 easingText = `Stiffness:&nbsp;<span class="num">${spring.custom.stiffness}</span>, Damping:&nbsp;<span class="num">${spring.custom.damping}</span>, Damping Ratio:&nbsp;<span class="num">${spring.custom.dampingRatio}</span>, Mass:&nbsp;<span class="num">${spring.custom.mass}</span>`;
@@ -6430,8 +6438,12 @@
               'Exit Curve': 'https://air.bb/exit-curve'
             };
             if (presetName && curveLinks[presetName]) {
-              const link = curveLinks[presetName];
-              easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
+              if (isEditMode) {
+                easingText = presetName;
+              } else {
+                const link = curveLinks[presetName];
+                easingText = `<a href="${link}" target="_blank" rel="noopener noreferrer" class="spring-link">${presetName}</a>`;
+              }
             } else {
               // Strip spaces from bezier display for cleaner look
               const cleanBezier = bezierValue.replace(/\s+/g, '').replace('cubic-bezier', '');
@@ -11796,7 +11808,7 @@ ${cleanedScript}
         // Check for custom easing first
         if (anim.customEasing !== undefined && anim.customEasing !== null) {
           easingTextPlain = anim.customEasing;  // Plain text for textarea
-          easingText = formatSpringPreset(anim.customEasing);  // HTML for read-only
+          easingText = formatSpringPreset(anim.customEasing, !isEditMode);  // HTML with links only in read mode
         } else if (anim.easing.type === 'spring') {
           const spring = anim.easing.spring;
           const presetSprings = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
