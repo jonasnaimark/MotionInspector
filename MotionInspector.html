@@ -2476,10 +2476,6 @@
       cursor: grabbing;
     }
 
-    .timeline-bar[data-is-fit-to-shape="true"] {
-      cursor: default;
-    }
-
     .timeline-bar::before {
       content: '';
       position: absolute;
@@ -2595,10 +2591,6 @@
 
     .timeline-bar-resize-handle.right {
       right: 0;
-    }
-
-    .timeline-bar[data-is-fit-to-shape="true"] .timeline-bar-resize-handle {
-      cursor: default !important;
     }
 
     /* Text fade overlays - match each bar's background color */
@@ -3281,7 +3273,7 @@
           if (fitToShapeAnim && fitToShapeAnim.fitToShape) {
             const alignment = getAlignmentText(fitToShapeAnim.fitToShape.alignment);
             const scaleTo = getScaleToText(fitToShapeAnim.fitToShape.scaleTo);
-            layer.parentingDescription = `Scales to fit ${scaleTo} of ${fitToShapeAnim.fitToShape.containerLayerName} — aligned ${alignment}`;
+            layer.parentingDescription = `Scales to fit ${scaleTo} of ${fitToShapeAnim.fitToShape.containerLayerName} – Aligned ${alignment}`;
           }
         }
       });
@@ -8513,7 +8505,7 @@ ${cleanedScript}
           const heightStart = startVals[1] || '-';
           const heightEnd = endVals[1] || '-';
 
-          description = `Width ${widthAction} from ${widthStart} – ${widthEnd} and Height ${heightAction} from ${heightStart} – ${heightEnd}`;
+          description = `Width ${widthAction} ${widthStart} – ${widthEnd} and Height ${heightAction} ${heightStart} – ${heightEnd}`;
         }
         else if (prop.includes('width')) {
           if (changeValue === 0) {
@@ -8522,7 +8514,7 @@ ${cleanedScript}
             const action = changeValue > 0 ? 'expands' : 'shrinks';
             const startVal = values.formatted?.startValue || Math.round(values.startValue) + 'px';
             const endVal = values.formatted?.endValue || Math.round(values.endValue) + 'px';
-            description = `width ${action} from ${startVal} – ${endVal}`;
+            description = `width ${action} ${startVal} – ${endVal}`;
           }
         }
         else if (prop.includes('height')) {
@@ -8532,7 +8524,7 @@ ${cleanedScript}
             const action = changeValue > 0 ? 'expands' : 'shrinks';
             const startVal = values.formatted?.startValue || Math.round(values.startValue) + 'px';
             const endVal = values.formatted?.endValue || Math.round(values.endValue) + 'px';
-            description = `height ${action} from ${startVal} – ${endVal}`;
+            description = `height ${action} ${startVal} – ${endVal}`;
           }
         }
         else if (prop.includes('blur radius')) {
@@ -8578,14 +8570,19 @@ ${cleanedScript}
             if (startVal === endVal) {
               description = `scale stays at ${endVal}`;
             } else {
-              description = `scale animates from ${startVal} – ${endVal}`;
+              // Determine direction by parsing numeric values
+              const startNum = parseFloat(startVal);
+              const endNum = parseFloat(endVal);
+              const direction = endNum > startNum ? 'Scales up' : 'Scales down';
+              description = `${direction} ${startVal} – ${endVal}`;
             }
           } else {
             // No formatted values available
             if (changeValue === 0) {
               description = `scale stays at ${Math.round(values.startValue)}%`;
             } else {
-              description = `scale animates from ${Math.round(values.startValue)}% – ${Math.round(values.endValue)}%`;
+              const direction = values.endValue > values.startValue ? 'Scales up' : 'Scales down';
+              description = `${direction} ${Math.round(values.startValue)}% – ${Math.round(values.endValue)}%`;
             }
           }
         }
@@ -8613,19 +8610,15 @@ ${cleanedScript}
           const startPercent = `${Math.round(typeof startValue === 'string' ? parseFloat(startValue) : startValue)}%`;
           const endPercent = `${Math.round(typeof endValue === 'string' ? parseFloat(endValue) : endValue)}%`;
 
-          // Special cases - check zero change FIRST before other conditions
+          // Check zero change FIRST before other conditions
           if (changeValue === 0) {
             description = `opacity stays at ${startPercent}`;
-          } else if (startValue === 0 && endValue === 100) {
-            description = `alpha animates from 0% – 100%`;
-          } else if (startValue === 100 && endValue === 0) {
-            description = `alpha animates from 100% – 0%`;
-          } else if (startValue === 0) {
-            description = `fades in to ${endPercent}`;
-          } else if (endValue === 0) {
-            description = `fades out from ${startPercent}`;
+          } else if (endValue > startValue) {
+            // Fading in (opacity increasing)
+            description = `Fades-in ${startPercent} – ${endPercent}`;
           } else {
-            description = `alpha animates from ${startPercent} – ${endPercent}`;
+            // Fading out (opacity decreasing)
+            description = `Fades-out ${startPercent} – ${endPercent}`;
           }
         }
         // Handle corner radius properties (IndieCorners, Squircle, generic corner/radius)
@@ -10385,9 +10378,6 @@ ${cleanedScript}
 
           const bar = handle.closest('.timeline-bar');
 
-          // Disable resize for Fit to Shape animations
-          if (bar.dataset.isFitToShape === 'true') return;
-
           e.stopPropagation();
           e.preventDefault();
 
@@ -10519,9 +10509,6 @@ ${cleanedScript}
 
           // Disable dragging for attached bars (they don't have timing)
           if (bar.dataset.isAttached === 'true') return;
-
-          // Disable dragging for Fit to Shape animations
-          if (bar.dataset.isFitToShape === 'true') return;
 
           // Don't interfere with resize handles
           if (e.target.classList.contains('timeline-bar-resize-handle')) return;
