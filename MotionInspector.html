@@ -1986,6 +1986,31 @@
     body.table-view-active .timeline-track.child-layer-header.table-row.first-child-layer {
       margin-top: 8px;
       border-top: 1px solid #2a2a2a; /* Right column lighter */
+      position: relative;
+    }
+    /* Extend vertical grid lines through the gap above first child layer */
+    body.table-view-active .timeline-track.child-layer-header.table-row.first-child-layer::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 0;
+      right: 0;
+      height: 8px;
+      background: linear-gradient(to right,
+        transparent calc(100% - var(--table-easing-width, 200px) - 160px - 1px),
+        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 160px - 1px),
+        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 160px),
+        transparent calc(100% - var(--table-easing-width, 200px) - 160px),
+        transparent calc(100% - var(--table-easing-width, 200px) - 80px - 1px),
+        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 80px - 1px),
+        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 80px),
+        transparent calc(100% - var(--table-easing-width, 200px) - 80px),
+        transparent calc(100% - var(--table-easing-width, 200px) - 1px),
+        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 1px),
+        #2e2e2e calc(100% - var(--table-easing-width, 200px)),
+        transparent calc(100% - var(--table-easing-width, 200px))
+      );
+      pointer-events: none;
     }
 
     /* Vertical line segment connecting from top to the curve */
