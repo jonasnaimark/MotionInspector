@@ -9002,7 +9002,16 @@ ${cleanedScript}
         }
       });
 
-      let animIndex = 0;
+      // Helper function to get global animation index for a layer's animation
+      // This matches the order used by showAnimationDetails (layer array order)
+      function getGlobalAnimIndex(layerIdx, animIdxInLayer) {
+        let idx = 0;
+        for (let i = 0; i < layerIdx; i++) {
+          idx += specData.layers[i].animations.length;
+        }
+        return idx + animIdxInLayer;
+      }
+
       let isFirstVisibleLayerTimeline = true;
       specData.layers.forEach((layer, layerIndex) => {
         // Skip layers that have parenting - they'll be rendered under their parent
@@ -9032,17 +9041,18 @@ ${cleanedScript}
         // Animation labels for this parent layer
         const childLineClass = hasChildren ? ' has-child-line' : '';
         layer.animations.forEach((anim, animIndexInLayer) => {
+          // Use layer-array-order index (matches showAnimationDetails lookup)
+          const globalAnimIndex = getGlobalAnimIndex(layerIndex, animIndexInLayer);
           html += `<div class="timeline-label indented${childLineClass}"
                         draggable="${isEditMode}"
                         data-drag-type="animation"
-                        data-anim-index="${animIndex}"
+                        data-anim-index="${globalAnimIndex}"
                         data-layer-index="${layerIndex}"
                         data-anim-in-layer="${animIndexInLayer}">
             <span class="timeline-label-text">${anim.property}</span>
             <button class="param-action-btn edit-only" draggable="false"></button>
             <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
-          animIndex++;
         });
 
         // Render children immediately after parent's animations
@@ -9081,7 +9091,6 @@ ${cleanedScript}
               <button class="param-action-btn edit-only" draggable="false"></button>
               <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
             </div>`;
-            animIndex++;
           });
         });
       });
@@ -9108,16 +9117,6 @@ ${cleanedScript}
       });
 
       html += `</div>`;
-
-      // Helper function to get global animation index for a layer's animation
-      // This matches the order used by showAnimationDetails (layer array order)
-      function getGlobalAnimIndex(layerIdx, animIdxInLayer) {
-        let idx = 0;
-        for (let i = 0; i < layerIdx; i++) {
-          idx += specData.layers[i].animations.length;
-        }
-        return idx + animIdxInLayer;
-      }
 
       // Helper function to render a single animation bar track
       function renderAnimationBarTrack(anim, layerIndex, globalAnimIndex, layerName) {
@@ -9214,7 +9213,6 @@ ${cleanedScript}
       }
 
       // Timeline tracks
-      animIndex = 0;
       let isFirstVisibleLayerTimelineRight = true;
       specData.layers.forEach((layer, layerIndex) => {
         // Skip layers that have parenting - they'll be rendered under their parent
@@ -9232,9 +9230,10 @@ ${cleanedScript}
         html += `<div class="timeline-track layer-header${dividerClass}"></div>`;
 
         // Animation tracks for this parent layer
-        layer.animations.forEach(anim => {
-          html += renderAnimationBarTrack(anim, layerIndex, animIndex, layer.layerName);
-          animIndex++;
+        layer.animations.forEach((anim, animIndexInLayer) => {
+          // Use layer-array-order index (matches showAnimationDetails lookup)
+          const globalAnimIndex = getGlobalAnimIndex(layerIndex, animIndexInLayer);
+          html += renderAnimationBarTrack(anim, layerIndex, globalAnimIndex, layer.layerName);
         });
 
         // Render children immediately after parent's animations
@@ -9284,7 +9283,6 @@ ${cleanedScript}
             // Use layer-array-order index (matches showAnimationDetails lookup)
             const childAnimGlobalIndex = getGlobalAnimIndex(childLayerIndex, animIdxInLayer);
             html += renderAnimationBarTrack(anim, childLayerIndex, childAnimGlobalIndex, childLayer.layerName);
-            animIndex++;
           });
         });
       });
