@@ -12050,9 +12050,15 @@ ${cleanedScript}
           showEasingAutocomplete(textarea, textarea.value.trim());
 
           // Handle blur to save and re-render
+          // Use setTimeout to allow any pending click events (like preset selection) to fire first
           textarea.addEventListener('blur', () => {
-            hideEasingAutocomplete();
-            updateAnimationField(animIdx, 'easing', textarea.value);
+            setTimeout(() => {
+              // Only save if the textarea is still in the DOM (wasn't replaced by preset selection)
+              if (document.body.contains(textarea)) {
+                hideEasingAutocomplete();
+                updateAnimationField(animIdx, 'easing', textarea.value);
+              }
+            }, 100);
           });
 
           textarea.addEventListener('input', () => {
