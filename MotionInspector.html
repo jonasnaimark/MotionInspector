@@ -1698,6 +1698,14 @@
       background: rgba(255, 255, 255, 0.05);
     }
 
+    .timeline-label.layer-header.selected {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .timeline-label.layer-header.selected .timeline-label-text {
+      font-weight: 700;
+    }
+
     .timeline-track.layer-header:hover {
       background: transparent;
     }
@@ -3713,6 +3721,7 @@
     let isDraggingPlayhead = false;
     let selectedAnimation = null;
     let selectedParentedLayerIndex = null; // Track selected child layer for info box refresh
+    let selectedSectionHeaderIndex = null; // Track selected section header for info box
     const isExportMode = false;
     let isEditMode = true; // Can be toggled in exported files
     let animationFrameId = null;
@@ -8356,68 +8365,6 @@ ${cleanedScript}
       return availableParents;
     }
 
-    // Set a layer's parent and reorder layers accordingly
-    function setLayerParent(layerIndex, parentName, animIndex) {
-      if (!specData || layerIndex < 0 || layerIndex >= specData.layers.length) return;
-
-      saveSnapshot();
-
-      const layer = specData.layers[layerIndex];
-
-      if (!parentName || parentName === '') {
-        // Remove parenting (make it a top-level layer)
-        delete layer.parenting;
-      } else {
-        // Set the parent
-        layer.parenting = {
-          parentName: parentName,
-          animatingProperties: layer.animations.map(a => a.property)
-        };
-
-        // Find the parent layer's index
-        const parentIndex = specData.layers.findIndex(l => l.layerName === parentName);
-        if (parentIndex !== -1 && parentIndex !== layerIndex) {
-          // Remove the layer from its current position
-          const [movedLayer] = specData.layers.splice(layerIndex, 1);
-
-          // Find where to insert it (right after the parent and any existing children)
-          let insertIndex = parentIndex + 1;
-          // Skip past any existing children of this parent
-          while (insertIndex < specData.layers.length &&
-                 specData.layers[insertIndex].parenting?.parentName === parentName) {
-            insertIndex++;
-          }
-
-          // Adjust insert index if we removed from before the insert position
-          if (layerIndex < insertIndex) {
-            insertIndex--;
-          }
-
-          // Insert the layer at the new position
-          specData.layers.splice(insertIndex, 0, movedLayer);
-        }
-      }
-
-      // Update the tab's specData
-      setCurrentSpecData(specData);
-
-      // Refresh the view
-      refreshActiveView();
-
-      // Re-show the animation details (animIndex may have changed due to reordering)
-      // Recalculate the new animIndex for this layer's animations
-      let newAnimIndex = 0;
-      for (let i = 0; i < specData.layers.length; i++) {
-        const l = specData.layers[i];
-        if (l.layerName === layer.layerName) {
-          // Found our layer, show first animation's details
-          showAnimationDetails(newAnimIndex);
-          break;
-        }
-        newAnimIndex += l.animations.length;
-      }
-    }
-
     // Update an animation field and refresh views
     function updateAnimationField(animIndex, fieldName, newValue) {
       saveSnapshot();
@@ -8996,13 +8943,27 @@ ${cleanedScript}
       });
 
       // Setup left column label clicks to select bar and show info panel
-      document.querySelectorAll('.timeline-label.indented, .timeline-label.child-layer-header').forEach(label => {
+      document.querySelectorAll('.timeline-label.indented, .timeline-label.child-layer-header, .timeline-label.layer-header').forEach(label => {
         label.addEventListener('click', (e) => {
           // Don't interfere with action buttons or text editing
           if (e.target.closest('.param-action-btn, .timeline-label-add-btn, .section-divider-add-btn')) return;
           if (e.target.contentEditable === 'true') return;
 
           e.stopPropagation();
+
+          // Handle section header (layer-header) clicks
+          if (label.classList.contains('layer-header')) {
+            const layerIndex = parseInt(label.dataset.layerIndex);
+            // Remove selected class from all bars and labels
+            document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
+            document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected'));
+            document.querySelectorAll('.timeline-label.layer-header').forEach(l => l.classList.remove('selected'));
+            // Add selected class to clicked label
+            label.classList.add('selected');
+            showSectionHeaderDetails(layerIndex);
+            return;
+          }
 
           // Handle child layer header clicks
           if (label.classList.contains('child-layer-header')) {
@@ -9011,6 +8972,7 @@ ${cleanedScript}
             document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
             document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
             document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected'));
+            document.querySelectorAll('.timeline-label.layer-header').forEach(l => l.classList.remove('selected'));
             // Add selected class to clicked label and corresponding bar
             label.classList.add('selected');
             const bar = document.querySelector(`.timeline-bar.bar-attached[data-layer-index="${layerIndex}"]`);
@@ -9025,6 +8987,7 @@ ${cleanedScript}
           document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
           document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
           document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected'));
+          document.querySelectorAll('.timeline-label.layer-header').forEach(l => l.classList.remove('selected'));
           // Add selected class to clicked label and corresponding bar
           label.classList.add('selected');
           const bar = document.querySelector(`.timeline-bar[data-anim-index="${animIndex}"]`);
@@ -9063,9 +9026,12 @@ ${cleanedScript}
               detailPanel.innerHTML = '';
             }
             selectedAnimation = null;
+            selectedSectionHeaderIndex = null;
+            selectedParentedLayerIndex = null;
             document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
             document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected'));
             document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected'));
+            document.querySelectorAll('.timeline-label.layer-header').forEach(l => l.classList.remove('selected'));
             requestAnimationFrame(() => {
               updatePlayhead();
             });
@@ -10734,21 +10700,6 @@ ${cleanedScript}
 
       if (isEditMode) {
         html += `<div class="detail-panel-actions">`;
-
-        // Parent selector dropdown
-        const currentParentName = layer.parenting?.parentName || '';
-        const parentOptions = getAvailableParentLayers(layerIndex);
-        html += `<div class="parent-selector-container">`;
-        html += `<span class="parent-selector-label">Parent to:</span>`;
-        html += `<select class="parent-selector" onchange="setLayerParent(${layerIndex}, this.value, ${animIndex})">`;
-        html += `<option value="">None</option>`;
-        parentOptions.forEach(opt => {
-          const selected = opt.name === currentParentName ? 'selected' : '';
-          html += `<option value="${opt.name}" ${selected}>${opt.name}</option>`;
-        });
-        html += `</select>`;
-        html += `</div>`;
-
         html += `<button class="detail-panel-action-btn delete" onclick="deleteAnimation(${animIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
         html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
         html += `</div>`;
@@ -11149,6 +11100,248 @@ ${cleanedScript}
       });
     }
 
+    // Show info box for section headers (layer name, parent to dropdown, delete)
+    function showSectionHeaderDetails(layerIndex) {
+      const layer = specData.layers[layerIndex];
+      if (!layer) return;
+      // Don't show this for layers that are already parented (use showParentedLayerDetails for those)
+      if (layer.parenting) return;
+
+      selectedAnimation = null;
+      selectedParentedLayerIndex = null;
+      selectedSectionHeaderIndex = layerIndex;
+
+      const detailPanel = document.getElementById('detailPanel');
+
+      // Get a color for the border (use first animation's color or default)
+      let barColor = '#595959';
+      if (layer.animations.length > 0) {
+        const colorClass = getPropertyColorClass(layer.animations[0].property);
+        barColor = getPropertyColor(colorClass);
+        const videoId = getCurrentVideoId();
+        const customColor = getAnimationColorForVideo(layer.animations[0], videoId);
+        if (customColor) barColor = customColor;
+      }
+      const brightColor = brightenColor(barColor);
+
+      let html = `<div class="detail-panel" style="border-left-color: ${brightColor};">`;
+      html += `<div class="detail-panel-header">`;
+      html += `<div class="detail-panel-title">`;
+
+      if (isEditMode) {
+        html += `<input
+          type="text"
+          class="detail-title-input detail-title-input-section"
+          value="${layer.layerName.replace(/"/g, '&quot;')}"
+          maxlength="21"
+          onfocus="this.select()"
+          onblur="updateLayerField(${layerIndex}, 'layerName', this.value)"
+          oninput="autoResizeTitleInput(this)"
+          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+        />`;
+      } else {
+        html += `<span>${layer.layerName}</span>`;
+      }
+
+      html += `</div>`;
+
+      if (isEditMode) {
+        html += `<div class="detail-panel-actions">`;
+
+        // Parent to dropdown
+        const parentOptions = getAvailableParentLayers(layerIndex);
+        html += `<div class="parent-selector-container">`;
+        html += `<span class="parent-selector-label">Parent to: </span>`;
+        html += `<select class="parent-selector" onchange="setLayerParentFromSection(${layerIndex}, this.value)">`;
+        html += `<option value="">None</option>`;
+        parentOptions.forEach(opt => {
+          html += `<option value="${opt.name}">${opt.name}</option>`;
+        });
+        html += `</select>`;
+        html += `</div>`;
+
+        html += `<button class="detail-panel-action-btn delete" onclick="deleteSection(${layerIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
+        html += `<button class="detail-panel-close" onclick="closeSectionDetails()">&times;</button>`;
+        html += `</div>`;
+      } else {
+        html += `<button class="detail-panel-close" onclick="closeSectionDetails()">&times;</button>`;
+      }
+
+      html += `</div>`; // detail-panel-header
+      html += `</div>`; // detail-panel
+      detailPanel.innerHTML = html;
+
+      // Auto-resize title input
+      const titleInput = detailPanel.querySelector('.detail-title-input');
+      if (titleInput) autoResizeTitleInput(titleInput);
+
+      requestAnimationFrame(() => updatePlayhead());
+    }
+
+    // Close the section header detail panel
+    function closeSectionDetails() {
+      selectedSectionHeaderIndex = null;
+      const detailPanel = document.getElementById('detailPanel');
+      if (detailPanel) detailPanel.innerHTML = '';
+      document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.timeline-label.layer-header').forEach(l => l.classList.remove('selected'));
+      requestAnimationFrame(() => updatePlayhead());
+    }
+
+    // Set a layer's parent from section header context
+    function setLayerParentFromSection(layerIndex, parentName) {
+      if (!specData || layerIndex < 0 || layerIndex >= specData.layers.length) return;
+
+      saveSnapshot();
+
+      const layer = specData.layers[layerIndex];
+
+      if (!parentName || parentName === '') {
+        // Remove parenting (already not parented in section context, so nothing to do)
+        return;
+      }
+
+      // Set the parent
+      layer.parenting = {
+        parentName: parentName,
+        animatingProperties: layer.animations.map(a => a.property)
+      };
+
+      // Find the parent layer's index
+      const parentIndex = specData.layers.findIndex(l => l.layerName === parentName);
+      if (parentIndex !== -1 && parentIndex !== layerIndex) {
+        // Remove the layer from its current position
+        const [movedLayer] = specData.layers.splice(layerIndex, 1);
+
+        // Find where to insert it (right after the parent and any existing children)
+        let insertIndex = parentIndex + 1;
+        while (insertIndex < specData.layers.length &&
+               specData.layers[insertIndex].parenting?.parentName === parentName) {
+          insertIndex++;
+        }
+
+        // Adjust insert index if we removed from before the insert position
+        if (layerIndex < insertIndex) {
+          insertIndex--;
+        }
+
+        // Insert the layer at the new position
+        specData.layers.splice(insertIndex, 0, movedLayer);
+      }
+
+      setCurrentSpecData(specData);
+      refreshActiveView();
+
+      // After parenting, show the parented layer details (since it's now a child)
+      const newLayerIndex = specData.layers.findIndex(l => l.layerName === layer.layerName);
+      if (newLayerIndex !== -1) {
+        // Select the child layer header
+        selectedSectionHeaderIndex = null;
+        const childHeader = document.querySelector(`.timeline-label.child-layer-header[data-layer-index="${newLayerIndex}"]`);
+        if (childHeader) {
+          childHeader.classList.add('selected');
+        }
+        showParentedLayerDetails(newLayerIndex);
+      }
+    }
+
+    // Change a layer's parent (can unparent or switch to different parent)
+    function changeLayerParent(layerIndex, newParentName) {
+      if (!specData || layerIndex < 0 || layerIndex >= specData.layers.length) return;
+
+      saveSnapshot();
+
+      const layer = specData.layers[layerIndex];
+      const layerName = layer.layerName;
+      const wasParented = !!layer.parenting;
+
+      if (!newParentName || newParentName === '') {
+        // Unparent - make it a top-level layer
+        delete layer.parenting;
+        delete layer.parentingDescription;
+        delete layer.parentingColor;
+      } else {
+        // Set the new parent
+        layer.parenting = {
+          parentName: newParentName,
+          animatingProperties: layer.animations.map(a => a.property)
+        };
+      }
+
+      // Reorder layers if needed
+      if (newParentName && newParentName !== '') {
+        // Moving to a parent - position after parent and its children
+        const parentIndex = specData.layers.findIndex(l => l.layerName === newParentName);
+        if (parentIndex !== -1 && parentIndex !== layerIndex) {
+          const [movedLayer] = specData.layers.splice(layerIndex, 1);
+          let insertIndex = parentIndex + 1;
+          while (insertIndex < specData.layers.length &&
+                 specData.layers[insertIndex].parenting?.parentName === newParentName) {
+            insertIndex++;
+          }
+          if (layerIndex < insertIndex) insertIndex--;
+          specData.layers.splice(insertIndex, 0, movedLayer);
+        }
+      }
+
+      setCurrentSpecData(specData);
+      refreshActiveView();
+
+      // Show appropriate info box after change
+      const newLayerIndex = specData.layers.findIndex(l => l.layerName === layerName);
+      if (newLayerIndex !== -1) {
+        if (specData.layers[newLayerIndex].parenting) {
+          // Still parented - show child layer details
+          selectedParentedLayerIndex = newLayerIndex;
+          selectedSectionHeaderIndex = null;
+          const childHeader = document.querySelector(`.timeline-label.child-layer-header[data-layer-index="${newLayerIndex}"]`);
+          if (childHeader) childHeader.classList.add('selected');
+          showParentedLayerDetails(newLayerIndex);
+        } else {
+          // Unparented - show section header details
+          selectedSectionHeaderIndex = newLayerIndex;
+          selectedParentedLayerIndex = null;
+          const layerHeader = document.querySelector(`.timeline-label.layer-header[data-layer-index="${newLayerIndex}"]`);
+          if (layerHeader) layerHeader.classList.add('selected');
+          showSectionHeaderDetails(newLayerIndex);
+        }
+      }
+    }
+
+    // Delete a section (layer) and all its children
+    function deleteSection(layerIndex) {
+      const layer = specData.layers[layerIndex];
+      if (!layer) return;
+
+      const layerName = layer.layerName;
+      if (!confirm(`Delete "${layerName}" section and all its animations?`)) {
+        return;
+      }
+
+      saveSnapshot();
+
+      // Find and delete any child layers first
+      const childrenToDelete = specData.layers
+        .map((l, i) => ({ layer: l, index: i }))
+        .filter(item => item.layer.parenting?.parentName === layerName)
+        .map(item => item.index)
+        .sort((a, b) => b - a); // Sort descending to delete from end first
+
+      childrenToDelete.forEach(idx => {
+        specData.layers.splice(idx, 1);
+      });
+
+      // Recalculate the layer index after child deletions
+      const newLayerIndex = specData.layers.findIndex(l => l.layerName === layerName);
+      if (newLayerIndex !== -1) {
+        specData.layers.splice(newLayerIndex, 1);
+      }
+
+      setCurrentSpecData(specData);
+      closeSectionDetails();
+      refreshActiveView();
+    }
+
     // Show simplified info box for parented layers (just layer name, description, color picker)
     function showParentedLayerDetails(layerIndex) {
       const layer = specData.layers[layerIndex];
@@ -11227,6 +11420,20 @@ ${cleanedScript}
 
       if (isEditMode) {
         html += `<div class="detail-panel-actions">`;
+
+        // Parent to dropdown (allows changing parent or unparenting)
+        const parentOptions = getAvailableParentLayers(layerIndex);
+        html += `<div class="parent-selector-container">`;
+        html += `<span class="parent-selector-label">Parent to: </span>`;
+        html += `<select class="parent-selector" onchange="changeLayerParent(${layerIndex}, this.value)">`;
+        html += `<option value="">None</option>`;
+        parentOptions.forEach(opt => {
+          const selected = opt.name === parentName ? 'selected' : '';
+          html += `<option value="${opt.name}" ${selected}>${opt.name}</option>`;
+        });
+        html += `</select>`;
+        html += `</div>`;
+
         html += `<button class="detail-panel-action-btn delete" onclick="deleteParentedLayer(${layerIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
         html += `<button class="detail-panel-close" onclick="closeParentedDetails()">&times;</button>`;
         html += `</div>`;
