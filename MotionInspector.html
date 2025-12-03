@@ -3290,6 +3290,17 @@
           }
         }
       });
+      // Set parentingDescription from fitToShape info if layer has parenting and fitToShape animations
+      specData.layers.forEach(layer => {
+        if (layer.parenting && !layer.parentingDescription && layer.animations) {
+          const fitToShapeAnim = layer.animations.find(a => a.fitToShape || a.isFitToShape);
+          if (fitToShapeAnim && fitToShapeAnim.fitToShape) {
+            const alignment = getAlignmentText(fitToShapeAnim.fitToShape.alignment);
+            const scaleTo = getScaleToText(fitToShapeAnim.fitToShape.scaleTo);
+            layer.parentingDescription = `Scales to fit ${scaleTo} of "${fitToShapeAnim.fitToShape.containerLayerName}" — aligned ${alignment}`;
+          }
+        }
+      });
     }
 
     // Get layer by ID
@@ -6404,7 +6415,7 @@
 
           // Child layer header row with attachment info in description
           const parentName = layer.layerName;
-          const tableAttachedDescription = `Attached to ${parentName}`;
+          const tableAttachedDescription = childLayer.parentingDescription || `Attached to ${parentName}`;
           html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}${firstChildClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-drag-type="child-layer" data-parent-layer="${layerIndex}" data-parent-name="${parentName}">
             <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${tableAttachedDescription}</span></div>
             <div class="table-cell table-cell--delay">—</div>
@@ -8396,14 +8407,11 @@ ${cleanedScript}
         return customDescription;
       }
 
-      // Handle Fit to Shape animations
-      if (fitToShape) {
-        const alignment = getAlignmentText(fitToShape.alignment);
-        const scaleTo = getScaleToText(fitToShape.scaleTo);
-        description = `Scales to fit ${scaleTo} of "${fitToShape.containerLayerName}" — aligned ${alignment}`;
-      }
+      // Note: fitToShape info is now shown in the child layer header row,
+      // so we generate the actual animation description here instead
+
       // Handle cases where values is null
-      else if (!values || values.change === undefined || values.change === null) {
+      if (!values || values.change === undefined || values.change === null) {
         description = property;
       }
       else {
