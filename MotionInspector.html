@@ -2305,14 +2305,14 @@
 
     .table-cell--easing {
       color: #c0c0c0;
-      font-size: 11px;
-      font-family: monospace;
+      font-size: 12px;
       white-space: nowrap;
       padding-right: 12px;
     }
 
     .table-cell--easing .num {
       color: #6DB3E8;
+      font-family: monospace;
       display: inline;
       white-space: pre;
     }
@@ -2346,20 +2346,25 @@
     }
 
     .table-row:not(.table-row--header) .table-desc-text {
-      font-size: 11px;
+      font-size: 12px;
       color: #d8d8d8;
     }
 
     .table-row:not(.table-row--header) .table-cell--delay,
     .table-row:not(.table-row--header) .table-cell--duration {
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
-      font-size: 11px;
+      font-size: 12px;
       color: #d8d8d8;
     }
 
     .table-row:not(.table-row--header) .table-cell--easing {
-      font-size: 11px;
+      font-size: 12px;
       color: #d8d8d8;
+    }
+
+    /* Child layer description (Scales to fit / Attached to) in light blue */
+    .table-row--child-layer .table-cell--desc .table-desc-text {
+      color: #6DB3E8;
     }
 
     .timeline-track.table-row.table-row--layer {
@@ -3059,6 +3064,21 @@
       font-weight: 400;
       font-size: 13px;
       line-height: 1.4;
+    }
+
+    .detail-value .num {
+      color: #6DB3E8 !important;
+      font-family: monospace;
+    }
+
+    .detail-value.easing-editable {
+      cursor: text;
+      font-size: 12px;
+      color: #ffffff;
+    }
+
+    .detail-value.easing-editable:hover {
+      background: #222222;
     }
 
     .spring-params, .bezier-curve {
@@ -11554,7 +11574,7 @@ ${cleanedScript}
             // Custom spring values as text
             const springText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
             easingTextPlain = springText;
-            easingText = springText;
+            easingText = `Stiffness: <span class="num">${spring.custom.stiffness}</span>, Damping: <span class="num">${spring.custom.damping}</span>, Damping Ratio: <span class="num">${spring.custom.dampingRatio}</span>, Mass: <span class="num">${spring.custom.mass}</span>`;
           }
         } else if (anim.easing.type === 'cubic-bezier') {
           const bezierValue = anim.easing.cubicBezier;
@@ -11578,16 +11598,7 @@ ${cleanedScript}
         html += `<div class="detail-label">Easing</div>`;
         if (isEditMode) {
           html += `
-            <div class="detail-value">
-              <textarea
-                class="detail-value-input"
-                rows="1"
-                onfocus="this.select()"
-                onblur="updateAnimationField(${animIndex}, 'easing', this.value)"
-                oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight + 4) + 'px';"
-                onkeydown="if(event.key === 'Enter' && !event.shiftKey) { this.blur(); }"
-              >${easingTextPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-            </div>
+            <div class="detail-value easing-editable" data-anim-index="${animIndex}" data-plain="${easingTextPlain.replace(/"/g, '&quot;')}">${easingText}</div>
           `;
         } else {
           html += `<div class="detail-value">${easingText}</div>`;
@@ -11773,26 +11784,50 @@ ${cleanedScript}
       const titleInputs = detailPanel.querySelectorAll('.detail-title-input');
       titleInputs.forEach(input => autoResizeTitleInput(input));
 
-      // Setup autocomplete for easing textarea
-      const easingTextarea = detailPanel.querySelector('textarea.detail-value-input');
-      if (easingTextarea) {
-        // Show on focus (first time clicking into field)
-        easingTextarea.addEventListener('focus', () => {
-          showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
-        });
-        // Also show on click (handles case where field is already focused)
-        easingTextarea.addEventListener('click', () => {
-          showEasingAutocomplete(easingTextarea, easingTextarea.value.trim());
-        });
-        easingTextarea.addEventListener('input', () => {
-          hideEasingAutocomplete();
-        });
-        easingTextarea.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
+      // Setup click-to-edit for easing field (shows formatted HTML until clicked)
+      const easingEditable = detailPanel.querySelector('.easing-editable');
+      if (easingEditable) {
+        easingEditable.addEventListener('click', function() {
+          const animIdx = parseInt(this.dataset.animIndex);
+          const plainText = this.dataset.plain;
+
+          // Replace with textarea
+          const textarea = document.createElement('textarea');
+          textarea.className = 'detail-value-input';
+          textarea.rows = 1;
+          textarea.value = plainText;
+          textarea.style.width = '100%';
+
+          this.replaceWith(textarea);
+          textarea.focus();
+          textarea.select();
+
+          // Auto-resize
+          textarea.style.height = 'auto';
+          textarea.style.height = (textarea.scrollHeight + 4) + 'px';
+
+          // Show autocomplete
+          showEasingAutocomplete(textarea, textarea.value.trim());
+
+          // Handle blur to save and re-render
+          textarea.addEventListener('blur', () => {
             hideEasingAutocomplete();
-            easingTextarea.blur();
-          }
+            updateAnimationField(animIdx, 'easing', textarea.value);
+          });
+
+          textarea.addEventListener('input', () => {
+            hideEasingAutocomplete();
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight + 4) + 'px';
+          });
+
+          textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              hideEasingAutocomplete();
+              textarea.blur();
+            }
+          });
         });
       }
 
