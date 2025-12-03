@@ -7924,6 +7924,9 @@ ${cleanedScript}
       // Set specData from current tab (required for renderTimeline)
       specData = tabs[currentTabIndex].specData;
 
+      // Reset viewDuration so it recalculates from specData.workArea.duration
+      viewDuration = null;
+
       // Render tabs and timeline
       renderTabs();
 
@@ -8088,7 +8091,8 @@ ${cleanedScript}
         }
 
         // Generate clean HTML template
-        const exportHtml = getExportTemplate('', JSON.stringify(exportTabs), exportRatio, needsCompactSpacing);
+        const tabsJson = JSON.stringify(exportTabs);
+        const exportHtml = getExportTemplate('', tabsJson, exportRatio, needsCompactSpacing);
 
         // Create download link with spec name
         const specName = tabs[0].specData.compName;
