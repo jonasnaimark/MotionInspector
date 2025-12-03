@@ -6251,7 +6251,7 @@
       html += `<div class="timeline-content-column">`;
 
       // Helper function to render animation row cells
-      function renderAnimationRowCells(anim, layerIndex, animIndex, layerName, extraClasses = '') {
+      function renderAnimationRowCells(anim, layerIndex, animIndex, layerName, extraClasses = '', rowType = 'animation') {
         const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layerName);
         const isFitToShape = anim.isFitToShape || anim.fitToShape;
         let delay, duration, easingText;
@@ -6318,7 +6318,7 @@
           }
         }
 
-        return `<div class="timeline-track table-row${extraClasses}" data-row-type="animation" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
+        return `<div class="timeline-track table-row${extraClasses}" data-row-type="${rowType}" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
           <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="description"><span class="table-desc-text">${description}</span></div>
           <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="delay">${delay}</div>
           <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="duration">${duration}</div>
@@ -6374,7 +6374,7 @@
 
           // Child's own animation rows (if any)
           childLayer.animations.forEach((anim, animIndex) => {
-            html += renderAnimationRowCells(anim, childLayerIndex, animIndex, childLayer.layerName, childContinueClass);
+            html += renderAnimationRowCells(anim, childLayerIndex, animIndex, childLayer.layerName, childContinueClass, 'child-animation');
           });
         });
       });
