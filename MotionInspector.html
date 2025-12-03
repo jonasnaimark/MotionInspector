@@ -8550,19 +8550,19 @@ ${cleanedScript}
 
           // Special case: Sharp to rounded
           if (startRounded === 0 && endRounded > 0) {
-            description = `corner radius animates from sharp (0px) – rounded (${endRounded}px)`;
+            description = `Corner animates from sharp (0px) – rounded (${endRounded}px)`;
           }
           // Special case: Rounded to sharp
           else if (startRounded > 0 && endRounded === 0) {
-            description = `corner radius animates from rounded (${startRounded}px) – sharp (0px)`;
+            description = `Corner animates from rounded (${startRounded}px) – sharp (0px)`;
           }
           // Zero change
           else if (startRounded === endRounded) {
-            description = `corner radius stays at ${startRounded}px`;
+            description = `Corner stays at ${startRounded}px`;
           }
           // Default
           else {
-            description = `corner radius animates from ${startRounded}px – ${endRounded}px`;
+            description = `Corner animates from ${startRounded}px – ${endRounded}px`;
           }
         }
         else {
