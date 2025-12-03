@@ -3224,6 +3224,43 @@
       return 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
+    // Generate unique layer ID
+    function generateLayerId() {
+      return 'l_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Ensure all layers have unique IDs (for backward compatibility with old specs)
+    function ensureLayerIds(specData) {
+      if (!specData || !specData.layers) return;
+      specData.layers.forEach(layer => {
+        if (!layer.id) {
+          layer.id = generateLayerId();
+        }
+      });
+      // Migrate parenting from parentName to parentId if needed
+      specData.layers.forEach(layer => {
+        if (layer.parenting && layer.parenting.parentName && !layer.parenting.parentId) {
+          // Find parent layer by name and get its ID
+          const parentLayer = specData.layers.find(l => l.layerName === layer.parenting.parentName);
+          if (parentLayer && parentLayer.id) {
+            layer.parenting.parentId = parentLayer.id;
+          }
+        }
+      });
+    }
+
+    // Get layer by ID
+    function getLayerById(specData, layerId) {
+      if (!specData || !specData.layers) return null;
+      return specData.layers.find(l => l.id === layerId);
+    }
+
+    // Get layer index by ID
+    function getLayerIndexById(specData, layerId) {
+      if (!specData || !specData.layers) return -1;
+      return specData.layers.findIndex(l => l.id === layerId);
+    }
+
     // Spring preset physics parameters
     const springPresetParams = {
       'Standard Spring': { mass: 1, stiffness: 175, damping: 26 },
@@ -3328,6 +3365,7 @@
         },
         layers: [
           {
+            id: generateLayerId(),
             layerName: "Section 1",
             animations: [
               {
@@ -3357,6 +3395,7 @@
     // Initialize with Tab 1
     const initialSpec = createDefaultSpec();
     groupAnimations(initialSpec);
+    ensureLayerIds(initialSpec);
     let tabs = [
       {
         id: 1,
@@ -3934,6 +3973,7 @@
         currentVideoIndex: 0
       };
       groupAnimations(newTab.specData);
+      ensureLayerIds(newTab.specData);
       tabs.push(newTab);
       switchTab(tabs.length - 1); // Switch to new tab
 
@@ -4576,6 +4616,7 @@
               currentVideoIndex: 0
             };
             groupAnimations(newTab.specData);
+            ensureLayerIds(newTab.specData);
             tabs.push(newTab);
             currentTabIndex = 0;
             syncLegacyVariables();
@@ -4651,6 +4692,7 @@
           currentVideoIndex: 0
         };
         groupAnimations(newTab.specData);
+        ensureLayerIds(newTab.specData);
         tabs.push(newTab);
         currentTabIndex = 0;
         syncLegacyVariables();
@@ -5412,6 +5454,7 @@
             currentVideoIndex: 0
           };
           groupAnimations(newTab.specData);
+          ensureLayerIds(newTab.specData);
           tabs.push(newTab);
           currentTabIndex = 0;
           syncLegacyVariables();
@@ -5420,6 +5463,7 @@
           setCurrentSpecData(data);
           specData = data; // Also update legacy variable
           groupAnimations(getCurrentSpecData()); // Group matching X/Y Position and Width/Height
+          ensureLayerIds(getCurrentSpecData());
         }
 
         viewDuration = null; // Reset zoom level for new spec
@@ -6036,15 +6080,15 @@
 
       const timelineContent = document.getElementById('timelineContent');
 
-      // Build map of parent name -> child layers for nesting
+      // Build map of parent ID -> child layers for nesting (using unique IDs to avoid name collisions)
       const childrenByParent = {};
       specData.layers.forEach((layer, index) => {
-        if (layer.parenting) {
-          const parentName = layer.parenting.parentName;
-          if (!childrenByParent[parentName]) {
-            childrenByParent[parentName] = [];
+        if (layer.parenting && layer.parenting.parentId) {
+          const parentId = layer.parenting.parentId;
+          if (!childrenByParent[parentId]) {
+            childrenByParent[parentId] = [];
           }
-          childrenByParent[parentName].push({ layer, index });
+          childrenByParent[parentId].push({ layer, index });
         }
       });
 
@@ -6108,7 +6152,7 @@
         }
 
         // Check if this layer has children
-        const children = childrenByParent[layer.layerName] || [];
+        const children = childrenByParent[layer.id] || [];
         const hasChildren = children.length > 0;
 
         // Determine divider class - skip divider if previous visible layer was our parent
@@ -6287,7 +6331,7 @@
         }
 
         // Check if this layer has children
-        const children = childrenByParent[layer.layerName] || [];
+        const children = childrenByParent[layer.id] || [];
         const hasChildren = children.length > 0;
 
         // Layer header row (empty cells to match left column layer header)
@@ -6586,6 +6630,8 @@
           let isValidDrop = false;
           let isDropOnLayerHeader = false;
           let isChildLayerDrop = false;
+          let isParentingDrop = false;  // Layer being dropped into another section to become child
+          let isUnparentingDrop = false;  // Child being dropped on divider to become standalone
 
           if (draggedType === 'animation' && targetType === 'animation') {
             isValidDrop = true;
@@ -6594,12 +6640,35 @@
             isDropOnLayerHeader = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
+          } else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
+            // Layer dropped on animation or child-layer row = parenting
+            // Only allow if dragged layer is not a parent itself
+            if (!layerHasChildren(draggedLayerIndex)) {
+              // Find which parent section this target belongs to
+              let targetParentIndex = targetLayerIndex;
+              if (targetType === 'child-layer') {
+                targetParentIndex = parseInt(label.dataset.parentLayer);
+              } else {
+                // Animation row - layerIndex is the parent
+                targetParentIndex = targetLayerIndex;
+              }
+              // Can't parent to self or to a child layer
+              const targetParent = specData.layers[targetParentIndex];
+              if (targetParentIndex !== draggedLayerIndex && !targetParent.parenting) {
+                isValidDrop = true;
+                isParentingDrop = true;
+              }
+            }
           } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
             // Child layers can only be reordered within same parent
             if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
               isValidDrop = true;
               isChildLayerDrop = true;
             }
+          } else if (draggedType === 'child-layer' && targetType === 'layer') {
+            // Child dropped on layer header = un-parenting
+            isValidDrop = true;
+            isUnparentingDrop = true;
           }
 
           if (!isValidDrop) return;
@@ -6617,6 +6686,12 @@
 
           if (isDropOnLayerHeader) {
             wouldChangePosition = draggedLayerIndex !== targetLayerIndex;
+          } else if (isParentingDrop) {
+            // Parenting always changes state (layer becomes child)
+            wouldChangePosition = true;
+          } else if (isUnparentingDrop) {
+            // Un-parenting: allow drop anywhere on a layer header (section divider)
+            wouldChangePosition = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             const distanceFromTop = e.clientY - rect.top;
             if (distanceFromTop <= 10) {
@@ -6668,6 +6743,14 @@
           if (isDropOnLayerHeader) {
             label.classList.add('drag-over-bottom');
             if (rightRow) rightRow.classList.add('drag-over-bottom');
+          } else if (isParentingDrop) {
+            // Show indicator on the row being hovered (will become child of its section)
+            label.classList.add('drag-over-bottom');
+            if (rightRow) rightRow.classList.add('drag-over-bottom');
+          } else if (isUnparentingDrop) {
+            // Show indicator at top of section header for un-parenting
+            label.classList.add('drag-over-top');
+            if (rightRow) rightRow.classList.add('drag-over-top');
           } else if (draggedType === 'layer' && targetType === 'layer') {
             const distanceFromTop = e.clientY - rect.top;
             if (distanceFromTop <= 10) {
@@ -6715,10 +6798,26 @@
           const midpoint = rect.top + rect.height / 2;
           const dropPosition = e.clientY < midpoint ? 'before' : 'after';
 
-          // For layer drops: only allow drops in top half (before)
+          // For layer drops on layer headers: only allow drops in top half (before)
           if (draggedType === 'layer' && targetType === 'layer') {
             if (dropPosition === 'after') return;
             performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
+          }
+          // For layer drops on animation/child-layer rows: convert to child (parenting)
+          else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
+            // Find the parent section for this target
+            let targetParentIndex = targetLayerIndex;
+            if (targetType === 'child-layer') {
+              targetParentIndex = parseInt(label.dataset.parentLayer);
+            }
+            // Only parent if dragged layer is not already a parent
+            if (!layerHasChildren(draggedLayerIndex)) {
+              convertLayerToChild(draggedLayerIndex, targetParentIndex);
+            }
+          }
+          // For child-layer drops on layer headers: convert to standalone (un-parenting)
+          else if (draggedType === 'child-layer' && targetType === 'layer') {
+            convertChildToStandalone(draggedLayerIndex, targetLayerIndex, 'before');
           }
           // For dropping animations on layer headers
           else if (draggedType === 'animation' && targetType === 'layer') {
@@ -6780,10 +6879,10 @@
           const targetLayer = specData.layers[targetLayerIndex];
 
           // Check if this animation's layer is a child of the same parent
-          if (!targetLayer.parenting) return;
-          const targetParentName = targetLayer.parenting.parentName;
+          if (!targetLayer.parenting || !targetLayer.parenting.parentId) return;
+          const targetParentId = targetLayer.parenting.parentId;
           const draggedLayer = specData.layers[draggedLayerIndex];
-          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentId !== targetParentId) return;
 
           // Only respond to bottom zone of the LAST animation of the child
           const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
@@ -6822,10 +6921,10 @@
           const targetLayer = specData.layers[targetLayerIndex];
 
           // Verify same parent
-          if (!targetLayer.parenting) return;
-          const targetParentName = targetLayer.parenting.parentName;
+          if (!targetLayer.parenting || !targetLayer.parenting.parentId) return;
+          const targetParentId = targetLayer.parenting.parentId;
           const draggedLayer = specData.layers[draggedLayerIndex];
-          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentId !== targetParentId) return;
 
           // Verify it's the last animation of this child
           const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
@@ -6855,13 +6954,16 @@
       const bottomTrack = document.querySelector('.timeline-bottom-track');
       if (bottomDivider && bottomTrack) {
         bottomDivider.addEventListener('dragover', (e) => {
-          if (!draggedElement || draggedType !== 'layer') return;
+          // Allow layer drops (reorder) and child-layer drops (un-parent)
+          if (!draggedElement || (draggedType !== 'layer' && draggedType !== 'child-layer')) return;
 
-          // Check if dragged layer is already the last layer
-          const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
-          if (isLastLayer) {
-            // Don't show indicator if already at the end
-            return;
+          // Check if dragged layer is already the last layer (for regular layers)
+          if (draggedType === 'layer') {
+            const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
+            if (isLastLayer) {
+              // Don't show indicator if already at the end
+              return;
+            }
           }
 
           e.preventDefault();
@@ -6882,10 +6984,15 @@
           e.preventDefault();
           e.stopPropagation();
 
-          if (!draggedElement || draggedType !== 'layer') return;
+          if (!draggedElement || (draggedType !== 'layer' && draggedType !== 'child-layer')) return;
 
-          // Move layer to end
-          performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+          if (draggedType === 'child-layer') {
+            // Un-parent and move to end
+            convertChildToStandalone(draggedLayerIndex, specData.layers.length - 1, 'after');
+          } else {
+            // Move layer to end
+            performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+          }
 
           // Clear indicators
           document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
@@ -6902,10 +7009,12 @@
 
         // Also handle drag events on the right side (bottom track)
         bottomTrack.addEventListener('dragover', (e) => {
-          if (!draggedElement || draggedType !== 'layer') return;
+          if (!draggedElement || (draggedType !== 'layer' && draggedType !== 'child-layer')) return;
 
-          const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
-          if (isLastLayer) return;
+          if (draggedType === 'layer') {
+            const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
+            if (isLastLayer) return;
+          }
 
           e.preventDefault();
           e.stopPropagation();
@@ -6923,9 +7032,13 @@
           e.preventDefault();
           e.stopPropagation();
 
-          if (!draggedElement || draggedType !== 'layer') return;
+          if (!draggedElement || (draggedType !== 'layer' && draggedType !== 'child-layer')) return;
 
-          performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+          if (draggedType === 'child-layer') {
+            convertChildToStandalone(draggedLayerIndex, specData.layers.length - 1, 'after');
+          } else {
+            performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+          }
 
           document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
             l.classList.remove('drag-over-top', 'drag-over-bottom');
@@ -7080,6 +7193,7 @@
 
           // Create new layer with one default animation
           const newLayer = {
+            id: generateLayerId(),
             layerName: "New section",
             animations: [
               {
@@ -7642,10 +7756,11 @@ ${cleanedScript}
       currentTabIndex = 0;
       nextTabId = tabs.length > 0 ? Math.max(...tabs.map(t => t.id)) + 1 : 1;
 
-      // Group animations for all tabs
+      // Group animations and ensure layer IDs for all tabs
       tabs.forEach(tab => {
         if (tab.specData) {
           groupAnimations(tab.specData);
+          ensureLayerIds(tab.specData);
         }
       });
 
@@ -8765,15 +8880,15 @@ ${cleanedScript}
       // Left column - labels (no playhead-time, it's in header now)
       html += `<div class="timeline-labels-column">`;
 
-      // Build map of children by parent name for nesting
+      // Build map of children by parent ID for nesting (using unique IDs to avoid name collisions)
       const childrenByParent = {};
       specData.layers.forEach((layer, index) => {
-        if (layer.parenting) {
-          const parentName = layer.parenting.parentName;
-          if (!childrenByParent[parentName]) {
-            childrenByParent[parentName] = [];
+        if (layer.parenting && layer.parenting.parentId) {
+          const parentId = layer.parenting.parentId;
+          if (!childrenByParent[parentId]) {
+            childrenByParent[parentId] = [];
           }
-          childrenByParent[parentName].push({ layer, index });
+          childrenByParent[parentId].push({ layer, index });
         }
       });
 
@@ -8786,7 +8901,7 @@ ${cleanedScript}
         }
 
         // Check if this layer has children
-        const children = childrenByParent[layer.layerName] || [];
+        const children = childrenByParent[layer.id] || [];
         const hasChildren = children.length > 0;
 
         // Layer header label (add divider class if not first layer)
@@ -9051,7 +9166,7 @@ ${cleanedScript}
         }
 
         // Check if this layer has children
-        const children = childrenByParent[layer.layerName] || [];
+        const children = childrenByParent[layer.id] || [];
 
         // Empty track for layer header (add divider class if not first layer)
         const dividerClass = layerIndex > 0 ? ' has-divider' : '';
@@ -9399,9 +9514,10 @@ ${cleanedScript}
 
           // Check if this drop is valid
           let isValidDrop = false;
-          let isLastLayerParam = false;
           let isDropOnLayerHeader = false;
           let isChildLayerDrop = false;
+          let isParentingDrop = false;  // Layer being dropped into another section to become child
+          let isUnparentingDrop = false;  // Child being dropped on divider to become standalone
           const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
 
           if (draggedType === 'animation' && targetType === 'animation') {
@@ -9413,15 +9529,33 @@ ${cleanedScript}
             isDropOnLayerHeader = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
+          } else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
+            // Layer dropped on animation or child-layer row = parenting
+            // Only allow if dragged layer is not a parent itself
+            if (!layerHasChildren(draggedLayerIndex)) {
+              // Find which parent section this target belongs to
+              let targetParentIndex = targetLayerIndex;
+              if (targetType === 'child-layer') {
+                targetParentIndex = parseInt(label.dataset.parentLayer);
+              }
+              // Can't parent to self or to a child layer
+              const targetParent = specData.layers[targetParentIndex];
+              if (targetParentIndex !== draggedLayerIndex && !targetParent.parenting) {
+                isValidDrop = true;
+                isParentingDrop = true;
+              }
+            }
           } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
             // Child layers can only be reordered within same parent
             if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
               isValidDrop = true;
               isChildLayerDrop = true;
             }
+          } else if (draggedType === 'child-layer' && targetType === 'layer') {
+            // Child dropped on layer header = un-parenting
+            isValidDrop = true;
+            isUnparentingDrop = true;
           }
-          // Note: We don't allow dropping layers on animation rows anymore
-          // because the bottom divider provides a clearer drop target for that
 
           if (!isValidDrop) return;
 
@@ -9442,15 +9576,12 @@ ${cleanedScript}
               // Same layer - only valid if not already first
               wouldChangePosition = draggedAnimIndex !== 0;
             }
-          } else if (isLastLayerParam) {
-            const targetAnimInLayer = parseInt(label.dataset.animInLayer);
-            const lastAnimIndex = specData.layers[targetLayerIndex].animations.length - 1;
-            // Check if dropping on last param row would change position
-            if (targetAnimInLayer === lastAnimIndex) {
-              let targetIndex = targetLayerIndex + 1;
-              if (draggedLayerIndex < targetIndex) targetIndex--;
-              wouldChangePosition = draggedLayerIndex !== targetIndex;
-            }
+          } else if (isParentingDrop) {
+            // Parenting always changes state (layer becomes child)
+            wouldChangePosition = true;
+          } else if (isUnparentingDrop) {
+            // Un-parenting: allow drop anywhere on a layer header
+            wouldChangePosition = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             // Only very close to the top divider line is valid for layer drops (within 10px)
             const distanceFromTop = e.clientY - rect.top;
@@ -9517,21 +9648,26 @@ ${cleanedScript}
               allTracks[labelIndex].classList.add('drag-over-bottom');
             }
           }
-          // For layers dropping on last layer parameters: only show bottom indicator
-          else if (isLastLayerParam) {
-            const targetAnimInLayer = parseInt(label.dataset.animInLayer);
-            const lastAnimIndex = specData.layers[targetLayerIndex].animations.length - 1;
-            // Only show indicator on the last parameter row, and not on the dragged layer's own parameters
-            if (targetAnimInLayer === lastAnimIndex && targetLayerIndex !== draggedLayerIndex) {
-              // Find corresponding track and add indicator to both
-              const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
-              const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
-              const labelIndex = allLabels.indexOf(label);
+          // For parenting drops: show indicator on target row
+          else if (isParentingDrop) {
+            const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+            const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+            const labelIndex = allLabels.indexOf(label);
 
-              label.classList.add('drag-over-bottom');
-              if (labelIndex >= 0 && allTracks[labelIndex]) {
-                allTracks[labelIndex].classList.add('drag-over-bottom');
-              }
+            label.classList.add('drag-over-bottom');
+            if (labelIndex >= 0 && allTracks[labelIndex]) {
+              allTracks[labelIndex].classList.add('drag-over-bottom');
+            }
+          }
+          // For un-parenting drops: show indicator at top of layer header
+          else if (isUnparentingDrop) {
+            const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+            const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+            const labelIndex = allLabels.indexOf(label);
+
+            label.classList.add('drag-over-top');
+            if (labelIndex >= 0 && allTracks[labelIndex]) {
+              allTracks[labelIndex].classList.add('drag-over-top');
             }
           }
           // For layers: section headers only respond very close to the divider line at the top
@@ -9616,25 +9752,30 @@ ${cleanedScript}
           const midpoint = rect.top + rect.height / 2;
           let dropPosition = e.clientY < midpoint ? 'before' : 'after';
 
-          // Check if dropping layer on last layer's parameter row (to drop at bottom)
-          const isLastLayer = targetLayerIndex === specData.layers.length - 1;
-          const isLastLayerParam = draggedType === 'layer' && targetType === 'animation' && isLastLayer;
-
-          if (isLastLayerParam) {
-            // Dropping on last layer's parameter row = insert after last layer
-            const lastAnimInLayer = specData.layers[targetLayerIndex].animations.length - 1;
-            if (targetAnimIndex === lastAnimInLayer) {
-              performLayerMove(draggedLayerIndex, targetLayerIndex, 'after');
-            }
-          }
           // For layer drops: only allow drops in top half (before)
-          else if (draggedType === 'layer' && targetType === 'layer') {
+          if (draggedType === 'layer' && targetType === 'layer') {
             if (dropPosition === 'after') {
               // Don't allow drops on bottom half of any section header
               return;
             }
             // Moving a layer
             performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
+          }
+          // For layer drops on animation/child-layer rows: convert to child (parenting)
+          else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
+            // Find the parent section for this target
+            let targetParentIndex = targetLayerIndex;
+            if (targetType === 'child-layer') {
+              targetParentIndex = parseInt(label.dataset.parentLayer);
+            }
+            // Only parent if dragged layer is not already a parent
+            if (!layerHasChildren(draggedLayerIndex)) {
+              convertLayerToChild(draggedLayerIndex, targetParentIndex);
+            }
+          }
+          // For child-layer drops on layer headers: convert to standalone (un-parenting)
+          else if (draggedType === 'child-layer' && targetType === 'layer') {
+            convertChildToStandalone(draggedLayerIndex, targetLayerIndex, 'before');
           }
           // For dropping animations on layer headers (empty sections or add to top)
           else if (draggedType === 'animation' && targetType === 'layer') {
@@ -9687,10 +9828,10 @@ ${cleanedScript}
             const targetLayer = specData.layers[targetLayerIndex];
 
             // Verify same parent and it's the last animation
-            if (targetLayer.parenting) {
-              const targetParentName = targetLayer.parenting.parentName;
+            if (targetLayer.parenting && targetLayer.parenting.parentId) {
+              const targetParentId = targetLayer.parenting.parentId;
               const draggedLayer = specData.layers[draggedLayerIndex];
-              if (draggedLayer.parenting && draggedLayer.parenting.parentName === targetParentName) {
+              if (draggedLayer.parenting && draggedLayer.parenting.parentId === targetParentId) {
                 const isLastAnim = targetAnimIndexInLayer === targetLayer.animations.length - 1;
                 if (isLastAnim) {
                   performChildLayerMove(draggedLayerIndex, targetLayerIndex, 'after');
@@ -9723,10 +9864,10 @@ ${cleanedScript}
           const targetLayer = specData.layers[targetLayerIndex];
 
           // Check if this animation's layer is a child of the same parent
-          if (!targetLayer.parenting) return;
-          const targetParentName = targetLayer.parenting.parentName;
+          if (!targetLayer.parenting || !targetLayer.parenting.parentId) return;
+          const targetParentId = targetLayer.parenting.parentId;
           const draggedLayer = specData.layers[draggedLayerIndex];
-          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentId !== targetParentId) return;
 
           // Only respond to bottom zone of the LAST animation of the child
           const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
@@ -9767,10 +9908,10 @@ ${cleanedScript}
           const targetLayer = specData.layers[targetLayerIndex];
 
           // Verify same parent
-          if (!targetLayer.parenting) return;
-          const targetParentName = targetLayer.parenting.parentName;
+          if (!targetLayer.parenting || !targetLayer.parenting.parentId) return;
+          const targetParentId = targetLayer.parenting.parentId;
           const draggedLayer = specData.layers[draggedLayerIndex];
-          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentId !== targetParentId) return;
 
           // Verify it's the last animation of this child
           const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
@@ -9801,13 +9942,16 @@ ${cleanedScript}
       const bottomTrack = document.querySelector('.timeline-bottom-track');
       if (bottomDivider && bottomTrack) {
         bottomDivider.addEventListener('dragover', (e) => {
-          if (!draggedElement || draggedType !== 'layer') return;
+          // Allow layer drops (reorder) and child-layer drops (un-parent)
+          if (!draggedElement || (draggedType !== 'layer' && draggedType !== 'child-layer')) return;
 
-          // Check if dragged layer is already the last layer
-          const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
-          if (isLastLayer) {
-            // Don't show indicator if already at the end
-            return;
+          // Check if dragged layer is already the last layer (only for regular layers)
+          if (draggedType === 'layer') {
+            const isLastLayer = draggedLayerIndex === specData.layers.length - 1;
+            if (isLastLayer) {
+              // Don't show indicator if already at the end
+              return;
+            }
           }
 
           e.preventDefault();
@@ -9828,10 +9972,15 @@ ${cleanedScript}
           e.preventDefault();
           e.stopPropagation();
 
-          if (!draggedElement || draggedType !== 'layer') return;
+          if (!draggedElement || (draggedType !== 'layer' && draggedType !== 'child-layer')) return;
 
-          // Move layer to end
-          performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+          if (draggedType === 'child-layer') {
+            // Un-parent the child layer and move to end
+            convertChildToStandalone(draggedLayerIndex, specData.layers.length - 1, 'after');
+          } else {
+            // Move layer to end
+            performLayerMove(draggedLayerIndex, specData.layers.length - 1, 'after');
+          }
 
           // Clear indicators
           document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
@@ -9976,6 +10125,7 @@ ${cleanedScript}
 
           // Create new layer with one default animation
           const newLayer = {
+            id: generateLayerId(),
             layerName: "New section",
             animations: [
               {
@@ -10836,6 +10986,92 @@ ${cleanedScript}
       }
     }
 
+    // Check if a layer has children (is a parent)
+    function layerHasChildren(layerIndex) {
+      const layer = specData.layers[layerIndex];
+      if (!layer || !layer.id) return false;
+      return specData.layers.some(l => l.parenting && l.parenting.parentId === layer.id);
+    }
+
+    // Convert a standalone layer to a child of another layer
+    function convertLayerToChild(layerIndex, parentLayerIndex) {
+      const layer = specData.layers[layerIndex];
+      const parentLayer = specData.layers[parentLayerIndex];
+      if (!layer || !parentLayer || !parentLayer.id) return;
+
+      saveSnapshot();
+
+      // Set parenting info using parent's unique ID
+      layer.parenting = {
+        parentId: parentLayer.id,
+        parentName: parentLayer.layerName, // Keep for display/export compatibility
+        animatingProperties: []
+      };
+
+      // Find position: after the last child of the parent, or after parent's last animation row
+      // Children are rendered after their parent in the layer array, so find the right spot
+      let insertAfterIndex = parentLayerIndex;
+
+      // Find all existing children of this parent and get the last one's index
+      specData.layers.forEach((l, idx) => {
+        if (l.parenting && l.parenting.parentId === parentLayer.id) {
+          if (idx > insertAfterIndex) {
+            insertAfterIndex = idx;
+          }
+        }
+      });
+
+      // Remove layer from current position
+      const [removed] = specData.layers.splice(layerIndex, 1);
+
+      // Adjust insert index if we removed from before it
+      if (layerIndex < insertAfterIndex) {
+        insertAfterIndex--;
+      }
+
+      // Insert after the last child (or after parent if no children)
+      specData.layers.splice(insertAfterIndex + 1, 0, removed);
+
+      // Re-render
+      if (viewMode === 'table') {
+        renderTableView();
+      } else {
+        renderTimeline();
+      }
+    }
+
+    // Convert a child layer to a standalone layer
+    function convertChildToStandalone(layerIndex, newPositionIndex, position) {
+      const layer = specData.layers[layerIndex];
+      if (!layer || !layer.parenting) return;
+
+      saveSnapshot();
+
+      // Remove parenting info
+      delete layer.parenting;
+      delete layer.parentingDescription;
+      delete layer.parentingColor;
+
+      // Calculate actual target index
+      let targetIndex = newPositionIndex;
+      if (position === 'after') targetIndex++;
+      if (layerIndex < targetIndex) targetIndex--;
+
+      if (layerIndex !== targetIndex) {
+        // Remove from old position
+        const [removed] = specData.layers.splice(layerIndex, 1);
+        // Insert at new position
+        specData.layers.splice(targetIndex, 0, removed);
+      }
+
+      // Re-render
+      if (viewMode === 'table') {
+        renderTableView();
+      } else {
+        renderTimeline();
+      }
+    }
+
     // Setup playhead dragging
     let playheadListenersAdded = false;
     function setupPlayheadDragging() {
@@ -11646,14 +11882,19 @@ ${cleanedScript}
         return;
       }
 
-      // Set the parent
+      // Find the parent layer to get its ID
+      const parentLayer = specData.layers.find(l => l.layerName === parentName);
+      if (!parentLayer || !parentLayer.id) return;
+
+      // Set the parent using unique ID
       layer.parenting = {
-        parentName: parentName,
+        parentId: parentLayer.id,
+        parentName: parentName, // Keep for display/export compatibility
         animatingProperties: layer.animations.map(a => a.property)
       };
 
       // Find the parent layer's index
-      const parentIndex = specData.layers.findIndex(l => l.layerName === parentName);
+      const parentIndex = specData.layers.findIndex(l => l.id === parentLayer.id);
       if (parentIndex !== -1 && parentIndex !== layerIndex) {
         // Remove the layer from its current position
         const [movedLayer] = specData.layers.splice(layerIndex, 1);
@@ -11661,7 +11902,7 @@ ${cleanedScript}
         // Find where to insert it (right after the parent and any existing children)
         let insertIndex = parentIndex + 1;
         while (insertIndex < specData.layers.length &&
-               specData.layers[insertIndex].parenting?.parentName === parentName) {
+               specData.layers[insertIndex].parenting?.parentId === parentLayer.id) {
           insertIndex++;
         }
 
@@ -11706,9 +11947,14 @@ ${cleanedScript}
         delete layer.parentingDescription;
         delete layer.parentingColor;
       } else {
-        // Set the new parent
+        // Find the new parent layer to get its ID
+        const newParentLayer = specData.layers.find(l => l.layerName === newParentName);
+        if (!newParentLayer || !newParentLayer.id) return;
+
+        // Set the new parent using unique ID
         layer.parenting = {
-          parentName: newParentName,
+          parentId: newParentLayer.id,
+          parentName: newParentName, // Keep for display/export compatibility
           animatingProperties: layer.animations.map(a => a.property)
         };
       }
@@ -11716,12 +11962,13 @@ ${cleanedScript}
       // Reorder layers if needed
       if (newParentName && newParentName !== '') {
         // Moving to a parent - position after parent and its children
-        const parentIndex = specData.layers.findIndex(l => l.layerName === newParentName);
-        if (parentIndex !== -1 && parentIndex !== layerIndex) {
+        const newParentLayer = specData.layers.find(l => l.layerName === newParentName);
+        const parentIndex = newParentLayer ? specData.layers.findIndex(l => l.id === newParentLayer.id) : -1;
+        if (parentIndex !== -1 && parentIndex !== layerIndex && newParentLayer) {
           const [movedLayer] = specData.layers.splice(layerIndex, 1);
           let insertIndex = parentIndex + 1;
           while (insertIndex < specData.layers.length &&
-                 specData.layers[insertIndex].parenting?.parentName === newParentName) {
+                 specData.layers[insertIndex].parenting?.parentId === newParentLayer.id) {
             insertIndex++;
           }
           if (layerIndex < insertIndex) insertIndex--;
@@ -11759,16 +12006,17 @@ ${cleanedScript}
       if (!layer) return;
 
       const layerName = layer.layerName;
+      const layerId = layer.id;
       if (!confirm(`Delete "${layerName}" section and all its animations?`)) {
         return;
       }
 
       saveSnapshot();
 
-      // Find and delete any child layers first
+      // Find and delete any child layers first (using parentId for accurate matching)
       const childrenToDelete = specData.layers
         .map((l, i) => ({ layer: l, index: i }))
-        .filter(item => item.layer.parenting?.parentName === layerName)
+        .filter(item => item.layer.parenting?.parentId === layerId)
         .map(item => item.index)
         .sort((a, b) => b - a); // Sort descending to delete from end first
 
@@ -11777,7 +12025,7 @@ ${cleanedScript}
       });
 
       // Recalculate the layer index after child deletions
-      const newLayerIndex = specData.layers.findIndex(l => l.layerName === layerName);
+      const newLayerIndex = specData.layers.findIndex(l => l.id === layerId);
       if (newLayerIndex !== -1) {
         specData.layers.splice(newLayerIndex, 1);
       }
@@ -11797,10 +12045,11 @@ ${cleanedScript}
 
       const detailPanel = document.getElementById('detailPanel');
       const parentName = layer.parenting.parentName;
+      const parentId = layer.parenting.parentId;
 
       // Get inherited properties for the title display (LayerName › Position, Scale)
       const inheritableProps = ['position', 'scale', 'rotation', 'opacity'];
-      const parentLayer = specData.layers.find(l => l.layerName === parentName);
+      const parentLayer = parentId ? specData.layers.find(l => l.id === parentId) : specData.layers.find(l => l.layerName === parentName);
       const allParentProps = parentLayer ? parentLayer.animations.map(a => a.property.toLowerCase()) : [];
       const animatingProps = inheritableProps.filter(p => allParentProps.includes(p));
       const capsProps = animatingProps.map(p => p.charAt(0).toUpperCase() + p.slice(1));
