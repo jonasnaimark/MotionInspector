@@ -6317,7 +6317,6 @@
 
           // Child layer header row with attachment info in description
           const parentName = layer.layerName;
-          // Table view: simple "Attached to [Parent]" (full description with "inherits" only in info panel)
           const tableAttachedDescription = `Attached to ${parentName}`;
           html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}${firstChildClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-drag-type="child-layer" data-parent-layer="${layerIndex}" data-parent-name="${parentName}">
             <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${tableAttachedDescription}</span></div>
@@ -8665,6 +8664,11 @@ ${cleanedScript}
               // Update end value - no validation
               anim.customEndValue = newValue;
             } else if (fieldName === 'property') {
+              // Lock in the current auto-generated description before changing property name
+              // This prevents the description from changing when the property name is edited
+              if (anim.description === undefined || anim.description === null) {
+                anim.description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, null, layer.layerName);
+              }
               // Update property name - no validation
               anim.property = newValue;
             } else {
@@ -11794,27 +11798,17 @@ ${cleanedScript}
       const detailPanel = document.getElementById('detailPanel');
       const parentName = layer.parenting.parentName;
 
-      // Find parent layer and get its inheritable animating properties (only these 4 matter for parenting)
+      // Get inherited properties for the title display (LayerName › Position, Scale)
       const inheritableProps = ['position', 'scale', 'rotation', 'opacity'];
       const parentLayer = specData.layers.find(l => l.layerName === parentName);
       const allParentProps = parentLayer ? parentLayer.animations.map(a => a.property.toLowerCase()) : [];
       const animatingProps = inheritableProps.filter(p => allParentProps.includes(p));
       const capsProps = animatingProps.map(p => p.charAt(0).toUpperCase() + p.slice(1));
-      const propsDisplay = capsProps.join(', '); // Property field: always commas
-      const propsDescDisplay = capsProps.length === 2 // Description: "and" for 2 props
-        ? capsProps.join(' and ')
-        : capsProps.join(', ');
+      const propsDisplay = capsProps.join(', ');
 
-      // Default description includes inherited properties (capitalized)
-      const defaultDescription = propsDescDisplay
-        ? `Attached to ${parentName}, inherits ${propsDescDisplay}`
-        : `Attached to ${parentName}`;
-      // Only use custom description if it's truly customized (not just old default format)
-      const oldDefaultPattern = `Attached to ${parentName}`;
-      const hasCustomDesc = layer.parentingDescription &&
-        layer.parentingDescription !== oldDefaultPattern &&
-        !layer.parentingDescription.startsWith('Attached to "');
-      const description = hasCustomDesc ? layer.parentingDescription : defaultDescription;
+      // Simple default description - user can customize if needed
+      const defaultDescription = `Attached to ${parentName}`;
+      const description = layer.parentingDescription || defaultDescription;
 
       // Use layer's custom color or a default grey
       const videoId = getCurrentVideoId();
