@@ -6779,21 +6779,20 @@
               wouldChangePosition = draggedAnimIndex !== targetIndex;
             }
           } else if (isChildLayerDrop) {
-            // Child layer reordering
-            const distanceFromTop = e.clientY - rect.top;
+            // Child layer reordering - drop zone is entire header (drop before) or bottom 10px for last child
             const distanceFromBottom = rect.bottom - e.clientY;
             const isLastChild = !label.classList.contains('has-siblings');
             const targetLayer = specData.layers[targetLayerIndex];
             const hasNoAnimations = targetLayer.animations.length === 0;
 
-            if (distanceFromTop <= 10) {
-              // Dropping before target - check if position would change
-              let targetIndex = targetLayerIndex;
+            if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Last child with no animations - drop after
+              let targetIndex = targetLayerIndex + 1;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
-            } else if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
-              // Last child with no animations - allow bottom drop on header
-              let targetIndex = targetLayerIndex + 1;
+            } else {
+              // Drop before target - allow from entire header area
+              let targetIndex = targetLayerIndex;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
             }
@@ -6827,8 +6826,7 @@
               if (rightRow) rightRow.classList.add('drag-over-top');
             }
           } else if (isChildLayerDrop) {
-            // Child layer drops
-            const distanceFromTop = e.clientY - rect.top;
+            // Child layer drops - indicator always at top (in the gap area)
             const distanceFromBottom = rect.bottom - e.clientY;
             const isLastChild = !label.classList.contains('has-siblings');
             const targetLayer = specData.layers[targetLayerIndex];
@@ -6839,7 +6837,7 @@
               label.classList.add('drag-over-bottom');
               if (rightRow) rightRow.classList.add('drag-over-bottom');
             } else {
-              // Top indicator only
+              // Top indicator - shows in the gap above this child
               label.classList.add('drag-over-top');
               if (rightRow) rightRow.classList.add('drag-over-top');
             }
@@ -9643,21 +9641,20 @@ ${cleanedScript}
               wouldChangePosition = draggedAnimIndex !== targetIndex;
             }
           } else if (isChildLayerDrop) {
-            // Child layer reordering
-            const distanceFromTop = e.clientY - rect.top;
+            // Child layer reordering - drop zone is entire header (drop before) or bottom 10px for last child
             const distanceFromBottom = rect.bottom - e.clientY;
             const isLastChild = !label.classList.contains('has-siblings');
             const targetLayer = specData.layers[targetLayerIndex];
             const hasNoAnimations = targetLayer.animations.length === 0;
 
-            if (distanceFromTop <= 10) {
-              // Dropping before target - check if position would change
-              let targetIndex = targetLayerIndex;
+            if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Last child with no animations - drop after
+              let targetIndex = targetLayerIndex + 1;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
-            } else if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
-              // Last child with no animations - allow bottom drop on header
-              let targetIndex = targetLayerIndex + 1;
+            } else {
+              // Drop before target - allow from entire header area
+              let targetIndex = targetLayerIndex;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
             }
@@ -9727,9 +9724,8 @@ ${cleanedScript}
               }
             }
           }
-          // For child-layer drops: only add indicator to track (not label) to avoid double lines
+          // For child-layer drops: indicator at top (in gap area) or bottom for last child
           else if (isChildLayerDrop) {
-            const distanceFromTop = e.clientY - rect.top;
             const distanceFromBottom = rect.bottom - e.clientY;
             const isLastChild = !label.classList.contains('has-siblings');
             const targetLayer = specData.layers[targetLayerIndex];
@@ -9746,7 +9742,7 @@ ${cleanedScript}
                 allTracks[labelIndex].classList.add('drag-over-bottom');
               }
             } else {
-              // Top indicator only
+              // Top indicator - shows in the gap above this child
               label.classList.add('drag-over-top');
               if (labelIndex >= 0 && allTracks[labelIndex]) {
                 allTracks[labelIndex].classList.add('drag-over-top');
