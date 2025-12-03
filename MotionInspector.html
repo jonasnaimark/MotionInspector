@@ -2544,6 +2544,8 @@
       background: #1a1a1a;
       color: #bbb;
       cursor: pointer;
+      min-width: fit-content;
+      white-space: nowrap;
     }
 
     /* Fading dashed border using ::before with mask */
@@ -3297,7 +3299,7 @@
           if (fitToShapeAnim && fitToShapeAnim.fitToShape) {
             const alignment = getAlignmentText(fitToShapeAnim.fitToShape.alignment);
             const scaleTo = getScaleToText(fitToShapeAnim.fitToShape.scaleTo);
-            layer.parentingDescription = `Scales to fit ${scaleTo} of "${fitToShapeAnim.fitToShape.containerLayerName}" — aligned ${alignment}`;
+            layer.parentingDescription = `Scales to fit ${scaleTo} of ${fitToShapeAnim.fitToShape.containerLayerName} — aligned ${alignment}`;
           }
         }
       });
