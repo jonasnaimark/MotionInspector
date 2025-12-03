@@ -18,7 +18,8 @@
       background: #171717;
       color: #e0e0e0;
       padding: 20px;
-      overflow: auto;
+      overflow-x: auto;
+      overflow-y: hidden;
       user-select: none;
       -webkit-user-select: none;
       -moz-user-select: none;
@@ -6218,25 +6219,10 @@
 
           // Child layer header row with attachment info in description
           const parentName = layer.layerName;
-          // Get inheritable animating properties from parent (only these 4 matter for parenting)
-          const inheritableProps = ['position', 'scale', 'rotation', 'opacity'];
-          const allParentProps = layer.animations.map(a => a.property.toLowerCase());
-          const parentAnimatingProps = inheritableProps.filter(p => allParentProps.includes(p));
-          const childCapsProps = parentAnimatingProps.map(p => p.charAt(0).toUpperCase() + p.slice(1));
-          const childPropsDescDisplay = childCapsProps.length === 2
-            ? childCapsProps.join(' and ')
-            : childCapsProps.join(', ');
-          const defaultChildDesc = childPropsDescDisplay
-            ? `Attached to ${parentName}, inherits ${childPropsDescDisplay}`
-            : `Attached to ${parentName}`;
-          // Only use custom description if it's truly customized (not just old default format)
-          const oldDefaultPattern = `Attached to ${parentName}`;
-          const hasCustomDesc = childLayer.parentingDescription &&
-            childLayer.parentingDescription !== oldDefaultPattern &&
-            !childLayer.parentingDescription.startsWith('Attached to "');
-          const attachedDescription = hasCustomDesc ? childLayer.parentingDescription : defaultChildDesc;
+          // Table view: simple "Attached to [Parent]" (full description with "inherits" only in info panel)
+          const tableAttachedDescription = `Attached to ${parentName}`;
           html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}${firstChildClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-parent-name="${parentName}">
-            <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${attachedDescription}</span></div>
+            <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${tableAttachedDescription}</span></div>
             <div class="table-cell table-cell--delay">—</div>
             <div class="table-cell table-cell--duration">—</div>
             <div class="table-cell table-cell--easing">—</div>
@@ -8840,6 +8826,13 @@ ${cleanedScript}
           const attachedDescription = childLayer.parentingDescription || `Attached to ${parentName}`;
           const attachedColor = childLayer.parentingColor || '#595959';
 
+          // Calculate start position based on first animation's delay (or 0 if no animations)
+          let attachedStartPercent = 0;
+          if (childLayer.animations.length > 0) {
+            const firstDelay = Math.min(...childLayer.animations.map(a => a.timing?.delay || 0));
+            attachedStartPercent = (firstDelay / currentViewDuration) * 100;
+          }
+
           const isFirstChildTrack = childIdx === 0;
           const isLastChildTrack = childIdx === children.length - 1;
           const firstChildTrackClass = isFirstChildTrack ? ' first-child-layer' : '';
@@ -8848,7 +8841,7 @@ ${cleanedScript}
           // Child layer header track with attached bar (uses standard timeline-bar structure)
           html += `<div class="timeline-track child-layer-header${firstChildTrackClass}${siblingTrackClass}" data-layer-index="${childLayerIndex}">
             <div class="timeline-bar bar-attached"
-                 style="left: 0; width: auto; border-color: ${attachedColor};"
+                 style="left: ${attachedStartPercent}%; width: auto; border-color: ${attachedColor};"
                  data-layer-index="${childLayerIndex}"
                  data-is-attached="true">
               <span class="timeline-bar-text edit-only" contenteditable="false" data-layer-index="${childLayerIndex}">${attachedDescription}</span>
