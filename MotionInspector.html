@@ -9062,128 +9062,60 @@ ${cleanedScript}
 
       html += `</div>`;
 
-      // Helper function to find parent layer timing and spring status
-      function getParentLayerInfo(containerLayerName) {
-        const parentLayer = specData.layers.find(l => l.layerName === containerLayerName);
-        if (!parentLayer || !parentLayer.animations || parentLayer.animations.length === 0) {
-          return { delay: 0, duration: specData.workArea.duration, hasSpring: false };
-        }
-
-        // Find the earliest start and latest end across all parent animations
-        let minDelay = Infinity;
-        let maxEnd = 0;
-        let hasSpring = false;
-
-        parentLayer.animations.forEach(anim => {
-          const animStart = anim.timing.delay;
-
-          // Calculate actual duration (accounting for springs)
-          let animDuration = anim.timing.duration;
-          const durationIsNumeric = typeof animDuration === 'number' && !isNaN(animDuration);
-          const durationIsString = typeof animDuration === 'string';
-          const userSetDuration = anim.durationUserSet === true;
-          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
-
-          if (durationIsString || isImportedSpring) {
-            // Spring animation - calculate visual duration
-            let springDuration = anim.calculatedSpringDuration;
-            if (!springDuration && anim.easing.spring) {
-              const spring = anim.easing.spring;
-              if (spring.preset && springPresetParams[spring.preset]) {
-                const params = springPresetParams[spring.preset];
-                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
-              } else if (spring.custom) {
-                springDuration = calculateSpringDuration(spring.custom.stiffness, spring.custom.damping, spring.custom.mass || 1);
-              }
-            }
-            if (!springDuration && anim.customEasing) {
-              const params = parseSpringParams(anim.customEasing);
-              if (params) {
-                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
-              }
-            }
-            animDuration = springDuration ? springDuration * 2 : animDuration;
-            hasSpring = true;
-          }
-
-          if (anim.easing.type === 'spring') {
-            hasSpring = true;
-          }
-
-          const animEnd = animStart + animDuration;
-          minDelay = Math.min(minDelay, animStart);
-          maxEnd = Math.max(maxEnd, animEnd);
-        });
-
-        return {
-          delay: minDelay === Infinity ? 0 : minDelay,
-          duration: maxEnd - (minDelay === Infinity ? 0 : minDelay),
-          hasSpring: hasSpring
-        };
-      }
-
       // Helper function to render a single animation bar track
       function renderAnimationBarTrack(anim, layerIndex, globalAnimIndex, layerName) {
         let startPercent, widthPercent, description, springClass;
 
-        // Handle Fit to Shape animations - use parent layer's timing
-        if (anim.isFitToShape && anim.fitToShape) {
-          const parentInfo = getParentLayerInfo(anim.fitToShape.containerLayerName);
-          startPercent = (parentInfo.delay / currentViewDuration) * 100;
-          widthPercent = (parentInfo.duration / currentViewDuration) * 100;
-          description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layerName);
-          springClass = parentInfo.hasSpring ? ' bar-spring' : '';
-        } else {
-          // Normal animation - use its own timing
-          startPercent = (anim.timing.delay / currentViewDuration) * 100;
+        // Note: isFitToShape info is displayed in the child layer header row,
+        // so animation bars always use their own timing regardless of fitToShape
+        startPercent = (anim.timing.delay / currentViewDuration) * 100;
 
-          // Determine styling based on duration value
-          const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
-          const durationIsString = typeof anim.timing.duration === 'string';
+        // Determine styling based on duration value
+        const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
+        const durationIsString = typeof anim.timing.duration === 'string';
 
-          // Check if user has explicitly set duration, or if it's an imported spring
-          const userSetDuration = anim.durationUserSet === true;
-          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+        // Check if user has explicitly set duration, or if it's an imported spring
+        const userSetDuration = anim.durationUserSet === true;
+        const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
 
-          if (durationIsString) {
-            // Duration is "-" - spring style
-            let springDuration = anim.calculatedSpringDuration;
-            if (!springDuration && anim.customEasing) {
-              const params = parseSpringParams(anim.customEasing);
-              if (params) {
-                springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
-              } else {
-                const presetParams = springPresetParams[anim.customEasing];
-                if (presetParams) {
-                  springDuration = calculateSpringDuration(presetParams.stiffness, presetParams.damping, presetParams.mass);
-                }
+        if (durationIsString) {
+          // Duration is "-" - spring style
+          let springDuration = anim.calculatedSpringDuration;
+          if (!springDuration && anim.customEasing) {
+            const params = parseSpringParams(anim.customEasing);
+            if (params) {
+              springDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+            } else {
+              const presetParams = springPresetParams[anim.customEasing];
+              if (presetParams) {
+                springDuration = calculateSpringDuration(presetParams.stiffness, presetParams.damping, presetParams.mass);
               }
             }
-            widthPercent = springDuration ? (springDuration * 2 / currentViewDuration) * 100 : 40;
-            springClass = ' bar-spring';
-          } else if (isImportedSpring) {
-            let calculatedDuration = null;
-            const spring = anim.easing.spring;
-            if (spring) {
-              if (spring.preset && springPresetParams[spring.preset]) {
-                const params = springPresetParams[spring.preset];
-                calculatedDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
-              } else if (spring.custom) {
-                calculatedDuration = calculateSpringDuration(spring.custom.stiffness, spring.custom.damping, spring.custom.mass || 1);
-              }
-            }
-            widthPercent = calculatedDuration ? (calculatedDuration * 2 / currentViewDuration) * 100 : (anim.timing.duration * 2 / currentViewDuration) * 100;
-            springClass = ' bar-spring';
-          } else if (durationIsNumeric) {
-            widthPercent = (anim.timing.duration / currentViewDuration) * 100;
-            springClass = '';
-          } else {
-            widthPercent = 40;
-            springClass = ' bar-spring';
           }
-
-          description = getAnimationDescription(anim.property, anim.values, null, anim.description, layerName);
+          widthPercent = springDuration ? (springDuration * 2 / currentViewDuration) * 100 : 40;
+          springClass = ' bar-spring';
+        } else if (isImportedSpring) {
+          let calculatedDuration = null;
+          const spring = anim.easing.spring;
+          if (spring) {
+            if (spring.preset && springPresetParams[spring.preset]) {
+              const params = springPresetParams[spring.preset];
+              calculatedDuration = calculateSpringDuration(params.stiffness, params.damping, params.mass);
+            } else if (spring.custom) {
+              calculatedDuration = calculateSpringDuration(spring.custom.stiffness, spring.custom.damping, spring.custom.mass || 1);
+            }
+          }
+          widthPercent = calculatedDuration ? (calculatedDuration * 2 / currentViewDuration) * 100 : (anim.timing.duration * 2 / currentViewDuration) * 100;
+          springClass = ' bar-spring';
+        } else if (durationIsNumeric) {
+          widthPercent = (anim.timing.duration / currentViewDuration) * 100;
+          springClass = '';
+        } else {
+          widthPercent = 40;
+          springClass = ' bar-spring';
         }
+
+        description = getAnimationDescription(anim.property, anim.values, null, anim.description, layerName);
 
         // Cap width so bars don't extend past the edge
         const maxWidth = 100 - startPercent;
