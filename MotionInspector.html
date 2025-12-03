@@ -2042,9 +2042,98 @@
       z-index: 0;
     }
 
-    /* Child rows are not draggable - remove grab cursor */
-    .timeline-label.child-layer-header {
-      cursor: default !important;
+    /* Child layer headers - grab cursor when draggable in edit mode */
+    .timeline-label.child-layer-header[draggable="true"] {
+      cursor: grab;
+    }
+
+    .timeline-label.child-layer-header[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    .timeline-label.child-layer-header[draggable="false"] {
+      cursor: default;
+    }
+
+    /* Child layer header drag indicators - override tree connector pseudo-elements with drag indicator */
+    .timeline-label.child-layer-header.drag-over-top::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: -3000px;
+      top: -1px;
+      height: 2px;
+      width: auto;
+      background: #4a90e2;
+      border: none;
+      border-radius: 0;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .timeline-label.child-layer-header.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: -3000px;
+      bottom: -1px;
+      top: auto;
+      height: 2px;
+      width: auto;
+      background: #4a90e2;
+      border: none;
+      border-radius: 0;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    /* Child layer header track (right column) drag indicators */
+    .timeline-track.child-layer-header.drag-over-top::before {
+      content: '';
+      position: absolute;
+      left: -3000px;
+      right: 0;
+      top: -1px;
+      height: 2px;
+      width: auto;
+      background: #4a90e2;
+      border: none;
+      border-radius: 0;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .timeline-track.child-layer-header.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: -3000px;
+      right: 0;
+      bottom: -1px;
+      top: auto;
+      height: 2px;
+      width: auto;
+      background: #4a90e2;
+      border: none;
+      border-radius: 0;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    /* Child animation row drag indicators (for dropping child-layers after siblings) */
+    .timeline-label.child-anim.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: -3000px;
+      bottom: -1px;
+      top: auto;
+      height: 2px;
+      width: auto;
+      background: #4a90e2;
+      border: none;
+      border-radius: 0;
+      z-index: 1000;
+      pointer-events: none;
     }
 
     /* Red circle button for parameters */
@@ -6080,9 +6169,10 @@
             const childContinueClass = hasSiblings ? ' child-continues' : '';
             html += `<div class="timeline-label child-layer-header${siblingClass}${firstChildClass}"
                           data-row-type="child-layer"
+                          data-drag-type="child-layer"
                           data-layer-index="${childLayerIndex}"
                           data-parent-layer="${layerIndex}"
-                          draggable="false">
+                          draggable="${isEditMode}">
               <span class="timeline-label-text">${childLayer.layerName}</span>
             </div>`;
 
@@ -6229,7 +6319,7 @@
           const parentName = layer.layerName;
           // Table view: simple "Attached to [Parent]" (full description with "inherits" only in info panel)
           const tableAttachedDescription = `Attached to ${parentName}`;
-          html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}${firstChildClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-parent-name="${parentName}">
+          html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}${firstChildClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-drag-type="child-layer" data-parent-layer="${layerIndex}" data-parent-name="${parentName}">
             <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${tableAttachedDescription}</span></div>
             <div class="table-cell table-cell--delay">—</div>
             <div class="table-cell table-cell--duration">—</div>
@@ -6451,6 +6541,7 @@
           draggedType = label.dataset.dragType;
           draggedLayerIndex = parseInt(label.dataset.layerIndex);
           draggedAnimIndex = label.dataset.animInLayer ? parseInt(label.dataset.animInLayer) : null;
+          draggedParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
 
           label.classList.add('dragging');
           e.dataTransfer.effectAllowed = 'move';
@@ -6481,6 +6572,7 @@
           draggedType = null;
           draggedLayerIndex = null;
           draggedAnimIndex = null;
+          draggedParentLayer = null;
         });
 
         // Dragover - show drop indicator
@@ -6489,10 +6581,12 @@
 
           const targetType = label.dataset.dragType;
           const targetLayerIndex = parseInt(label.dataset.layerIndex);
+          const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
 
           // Check if this drop is valid
           let isValidDrop = false;
           let isDropOnLayerHeader = false;
+          let isChildLayerDrop = false;
 
           if (draggedType === 'animation' && targetType === 'animation') {
             isValidDrop = true;
@@ -6501,6 +6595,12 @@
             isDropOnLayerHeader = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
+          } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
+            // Child layers can only be reordered within same parent
+            if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
+              isValidDrop = true;
+              isChildLayerDrop = true;
+            }
           }
 
           if (!isValidDrop) return;
@@ -6535,6 +6635,25 @@
               if (draggedAnimIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedAnimIndex !== targetIndex;
             }
+          } else if (isChildLayerDrop) {
+            // Child layer reordering
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
+
+            if (distanceFromTop <= 10) {
+              // Dropping before target - check if position would change
+              let targetIndex = targetLayerIndex;
+              if (draggedLayerIndex < targetIndex) targetIndex--;
+              wouldChangePosition = draggedLayerIndex !== targetIndex;
+            } else if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Last child with no animations - allow bottom drop on header
+              let targetIndex = targetLayerIndex + 1;
+              if (draggedLayerIndex < targetIndex) targetIndex--;
+              wouldChangePosition = draggedLayerIndex !== targetIndex;
+            }
           }
 
           if (!wouldChangePosition) return;
@@ -6554,6 +6673,21 @@
             const distanceFromTop = e.clientY - rect.top;
             if (distanceFromTop <= 10) {
               label.classList.add('drag-over-top');
+              if (rightRow) rightRow.classList.add('drag-over-top');
+            }
+          } else if (isChildLayerDrop) {
+            // Child layer drops
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
+
+            if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Show bottom indicator for last child with no animations
+              if (rightRow) rightRow.classList.add('drag-over-bottom');
+            } else {
+              // Top indicator only
               if (rightRow) rightRow.classList.add('drag-over-top');
             }
           } else {
@@ -6612,11 +6746,108 @@
               renderTableView();
             }
           }
+          // For child-layer drops on child headers
+          else if (draggedType === 'child-layer' && targetType === 'child-layer') {
+            const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
+            if (draggedParentLayer === targetParentLayer) {
+              // Determine if dropping before or after (for last child with no animations)
+              const rect = label.getBoundingClientRect();
+              const distanceFromBottom = rect.bottom - e.clientY;
+              const isLastChild = !label.classList.contains('has-siblings');
+              const targetLayer = specData.layers[targetLayerIndex];
+              const hasNoAnimations = targetLayer.animations.length === 0;
+
+              const childDropPosition = (isLastChild && hasNoAnimations && distanceFromBottom <= 10) ? 'after' : 'before';
+              performChildLayerMove(draggedLayerIndex, targetLayerIndex, childDropPosition);
+            }
+          }
 
           // Clear all indicators
           document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
             el.classList.remove('drag-over-top', 'drag-over-bottom');
           });
+        });
+      });
+
+      // Set up drag handlers for child-animation rows (to allow dropping child-layers after their siblings)
+      const childAnimRows = document.querySelectorAll('.timeline-labels-column .timeline-label[data-row-type="child-animation"]');
+      childAnimRows.forEach(row => {
+        row.addEventListener('dragover', (e) => {
+          // Only handle child-layer drags
+          if (!draggedElement || draggedType !== 'child-layer') return;
+
+          const targetLayerIndex = parseInt(row.dataset.layerIndex);
+          const targetAnimIndex = parseInt(row.dataset.animIndex);
+          const targetLayer = specData.layers[targetLayerIndex];
+
+          // Check if this animation's layer is a child of the same parent
+          if (!targetLayer.parenting) return;
+          const targetParentName = targetLayer.parenting.parentName;
+          const draggedLayer = specData.layers[draggedLayerIndex];
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+
+          // Only respond to bottom zone of the LAST animation of the child
+          const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
+          if (!isLastAnim) return;
+
+          const rect = row.getBoundingClientRect();
+          const distanceFromBottom = rect.bottom - e.clientY;
+          if (distanceFromBottom > 10) return;
+
+          // Check if drop would change position
+          let targetIndex = targetLayerIndex + 1;
+          if (draggedLayerIndex < targetIndex) targetIndex--;
+          if (draggedLayerIndex === targetIndex) return;
+
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+
+          // Clear all indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          // Show bottom indicator on left label (it extends right via CSS)
+          // Also find right row manually since child-animation has different row-type than track
+          row.classList.add('drag-over-bottom');
+          const rightSelector = `.timeline-content-column .timeline-track[data-layer-index="${targetLayerIndex}"][data-anim-index="${targetAnimIndex}"]`;
+          const rightRow = document.querySelector(rightSelector);
+          if (rightRow) rightRow.classList.add('drag-over-bottom');
+        });
+
+        row.addEventListener('drop', (e) => {
+          if (!draggedElement || draggedType !== 'child-layer') return;
+
+          const targetLayerIndex = parseInt(row.dataset.layerIndex);
+          const targetAnimIndex = parseInt(row.dataset.animIndex);
+          const targetLayer = specData.layers[targetLayerIndex];
+
+          // Verify same parent
+          if (!targetLayer.parenting) return;
+          const targetParentName = targetLayer.parenting.parentName;
+          const draggedLayer = specData.layers[draggedLayerIndex];
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+
+          // Verify it's the last animation of this child
+          const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
+          if (!isLastAnim) return;
+
+          e.preventDefault();
+          performChildLayerMove(draggedLayerIndex, targetLayerIndex, 'after');
+
+          // Clear indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+        });
+
+        row.addEventListener('dragleave', () => {
+          row.classList.remove('drag-over-bottom');
+          const targetLayerIndex = row.dataset.layerIndex;
+          const targetAnimIndex = row.dataset.animIndex;
+          const rightSelector = `.timeline-content-column .timeline-track[data-layer-index="${targetLayerIndex}"][data-anim-index="${targetAnimIndex}"]`;
+          const rightRow = document.querySelector(rightSelector);
+          if (rightRow) rightRow.classList.remove('drag-over-bottom');
         });
       });
 
@@ -8596,8 +8827,10 @@ ${cleanedScript}
           html += `<div class="timeline-label child-layer-header${siblingClass}${firstChildClass}"
                         data-layer-index="${childLayerIndex}"
                         data-row-type="child-layer"
+                        data-drag-type="child-layer"
+                        data-parent-layer="${layerIndex}"
                         data-parent-name="${layer.layerName}"
-                        draggable="false">
+                        draggable="${isEditMode}">
             <span class="timeline-label-text">${childLayer.layerName}</span>
             <button class="param-action-btn edit-only" draggable="false"></button>
           </div>`;
@@ -8858,7 +9091,7 @@ ${cleanedScript}
           const siblingTrackClass = isLastChildTrack ? '' : ' has-siblings';
 
           // Child layer header track with attached bar (uses standard timeline-bar structure)
-          html += `<div class="timeline-track child-layer-header${firstChildTrackClass}${siblingTrackClass}" data-layer-index="${childLayerIndex}">
+          html += `<div class="timeline-track child-layer-header${firstChildTrackClass}${siblingTrackClass}" data-layer-index="${childLayerIndex}" data-drag-type="child-layer" data-parent-layer="${layerIndex}">
             <div class="timeline-bar bar-attached"
                  style="left: ${attachedStartPercent}%; width: ${attachedWidthPercent}%;"
                  data-layer-index="${childLayerIndex}"
@@ -9111,6 +9344,7 @@ ${cleanedScript}
     let draggedType = null;
     let draggedLayerIndex = null;
     let draggedAnimIndex = null;
+    let draggedParentLayer = null;
 
     function setupDragAndDrop() {
       const labels = document.querySelectorAll('.timeline-label');
@@ -9122,6 +9356,7 @@ ${cleanedScript}
           draggedType = label.dataset.dragType;
           draggedLayerIndex = parseInt(label.dataset.layerIndex);
           draggedAnimIndex = label.dataset.animInLayer ? parseInt(label.dataset.animInLayer) : null;
+          draggedParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
 
           label.classList.add('dragging');
           e.dataTransfer.effectAllowed = 'move';
@@ -9148,6 +9383,7 @@ ${cleanedScript}
           draggedType = null;
           draggedLayerIndex = null;
           draggedAnimIndex = null;
+          draggedParentLayer = null;
         });
 
         // Dragover - show drop indicator
@@ -9161,6 +9397,8 @@ ${cleanedScript}
           let isValidDrop = false;
           let isLastLayerParam = false;
           let isDropOnLayerHeader = false;
+          let isChildLayerDrop = false;
+          const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
 
           if (draggedType === 'animation' && targetType === 'animation') {
             // Animation can be dropped in any layer
@@ -9171,6 +9409,12 @@ ${cleanedScript}
             isDropOnLayerHeader = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
+          } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
+            // Child layers can only be reordered within same parent
+            if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
+              isValidDrop = true;
+              isChildLayerDrop = true;
+            }
           }
           // Note: We don't allow dropping layers on animation rows anymore
           // because the bottom divider provides a clearer drop target for that
@@ -9223,6 +9467,25 @@ ${cleanedScript}
               if (dropPosition === 'after') targetIndex++;
               if (draggedAnimIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedAnimIndex !== targetIndex;
+            }
+          } else if (isChildLayerDrop) {
+            // Child layer reordering
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
+
+            if (distanceFromTop <= 10) {
+              // Dropping before target - check if position would change
+              let targetIndex = targetLayerIndex;
+              if (draggedLayerIndex < targetIndex) targetIndex--;
+              wouldChangePosition = draggedLayerIndex !== targetIndex;
+            } else if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Last child with no animations - allow bottom drop on header
+              let targetIndex = targetLayerIndex + 1;
+              if (draggedLayerIndex < targetIndex) targetIndex--;
+              wouldChangePosition = draggedLayerIndex !== targetIndex;
             }
           }
 
@@ -9280,6 +9543,30 @@ ${cleanedScript}
 
               // Show indicator on both label and corresponding track
               label.classList.add('drag-over-top');
+              if (labelIndex >= 0 && allTracks[labelIndex]) {
+                allTracks[labelIndex].classList.add('drag-over-top');
+              }
+            }
+          }
+          // For child-layer drops: only add indicator to track (not label) to avoid double lines
+          else if (isChildLayerDrop) {
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
+
+            const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+            const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+            const labelIndex = allLabels.indexOf(label);
+
+            if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Show bottom indicator for last child with no animations
+              if (labelIndex >= 0 && allTracks[labelIndex]) {
+                allTracks[labelIndex].classList.add('drag-over-bottom');
+              }
+            } else {
+              // Top indicator only
               if (labelIndex >= 0 && allTracks[labelIndex]) {
                 allTracks[labelIndex].classList.add('drag-over-top');
               }
@@ -9375,6 +9662,38 @@ ${cleanedScript}
               renderTimeline();
             }
           }
+          // For child-layer drops on child headers
+          else if (draggedType === 'child-layer' && targetType === 'child-layer') {
+            const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
+            if (draggedParentLayer === targetParentLayer) {
+              // Determine if dropping before or after (for last child with no animations)
+              const rect = label.getBoundingClientRect();
+              const distanceFromBottom = rect.bottom - e.clientY;
+              const isLastChild = !label.classList.contains('has-siblings');
+              const targetLayer = specData.layers[targetLayerIndex];
+              const hasNoAnimations = targetLayer.animations.length === 0;
+
+              const childDropPosition = (isLastChild && hasNoAnimations && distanceFromBottom <= 10) ? 'after' : 'before';
+              performChildLayerMove(draggedLayerIndex, targetLayerIndex, childDropPosition);
+            }
+          }
+          // For child-layer drops on child-animation rows (bottom of last anim = drop after that child)
+          else if (draggedType === 'child-layer' && label.classList.contains('child-anim')) {
+            const targetAnimIndexInLayer = parseInt(label.dataset.animInLayer);
+            const targetLayer = specData.layers[targetLayerIndex];
+
+            // Verify same parent and it's the last animation
+            if (targetLayer.parenting) {
+              const targetParentName = targetLayer.parenting.parentName;
+              const draggedLayer = specData.layers[draggedLayerIndex];
+              if (draggedLayer.parenting && draggedLayer.parenting.parentName === targetParentName) {
+                const isLastAnim = targetAnimIndexInLayer === targetLayer.animations.length - 1;
+                if (isLastAnim) {
+                  performChildLayerMove(draggedLayerIndex, targetLayerIndex, 'after');
+                }
+              }
+            }
+          }
 
           // Clear indicators
           document.querySelectorAll('.timeline-label, .timeline-track').forEach(l => {
@@ -9384,6 +9703,92 @@ ${cleanedScript}
           const bottomTrack = document.querySelector('.timeline-bottom-track');
           if (bottomDivider) bottomDivider.classList.remove('drag-over-top');
           if (bottomTrack) bottomTrack.classList.remove('drag-over-top');
+        });
+      });
+
+      // Set up drag handlers for child-animation rows (to allow dropping child-layers after their siblings)
+      // In timeline view, child animations have class 'child-anim' and use 'data-anim-in-layer' for index
+      const childAnimLabels = document.querySelectorAll('.timeline-label.child-anim');
+      childAnimLabels.forEach(row => {
+        row.addEventListener('dragover', (e) => {
+          // Only handle child-layer drags
+          if (!draggedElement || draggedType !== 'child-layer') return;
+
+          const targetLayerIndex = parseInt(row.dataset.layerIndex);
+          const targetAnimIndex = parseInt(row.dataset.animInLayer); // Use animInLayer for timeline view
+          const targetLayer = specData.layers[targetLayerIndex];
+
+          // Check if this animation's layer is a child of the same parent
+          if (!targetLayer.parenting) return;
+          const targetParentName = targetLayer.parenting.parentName;
+          const draggedLayer = specData.layers[draggedLayerIndex];
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+
+          // Only respond to bottom zone of the LAST animation of the child
+          const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
+          if (!isLastAnim) return;
+
+          const rect = row.getBoundingClientRect();
+          const distanceFromBottom = rect.bottom - e.clientY;
+          if (distanceFromBottom > 10) return;
+
+          // Check if drop would change position
+          let targetIndex = targetLayerIndex + 1;
+          if (draggedLayerIndex < targetIndex) targetIndex--;
+          if (draggedLayerIndex === targetIndex) return;
+
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+
+          // Clear all indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          // Show bottom indicator on both label and track
+          row.classList.add('drag-over-bottom');
+          const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+          const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+          const labelIndex = allLabels.indexOf(row);
+          if (labelIndex >= 0 && allTracks[labelIndex]) {
+            allTracks[labelIndex].classList.add('drag-over-bottom');
+          }
+        });
+
+        row.addEventListener('drop', (e) => {
+          if (!draggedElement || draggedType !== 'child-layer') return;
+
+          const targetLayerIndex = parseInt(row.dataset.layerIndex);
+          const targetAnimIndex = parseInt(row.dataset.animInLayer); // Use animInLayer for timeline view
+          const targetLayer = specData.layers[targetLayerIndex];
+
+          // Verify same parent
+          if (!targetLayer.parenting) return;
+          const targetParentName = targetLayer.parenting.parentName;
+          const draggedLayer = specData.layers[draggedLayerIndex];
+          if (!draggedLayer.parenting || draggedLayer.parenting.parentName !== targetParentName) return;
+
+          // Verify it's the last animation of this child
+          const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
+          if (!isLastAnim) return;
+
+          e.preventDefault();
+          performChildLayerMove(draggedLayerIndex, targetLayerIndex, 'after');
+
+          // Clear indicators
+          document.querySelectorAll('.timeline-label, .timeline-track').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+        });
+
+        row.addEventListener('dragleave', () => {
+          row.classList.remove('drag-over-bottom');
+          const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
+          const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
+          const labelIndex = allLabels.indexOf(row);
+          if (labelIndex >= 0 && allTracks[labelIndex]) {
+            allTracks[labelIndex].classList.remove('drag-over-bottom');
+          }
         });
       });
 
@@ -10370,6 +10775,30 @@ ${cleanedScript}
       }
     }
 
+    // Perform child layer move (reorder within same parent)
+    function performChildLayerMove(fromIndex, toIndex, position) {
+      // Calculate the actual target index
+      let targetIndex = toIndex;
+      if (position === 'after') targetIndex++;
+      if (fromIndex < targetIndex) targetIndex--;
+
+      if (fromIndex === targetIndex) return;
+      saveSnapshot();
+
+      // Remove from old position
+      const layer = specData.layers.splice(fromIndex, 1)[0];
+
+      // Insert at new position
+      specData.layers.splice(targetIndex, 0, layer);
+
+      // Re-render based on current view mode
+      if (viewMode === 'table') {
+        renderTableView();
+      } else {
+        renderTimeline();
+      }
+    }
+
     // Perform animation move within layer
     function performAnimationMove(layerIndex, fromAnimIndex, toAnimIndex, position) {
       // Calculate the actual target index
@@ -11163,7 +11592,7 @@ ${cleanedScript}
         // Parent to dropdown
         const parentOptions = getAvailableParentLayers(layerIndex);
         html += `<div class="parent-selector-container">`;
-        html += `<span class="parent-selector-label">Parent to: </span>`;
+        html += `<span class="parent-selector-label">Parented to:</span>`;
         html += `<select class="parent-selector" onchange="setLayerParentFromSection(${layerIndex}, this.value)">`;
         html += `<option value="">None</option>`;
         parentOptions.forEach(opt => {
@@ -11436,7 +11865,7 @@ ${cleanedScript}
         // Parent to dropdown (allows changing parent or unparenting)
         const parentOptions = getAvailableParentLayers(layerIndex);
         html += `<div class="parent-selector-container">`;
-        html += `<span class="parent-selector-label">Parent to: </span>`;
+        html += `<span class="parent-selector-label">Parented to:</span>`;
         html += `<select class="parent-selector" onchange="changeLayerParent(${layerIndex}, this.value)">`;
         html += `<option value="">None</option>`;
         parentOptions.forEach(opt => {
@@ -11761,8 +12190,10 @@ ${cleanedScript}
 
       // Check if this is the last parameter in the section
       const isLastParam = layer.animations.length === 1;
+      const isChildLayer = layer.parenting != null;
 
-      if (isLastParam) {
+      if (isLastParam && !isChildLayer) {
+        // For regular layers, prompt to delete entire section when removing last param
         if (!confirm(`This is the last parameter in "${layerName}". Delete this parameter and the entire section?`)) {
           return;
         }
@@ -11770,7 +12201,8 @@ ${cleanedScript}
         saveSnapshot();
         specData.layers.splice(layerIndex, 1);
       } else {
-        // Remove just this animation (no confirmation needed for single param)
+        // Remove just this animation
+        // For child layers, they can exist with no animations (just shows "Attached to Parent")
         saveSnapshot();
         layer.animations.splice(animInLayerIndex, 1);
       }
