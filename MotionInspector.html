@@ -2616,7 +2616,7 @@
     }
 
     .timeline-bar.has-text-overflow.bar-scale::after {
-      background: linear-gradient(to right, rgba(202, 49, 125, 0) 0%, rgba(202, 49, 125, 1) 100%);
+      background: linear-gradient(to right, rgba(125, 41, 160, 0) 0%, rgba(125, 41, 160, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-rotation::after {
@@ -2630,7 +2630,7 @@
 
     .timeline-bar.has-text-overflow.bar-width::after,
     .timeline-bar.has-text-overflow.bar-height::after {
-      background: linear-gradient(to right, rgba(125, 41, 160, 0) 0%, rgba(125, 41, 160, 1) 100%);
+      background: linear-gradient(to right, rgba(202, 49, 125, 0) 0%, rgba(202, 49, 125, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-blur::after {
@@ -2657,24 +2657,24 @@
 
     /* Property-specific colors (1.2x brighter defaults) */
     .bar-opacity { background: #056e53; }
-    .bar-scale { background: #ca317d; }
-    .bar-rotation { background: #7d29a0; }
+    .bar-scale { background: #7d29a0; }
+    .bar-rotation { background: #6c1c90; }
     .bar-position-x { background: #056e96; }
     .bar-position-y { background: #056e96; }
-    .bar-width { background: #7d29a0; }
-    .bar-height { background: #7d29a0; }
+    .bar-width { background: #ca317d; }
+    .bar-height { background: #ca317d; }
     .bar-blur { background: #595959; }
     .bar-transform { background: #6c1c90; }
     .bar-default { background: #056e96; }
 
     /* Spring gradient fade-out (1.2x brighter defaults) */
     .bar-spring.bar-opacity { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
-    .bar-spring.bar-scale { background: linear-gradient(90deg, #ca317d 0%, #ca317d 50%, rgba(202, 49, 125, 0) 100%); }
-    .bar-spring.bar-rotation { background: linear-gradient(90deg, #7d29a0 0%, #7d29a0 50%, rgba(125, 41, 160, 0) 100%); }
+    .bar-spring.bar-scale { background: linear-gradient(90deg, #7d29a0 0%, #7d29a0 50%, rgba(125, 41, 160, 0) 100%); }
+    .bar-spring.bar-rotation { background: linear-gradient(90deg, #6c1c90 0%, #6c1c90 50%, rgba(108, 28, 144, 0) 100%); }
     .bar-spring.bar-position-x { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
     .bar-spring.bar-position-y { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
-    .bar-spring.bar-width { background: linear-gradient(90deg, #7d29a0 0%, #7d29a0 50%, rgba(125, 41, 160, 0) 100%); }
-    .bar-spring.bar-height { background: linear-gradient(90deg, #7d29a0 0%, #7d29a0 50%, rgba(125, 41, 160, 0) 100%); }
+    .bar-spring.bar-width { background: linear-gradient(90deg, #ca317d 0%, #ca317d 50%, rgba(202, 49, 125, 0) 100%); }
+    .bar-spring.bar-height { background: linear-gradient(90deg, #ca317d 0%, #ca317d 50%, rgba(202, 49, 125, 0) 100%); }
     .bar-spring.bar-blur { background: linear-gradient(90deg, #595959 0%, #595959 50%, rgba(89, 89, 89, 0) 100%); }
     .bar-spring.bar-transform { background: linear-gradient(90deg, #6c1c90 0%, #6c1c90 50%, rgba(108, 28, 144, 0) 100%); }
     .bar-spring.bar-default { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
@@ -5445,6 +5445,20 @@
       // Don't auto-loop if user dragged playhead to the end while paused
       if (isDraggingPlayhead || justFinishedDragging) {
         return;
+      }
+
+      // Move playhead to end of timeline (video may be shorter than timeline duration)
+      const playhead = document.querySelector('.playhead');
+      const timelineContent = document.querySelector('.timeline-content-column');
+      if (playhead && timelineContent) {
+        const contentRect = timelineContent.getBoundingClientRect();
+        playhead.style.left = `${contentRect.right}px`;
+        // Update time display to show timeline end time
+        const currentViewDuration = viewDuration || (specData ? specData.workArea.duration : 0);
+        const timeDisplay = document.getElementById('playheadTimeDisplay');
+        if (timeDisplay) {
+          timeDisplay.textContent = `${Math.round(currentViewDuration)}ms`;
+        }
       }
 
       // Check if looping is enabled
@@ -8354,12 +8368,12 @@ ${cleanedScript}
     function getPropertyColor(colorClass) {
       const colorMap = {
         'bar-opacity': '#056e53',
-        'bar-scale': '#ca317d',
+        'bar-scale': '#7d29a0',
         'bar-rotation': '#6c1c90',
         'bar-position-x': '#056e96',
         'bar-position-y': '#056e96',
-        'bar-width': '#7d29a0',
-        'bar-height': '#7d29a0',
+        'bar-width': '#ca317d',
+        'bar-height': '#ca317d',
         'bar-blur': '#595959',
         'bar-transform': '#6c1c90',
         'bar-default': '#056e96'
@@ -8449,6 +8463,30 @@ ${cleanedScript}
       return scaleOptions[scaleTo] || 'unknown';
     }
 
+    // Get scale divisor from appliedScale - values in JSON are already correct,
+    // so we return 1 (no scaling needed). The appliedScale is just metadata.
+    function getScaleDivisor() {
+      return 1;
+    }
+
+    // Scale a pixel value by the appliedScale divisor (currently no-op since divisor is 1)
+    function scaleValue(value) {
+      // Handle string values gracefully
+      if (typeof value === 'string') {
+        const num = parseFloat(value);
+        if (isNaN(num)) return 0; // Return 0 if can't parse
+        return Math.round(num);
+      }
+      if (typeof value !== 'number' || isNaN(value)) return 0;
+      return Math.round(value);
+    }
+
+    // Scale pixel values in a formatted string - currently returns unchanged
+    // since JSON values are already correct
+    function scaleFormattedValue(str, property) {
+      return str;
+    }
+
     // Get natural language description of animation
     function getAnimationDescription(property, values, fitToShape, customDescription, layerName) {
       const prop = property.toLowerCase();
@@ -8481,13 +8519,13 @@ ${cleanedScript}
           if (values.animatingAxes.both) {
             const xDir = xChange < 0 ? 'left' : 'right';
             const yDir = yChange < 0 ? 'up' : 'down';
-            description = `Moves ${xDir} ${Math.round(absXChange)}px and ${yDir} ${Math.round(absYChange)}px`;
+            description = `Moves ${xDir} ${scaleValue(absXChange)}px and ${yDir} ${scaleValue(absYChange)}px`;
           } else if (values.animatingAxes.x) {
             const direction = xChange < 0 ? 'left' : 'right';
-            description = `Moves ${direction} ${Math.round(absXChange)}px`;
+            description = `Moves ${direction} ${scaleValue(absXChange)}px`;
           } else if (values.animatingAxes.y) {
             const direction = yChange < 0 ? 'up' : 'down';
-            description = `Moves ${direction} ${Math.round(absYChange)}px`;
+            description = `Moves ${direction} ${scaleValue(absYChange)}px`;
           } else {
             description = property;
           }
@@ -8495,19 +8533,19 @@ ${cleanedScript}
         else if (prop.includes('x position')) {
           // Check for zero change
           if (changeValue === 0) {
-            description = `X Position stays at ${Math.round(values.startValue)}px`;
+            description = `X Position stays at ${scaleValue(values.startValue)}px`;
           } else {
             const direction = changeValue < 0 ? 'left' : 'right';
-            description = `Moves ${direction} ${Math.round(absChange)}px`;
+            description = `Moves ${direction} ${scaleValue(absChange)}px`;
           }
         }
         else if (prop.includes('y position')) {
           // Check for zero change
           if (changeValue === 0) {
-            description = `Y Position stays at ${Math.round(values.startValue)}px`;
+            description = `Y Position stays at ${scaleValue(values.startValue)}px`;
           } else {
             const direction = changeValue < 0 ? 'up' : 'down';
-            description = `Moves ${direction} ${Math.round(absChange)}px`;
+            description = `Moves ${direction} ${scaleValue(absChange)}px`;
           }
         }
         // Handle grouped "Width & Height" property
@@ -8517,34 +8555,69 @@ ${cleanedScript}
           const widthAction = widthChange > 0 ? 'expands' : 'shrinks';
           const heightAction = heightChange > 0 ? 'expands' : 'shrinks';
 
-          // Get formatted values (stored as newline-separated)
-          const startVals = values.formatted?.startValue?.split('\n') || ['-', '-'];
-          const endVals = values.formatted?.endValue?.split('\n') || ['-', '-'];
-          const widthStart = startVals[0] || '-';
-          const widthEnd = endVals[0] || '-';
-          const heightStart = startVals[1] || '-';
-          const heightEnd = endVals[1] || '-';
+          // Get values - try array format first, then formatted values, then raw values
+          let widthStartVal, widthEndVal, heightStartVal, heightEndVal;
 
-          description = `Width ${widthAction} ${widthStart} – ${widthEnd} and Height ${heightAction} ${heightStart} – ${heightEnd}`;
+          if (Array.isArray(values.startValue) && values.startValue.length >= 2) {
+            widthStartVal = Math.round(values.startValue[0]);
+            heightStartVal = Math.round(values.startValue[1]);
+          } else if (values.formatted?.startValue) {
+            // Parse from formatted string like "100px, 200px"
+            const startMatch = values.formatted.startValue.match(/(-?\d+\.?\d*)/g);
+            if (startMatch && startMatch.length >= 2) {
+              widthStartVal = Math.round(parseFloat(startMatch[0]));
+              heightStartVal = Math.round(parseFloat(startMatch[1]));
+            }
+          }
+
+          if (Array.isArray(values.endValue) && values.endValue.length >= 2) {
+            widthEndVal = Math.round(values.endValue[0]);
+            heightEndVal = Math.round(values.endValue[1]);
+          } else if (values.formatted?.endValue) {
+            // Parse from formatted string like "100px, 200px"
+            const endMatch = values.formatted.endValue.match(/(-?\d+\.?\d*)/g);
+            if (endMatch && endMatch.length >= 2) {
+              widthEndVal = Math.round(parseFloat(endMatch[0]));
+              heightEndVal = Math.round(parseFloat(endMatch[1]));
+            }
+          }
+
+          // Fallback: calculate from change values if we have at least start or end
+          if (widthStartVal === undefined && widthEndVal !== undefined) {
+            widthStartVal = widthEndVal - widthChange;
+          } else if (widthEndVal === undefined && widthStartVal !== undefined) {
+            widthEndVal = widthStartVal + widthChange;
+          }
+          if (heightStartVal === undefined && heightEndVal !== undefined) {
+            heightStartVal = heightEndVal - heightChange;
+          } else if (heightEndVal === undefined && heightStartVal !== undefined) {
+            heightEndVal = heightStartVal + heightChange;
+          }
+
+          // Build description with available values
+          const widthDesc = (widthStartVal !== undefined && widthEndVal !== undefined)
+            ? `Width ${widthAction} ${widthStartVal}px – ${widthEndVal}px`
+            : `Width ${widthAction} ${Math.abs(widthChange)}px`;
+          const heightDesc = (heightStartVal !== undefined && heightEndVal !== undefined)
+            ? `Height ${heightAction} ${heightStartVal}px – ${heightEndVal}px`
+            : `Height ${heightAction} ${Math.abs(heightChange)}px`;
+
+          description = `${widthDesc} and ${heightDesc}`;
         }
         else if (prop.includes('width')) {
           if (changeValue === 0) {
-            description = `width stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+            description = `width stays at ${scaleValue(values.startValue)}px`;
           } else {
             const action = changeValue > 0 ? 'expands' : 'shrinks';
-            const startVal = values.formatted?.startValue || Math.round(values.startValue) + 'px';
-            const endVal = values.formatted?.endValue || Math.round(values.endValue) + 'px';
-            description = `width ${action} ${startVal} – ${endVal}`;
+            description = `width ${action} ${scaleValue(values.startValue)}px – ${scaleValue(values.endValue)}px`;
           }
         }
         else if (prop.includes('height')) {
           if (changeValue === 0) {
-            description = `height stays at ${values.formatted?.startValue || Math.round(values.startValue)}`;
+            description = `height stays at ${scaleValue(values.startValue)}px`;
           } else {
             const action = changeValue > 0 ? 'expands' : 'shrinks';
-            const startVal = values.formatted?.startValue || Math.round(values.startValue) + 'px';
-            const endVal = values.formatted?.endValue || Math.round(values.endValue) + 'px';
-            description = `height ${action} ${startVal} – ${endVal}`;
+            description = `height ${action} ${scaleValue(values.startValue)}px – ${scaleValue(values.endValue)}px`;
           }
         }
         else if (prop.includes('blur radius')) {
@@ -11615,6 +11688,10 @@ ${cleanedScript}
           ? anim.customEndValue
           : formatDecimalValue(anim.values.formatted.endValue);
 
+        // Apply scale factor for position/dimension properties
+        startValue = scaleFormattedValue(startValue, anim.property);
+        endValue = scaleFormattedValue(endValue, anim.property);
+
         // For grouped Position, only show values that changed with (X)/(Y) labels
         if (anim.isGrouped && anim.groupType === 'position' && Array.isArray(anim.values.change)) {
           const [xChange, yChange] = anim.values.change;
@@ -11626,12 +11703,12 @@ ${cleanedScript}
           const endParts = [];
 
           if (xChange !== 0 && xAnim?.values) {
-            startParts.push(`${Math.round(xAnim.values.startValue)}px (X)`);
-            endParts.push(`${Math.round(xAnim.values.endValue)}px (X)`);
+            startParts.push(`${scaleValue(Math.round(xAnim.values.startValue))}px (X)`);
+            endParts.push(`${scaleValue(Math.round(xAnim.values.endValue))}px (X)`);
           }
           if (yChange !== 0 && yAnim?.values) {
-            startParts.push(`${Math.round(yAnim.values.startValue)}px (Y)`);
-            endParts.push(`${Math.round(yAnim.values.endValue)}px (Y)`);
+            startParts.push(`${scaleValue(Math.round(yAnim.values.startValue))}px (Y)`);
+            endParts.push(`${scaleValue(Math.round(yAnim.values.endValue))}px (Y)`);
           }
 
           startValue = startParts.length > 0 ? startParts.join('\n') : '-';
@@ -11656,12 +11733,12 @@ ${cleanedScript}
             const endParts = [];
 
             if (xChanged) {
-              startParts.push(`${Math.round(startPos.x)}px (X)`);
-              endParts.push(`${Math.round(endPos.x)}px (X)`);
+              startParts.push(`${scaleValue(Math.round(startPos.x))}px (X)`);
+              endParts.push(`${scaleValue(Math.round(endPos.x))}px (X)`);
             }
             if (yChanged) {
-              startParts.push(`${Math.round(startPos.y)}px (Y)`);
-              endParts.push(`${Math.round(endPos.y)}px (Y)`);
+              startParts.push(`${scaleValue(Math.round(startPos.y))}px (Y)`);
+              endParts.push(`${scaleValue(Math.round(endPos.y))}px (Y)`);
             }
 
             startValue = startParts.length > 0 ? startParts.join('\n') : '-';
