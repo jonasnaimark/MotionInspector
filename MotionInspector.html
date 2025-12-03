@@ -6273,11 +6273,8 @@
 
               html += `<div class="timeline-label indented child-anim${childContinueClass}"
                             data-row-type="child-animation"
-                            data-drag-type="animation"
                             data-layer-index="${childLayerIndex}"
                             data-anim-index="${globalIdx}"
-                            data-anim-in-layer="${animIdx}"
-                            data-parent-layer="${layerIndex}"
                             draggable="false">
                 <span class="timeline-label-text">${anim.property}</span>
                 <button class="param-action-btn edit-only" draggable="false"></button>
@@ -6782,17 +6779,20 @@
               wouldChangePosition = draggedAnimIndex !== targetIndex;
             }
           } else if (isChildLayerDrop) {
-            // Child layer reordering - use full row with midpoint detection
-            const midpoint = rect.top + rect.height / 2;
-            const dropBefore = e.clientY < midpoint;
+            // Child layer reordering
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
 
-            if (dropBefore) {
-              // Dropping before target
+            if (distanceFromTop <= 10) {
+              // Dropping before target - check if position would change
               let targetIndex = targetLayerIndex;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
-            } else {
-              // Dropping after target
+            } else if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Last child with no animations - allow bottom drop on header
               let targetIndex = targetLayerIndex + 1;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
@@ -6827,14 +6827,21 @@
               if (rightRow) rightRow.classList.add('drag-over-top');
             }
           } else if (isChildLayerDrop) {
-            // Child layer drops - show indicator based on midpoint
-            const midpoint = rect.top + rect.height / 2;
-            if (e.clientY < midpoint) {
-              // Show top indicator
-              if (rightRow) rightRow.classList.add('drag-over-top');
-            } else {
-              // Show bottom indicator
+            // Child layer drops
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
+
+            if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Show bottom indicator for last child with no animations
+              label.classList.add('drag-over-bottom');
               if (rightRow) rightRow.classList.add('drag-over-bottom');
+            } else {
+              // Top indicator only
+              label.classList.add('drag-over-top');
+              if (rightRow) rightRow.classList.add('drag-over-top');
             }
           } else {
             if (dropPosition === 'before') {
@@ -6923,10 +6930,14 @@
           else if (draggedType === 'child-layer' && targetType === 'child-layer') {
             const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
             if (draggedParentLayer === targetParentLayer) {
-              // Determine if dropping before or after based on midpoint
+              // Determine if dropping before or after (for last child with no animations)
               const rect = label.getBoundingClientRect();
-              const midpoint = rect.top + rect.height / 2;
-              const childDropPosition = e.clientY < midpoint ? 'before' : 'after';
+              const distanceFromBottom = rect.bottom - e.clientY;
+              const isLastChild = !label.classList.contains('has-siblings');
+              const targetLayer = specData.layers[targetLayerIndex];
+              const hasNoAnimations = targetLayer.animations.length === 0;
+
+              const childDropPosition = (isLastChild && hasNoAnimations && distanceFromBottom <= 10) ? 'after' : 'before';
               performChildLayerMove(draggedLayerIndex, targetLayerIndex, childDropPosition);
             }
           }
@@ -6946,7 +6957,7 @@
           if (!draggedElement || draggedType !== 'child-layer') return;
 
           const targetLayerIndex = parseInt(row.dataset.layerIndex);
-          const targetAnimInLayer = parseInt(row.dataset.animInLayer);
+          const targetAnimIndex = parseInt(row.dataset.animIndex);
           const targetLayer = specData.layers[targetLayerIndex];
 
           // Check if this animation's layer is a child of the same parent
@@ -6956,7 +6967,7 @@
           if (!draggedLayer.parenting || draggedLayer.parenting.parentId !== targetParentId) return;
 
           // Only respond to bottom zone of the LAST animation of the child
-          const isLastAnim = targetAnimInLayer === targetLayer.animations.length - 1;
+          const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
           if (!isLastAnim) return;
 
           const rect = row.getBoundingClientRect();
@@ -6988,7 +6999,7 @@
           if (!draggedElement || draggedType !== 'child-layer') return;
 
           const targetLayerIndex = parseInt(row.dataset.layerIndex);
-          const targetAnimInLayer = parseInt(row.dataset.animInLayer);
+          const targetAnimIndex = parseInt(row.dataset.animIndex);
           const targetLayer = specData.layers[targetLayerIndex];
 
           // Verify same parent
@@ -6998,7 +7009,7 @@
           if (!draggedLayer.parenting || draggedLayer.parenting.parentId !== targetParentId) return;
 
           // Verify it's the last animation of this child
-          const isLastAnim = targetAnimInLayer === targetLayer.animations.length - 1;
+          const isLastAnim = targetAnimIndex === targetLayer.animations.length - 1;
           if (!isLastAnim) return;
 
           e.preventDefault();
@@ -9632,17 +9643,20 @@ ${cleanedScript}
               wouldChangePosition = draggedAnimIndex !== targetIndex;
             }
           } else if (isChildLayerDrop) {
-            // Child layer reordering - use full row with midpoint detection
-            const midpoint = rect.top + rect.height / 2;
-            const dropBefore = e.clientY < midpoint;
+            // Child layer reordering
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
 
-            if (dropBefore) {
-              // Dropping before target
+            if (distanceFromTop <= 10) {
+              // Dropping before target - check if position would change
               let targetIndex = targetLayerIndex;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
-            } else {
-              // Dropping after target
+            } else if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Last child with no animations - allow bottom drop on header
               let targetIndex = targetLayerIndex + 1;
               if (draggedLayerIndex < targetIndex) targetIndex--;
               wouldChangePosition = draggedLayerIndex !== targetIndex;
@@ -9715,20 +9729,27 @@ ${cleanedScript}
           }
           // For child-layer drops: only add indicator to track (not label) to avoid double lines
           else if (isChildLayerDrop) {
-            const midpoint = rect.top + rect.height / 2;
+            const distanceFromTop = e.clientY - rect.top;
+            const distanceFromBottom = rect.bottom - e.clientY;
+            const isLastChild = !label.classList.contains('has-siblings');
+            const targetLayer = specData.layers[targetLayerIndex];
+            const hasNoAnimations = targetLayer.animations.length === 0;
+
             const allLabels = Array.from(document.querySelectorAll('.timeline-label'));
             const allTracks = Array.from(document.querySelectorAll('.timeline-track'));
             const labelIndex = allLabels.indexOf(label);
 
-            if (e.clientY < midpoint) {
-              // Show top indicator
-              if (labelIndex >= 0 && allTracks[labelIndex]) {
-                allTracks[labelIndex].classList.add('drag-over-top');
-              }
-            } else {
-              // Show bottom indicator
+            if (isLastChild && hasNoAnimations && distanceFromBottom <= 10) {
+              // Show bottom indicator for last child with no animations
+              label.classList.add('drag-over-bottom');
               if (labelIndex >= 0 && allTracks[labelIndex]) {
                 allTracks[labelIndex].classList.add('drag-over-bottom');
+              }
+            } else {
+              // Top indicator only
+              label.classList.add('drag-over-top');
+              if (labelIndex >= 0 && allTracks[labelIndex]) {
+                allTracks[labelIndex].classList.add('drag-over-top');
               }
             }
           } else {
@@ -9842,10 +9863,14 @@ ${cleanedScript}
           else if (draggedType === 'child-layer' && targetType === 'child-layer') {
             const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
             if (draggedParentLayer === targetParentLayer) {
-              // Determine if dropping before or after based on midpoint
+              // Determine if dropping before or after (for last child with no animations)
               const rect = label.getBoundingClientRect();
-              const midpoint = rect.top + rect.height / 2;
-              const childDropPosition = e.clientY < midpoint ? 'before' : 'after';
+              const distanceFromBottom = rect.bottom - e.clientY;
+              const isLastChild = !label.classList.contains('has-siblings');
+              const targetLayer = specData.layers[targetLayerIndex];
+              const hasNoAnimations = targetLayer.animations.length === 0;
+
+              const childDropPosition = (isLastChild && hasNoAnimations && distanceFromBottom <= 10) ? 'after' : 'before';
               performChildLayerMove(draggedLayerIndex, targetLayerIndex, childDropPosition);
             }
           }
