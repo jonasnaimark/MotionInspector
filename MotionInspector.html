@@ -2612,6 +2612,11 @@
       border-radius: 0 6px 6px 0;
     }
 
+    /* Custom color override for text overflow gradient */
+    .timeline-bar.has-text-overflow[style*="--bar-color"]::after {
+      background: linear-gradient(to right, transparent 0%, var(--bar-color) 100%) !important;
+    }
+
     .timeline-bar.has-text-overflow.bar-opacity::after {
       background: linear-gradient(to right, rgba(5, 110, 83, 0) 0%, rgba(5, 110, 83, 1) 100%);
     }
@@ -9389,6 +9394,8 @@ ${cleanedScript}
         const animCustomColor = getAnimationColorForVideo(anim, currentVideoId);
         let customStyle = `left: ${startPercent}%; width: ${widthPercent}%;`;
         if (animCustomColor) {
+          // Set CSS custom property for text overflow gradient
+          customStyle += ` --bar-color: ${animCustomColor};`;
           if (springClass) {
             const rgb = animCustomColor.match(/\w\w/g).map(x => parseInt(x, 16));
             customStyle += ` background: linear-gradient(90deg, ${animCustomColor} 0%, ${animCustomColor} 50%, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0) 100%);`;
