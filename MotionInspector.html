@@ -6276,10 +6276,17 @@
 
             // Child's own animations (if any) - extra indented under child header
             childLayer.animations.forEach((anim, animIdx) => {
+              // Calculate global animation index (layer array order, matches showAnimationDetails)
+              let globalIdx = 0;
+              for (let i = 0; i < childLayerIndex; i++) {
+                globalIdx += specData.layers[i].animations.length;
+              }
+              globalIdx += animIdx;
+
               html += `<div class="timeline-label indented child-anim${childContinueClass}"
                             data-row-type="child-animation"
                             data-layer-index="${childLayerIndex}"
-                            data-anim-index="${animIdx}"
+                            data-anim-index="${globalIdx}"
                             draggable="false">
                 <span class="timeline-label-text">${anim.property}</span>
                 <button class="param-action-btn edit-only" draggable="false"></button>
@@ -6300,6 +6307,16 @@
 
       // ===== RIGHT COLUMN - Table data (header is now in header row above) =====
       html += `<div class="timeline-content-column">`;
+
+      // Helper function to get global animation index for a layer's animation
+      // This matches the order used by showAnimationDetails (layer array order)
+      function getGlobalAnimIndexTable(layerIdx, animIdxInLayer) {
+        let idx = 0;
+        for (let i = 0; i < layerIdx; i++) {
+          idx += specData.layers[i].animations.length;
+        }
+        return idx + animIdxInLayer;
+      }
 
       // Helper function to render animation row cells
       function renderAnimationRowCells(anim, layerIndex, animIndex, layerName, extraClasses = '', rowType = 'animation') {
@@ -6425,7 +6442,9 @@
 
           // Child's own animation rows (if any)
           childLayer.animations.forEach((anim, animIndex) => {
-            html += renderAnimationRowCells(anim, childLayerIndex, animIndex, childLayer.layerName, childContinueClass, 'child-animation');
+            // Use layer-array-order index (matches showAnimationDetails lookup)
+            const childAnimGlobalIndex = getGlobalAnimIndexTable(childLayerIndex, animIndex);
+            html += renderAnimationRowCells(anim, childLayerIndex, childAnimGlobalIndex, childLayer.layerName, childContinueClass, 'child-animation');
           });
         });
       });
@@ -9024,10 +9043,12 @@ ${cleanedScript}
 
           // Child's own animations (if any) - extra indented under child header
           childLayer.animations.forEach((anim, animIndexInLayer) => {
+            // Use layer-array-order index (matches showAnimationDetails lookup)
+            const childAnimGlobalIndex = getGlobalAnimIndex(childLayerIndex, animIndexInLayer);
             html += `<div class="timeline-label indented child-anim${childContinueClass}"
                           draggable="${isEditMode}"
                           data-drag-type="animation"
-                          data-anim-index="${animIndex}"
+                          data-anim-index="${childAnimGlobalIndex}"
                           data-layer-index="${childLayerIndex}"
                           data-anim-in-layer="${animIndexInLayer}">
               <span class="timeline-label-text">${anim.property}</span>
@@ -9061,6 +9082,16 @@ ${cleanedScript}
       });
 
       html += `</div>`;
+
+      // Helper function to get global animation index for a layer's animation
+      // This matches the order used by showAnimationDetails (layer array order)
+      function getGlobalAnimIndex(layerIdx, animIdxInLayer) {
+        let idx = 0;
+        for (let i = 0; i < layerIdx; i++) {
+          idx += specData.layers[i].animations.length;
+        }
+        return idx + animIdxInLayer;
+      }
 
       // Helper function to render a single animation bar track
       function renderAnimationBarTrack(anim, layerIndex, globalAnimIndex, layerName) {
@@ -9221,8 +9252,10 @@ ${cleanedScript}
           </div>`;
 
           // Child's own animation bars (if any)
-          childLayer.animations.forEach(anim => {
-            html += renderAnimationBarTrack(anim, childLayerIndex, animIndex, childLayer.layerName);
+          childLayer.animations.forEach((anim, animIdxInLayer) => {
+            // Use layer-array-order index (matches showAnimationDetails lookup)
+            const childAnimGlobalIndex = getGlobalAnimIndex(childLayerIndex, animIdxInLayer);
+            html += renderAnimationBarTrack(anim, childLayerIndex, childAnimGlobalIndex, childLayer.layerName);
             animIndex++;
           });
         });
