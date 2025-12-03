@@ -2621,7 +2621,7 @@
     }
 
     .timeline-bar.has-text-overflow.bar-rotation::after {
-      background: linear-gradient(to right, rgba(125, 41, 160, 0) 0%, rgba(125, 41, 160, 1) 100%);
+      background: linear-gradient(to right, rgba(209, 85, 25, 0) 0%, rgba(209, 85, 25, 1) 100%);
     }
 
     .timeline-bar.has-text-overflow.bar-position-x::after,
@@ -2659,7 +2659,7 @@
     /* Property-specific colors (1.2x brighter defaults) */
     .bar-opacity { background: #056e53; }
     .bar-scale { background: #7d29a0; }
-    .bar-rotation { background: #6c1c90; }
+    .bar-rotation { background: #d15519; }
     .bar-position-x { background: #056e96; }
     .bar-position-y { background: #056e96; }
     .bar-width { background: #ca317d; }
@@ -2671,7 +2671,7 @@
     /* Spring gradient fade-out (1.2x brighter defaults) */
     .bar-spring.bar-opacity { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
     .bar-spring.bar-scale { background: linear-gradient(90deg, #7d29a0 0%, #7d29a0 50%, rgba(125, 41, 160, 0) 100%); }
-    .bar-spring.bar-rotation { background: linear-gradient(90deg, #6c1c90 0%, #6c1c90 50%, rgba(108, 28, 144, 0) 100%); }
+    .bar-spring.bar-rotation { background: linear-gradient(90deg, #d15519 0%, #d15519 50%, rgba(209, 85, 25, 0) 100%); }
     .bar-spring.bar-position-x { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
     .bar-spring.bar-position-y { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
     .bar-spring.bar-width { background: linear-gradient(90deg, #ca317d 0%, #ca317d 50%, rgba(202, 49, 125, 0) 100%); }
@@ -11730,6 +11730,7 @@ ${cleanedScript}
           class="detail-title-input detail-title-input-section"
           value="${layer.layerName.replace(/"/g, '&quot;')}"
           maxlength="21"
+          tabindex="1"
           onfocus="this.select()"
           onblur="updateLayerField(${layerIndex}, 'layerName', this.value)"
           oninput="autoResizeTitleInput(this)"
@@ -11741,6 +11742,7 @@ ${cleanedScript}
           class="detail-title-input detail-title-input-property"
           value="${anim.property.replace(/"/g, '&quot;')}"
           maxlength="21"
+          tabindex="2"
           onfocus="this.select()"
           onblur="updateAnimationField(${animIndex}, 'property', this.value)"
           oninput="autoResizeTitleInput(this)"
@@ -11762,11 +11764,11 @@ ${cleanedScript}
 
       if (isEditMode) {
         html += `<div class="detail-panel-actions">`;
-        html += `<button class="detail-panel-action-btn delete" onclick="deleteAnimation(${animIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
-        html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
+        html += `<button class="detail-panel-action-btn delete" tabindex="9" onclick="deleteAnimation(${animIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
+        html += `<button class="detail-panel-close" tabindex="10" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
         html += `</div>`;
       } else {
-        html += `<button class="detail-panel-close" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
+        html += `<button class="detail-panel-close" tabindex="10" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
       }
 
       html += `</div>`;
@@ -11781,6 +11783,7 @@ ${cleanedScript}
               class="detail-description-input"
               value="${description.replace(/"/g, '&quot;')}"
               placeholder="Enter description..."
+              tabindex="3"
               onfocus="this.select()"
               onblur="updateAnimationField(${animIndex}, 'customDescription', this.value)"
               onkeydown="if(event.key === 'Enter') { this.blur(); }"
@@ -11808,6 +11811,7 @@ ${cleanedScript}
                 type="text"
                 class="detail-value-input"
                 value="${anim.timing.delay}"
+                tabindex="4"
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'delay', this.value)"
                 onkeydown="if(event.key === 'Enter') { this.blur(); }"
@@ -11837,6 +11841,7 @@ ${cleanedScript}
                 type="text"
                 class="detail-value-input"
                 value="${durationInputValue}"
+                tabindex="5"
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'duration', this.value)"
                 onkeydown="if(event.key === 'Enter') { this.blur(); }"
@@ -11894,7 +11899,7 @@ ${cleanedScript}
         html += `<div class="detail-label">Easing</div>`;
         if (isEditMode) {
           html += `
-            <div class="detail-value easing-editable" data-anim-index="${animIndex}" data-plain="${easingTextPlain.replace(/"/g, '&quot;')}">${easingText}</div>
+            <div class="detail-value easing-editable" tabindex="6" data-anim-index="${animIndex}" data-plain="${easingTextPlain.replace(/"/g, '&quot;')}">${easingText}</div>
           `;
         } else {
           html += `<div class="detail-value">${easingText}</div>`;
@@ -12000,6 +12005,7 @@ ${cleanedScript}
                 <textarea
                   class="detail-value-input"
                   rows="2"
+                  tabindex="7"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
                   onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.blur(); }"
@@ -12013,6 +12019,7 @@ ${cleanedScript}
                   type="text"
                   class="detail-value-input"
                   value="${startValue.replace(/"/g, '&quot;')}"
+                  tabindex="7"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
                   onkeydown="if(event.key === 'Enter') { this.blur(); }"
@@ -12035,6 +12042,7 @@ ${cleanedScript}
                 <textarea
                   class="detail-value-input"
                   rows="2"
+                  tabindex="8"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
                   onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.blur(); }"
@@ -12048,6 +12056,7 @@ ${cleanedScript}
                   type="text"
                   class="detail-value-input"
                   value="${endValue.replace(/"/g, '&quot;')}"
+                  tabindex="8"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
                   onkeydown="if(event.key === 'Enter') { this.blur(); }"
