@@ -6033,11 +6033,18 @@
 
         // Set the value and trigger save based on element type
         if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-          // For info box elements, extract animIndex from the onblur handler
-          const onblurAttr = inputElement.getAttribute('onblur');
-          const match = onblurAttr.match(/updateAnimationField\((\d+),\s*'easing'/);
-          if (match) {
-            const animIndex = parseInt(match[1]);
+          // For info box elements, get animIndex from data attribute or onblur handler
+          let animIndex = null;
+          if (inputElement.dataset.animIndex !== undefined) {
+            animIndex = parseInt(inputElement.dataset.animIndex);
+          } else {
+            const onblurAttr = inputElement.getAttribute('onblur');
+            const match = onblurAttr && onblurAttr.match(/updateAnimationField\((\d+),\s*'easing'/);
+            if (match) {
+              animIndex = parseInt(match[1]);
+            }
+          }
+          if (animIndex !== null) {
 
             // Find the animation in specData
             let currentIndex = 0;
@@ -12029,6 +12036,7 @@ ${cleanedScript}
           textarea.rows = 1;
           textarea.value = plainText;
           textarea.style.width = '100%';
+          textarea.dataset.animIndex = animIdx; // Store anim index for preset selection
 
           this.replaceWith(textarea);
           textarea.focus();
