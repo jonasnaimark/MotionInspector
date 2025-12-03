@@ -6648,9 +6648,15 @@
               let targetParentIndex = targetLayerIndex;
               if (targetType === 'child-layer') {
                 targetParentIndex = parseInt(label.dataset.parentLayer);
-              } else {
-                // Animation row - layerIndex is the parent
-                targetParentIndex = targetLayerIndex;
+              } else if (targetType === 'animation') {
+                // If target animation belongs to a child layer, resolve to grandparent
+                const targetLayer = specData.layers[targetLayerIndex];
+                if (targetLayer && targetLayer.parenting && targetLayer.parenting.parentId) {
+                  const grandparentIndex = specData.layers.findIndex(l => l.id === targetLayer.parenting.parentId);
+                  if (grandparentIndex !== -1) {
+                    targetParentIndex = grandparentIndex;
+                  }
+                }
               }
               // Can't parent to self or to a child layer
               const targetParent = specData.layers[targetParentIndex];
@@ -6809,9 +6815,20 @@
             let targetParentIndex = targetLayerIndex;
             if (targetType === 'child-layer') {
               targetParentIndex = parseInt(label.dataset.parentLayer);
+            } else if (targetType === 'animation') {
+              // If target animation belongs to a child layer, find its actual parent
+              const targetLayer = specData.layers[targetLayerIndex];
+              if (targetLayer && targetLayer.parenting && targetLayer.parenting.parentId) {
+                // Target is a child layer's animation - find the grandparent
+                const grandparentIndex = specData.layers.findIndex(l => l.id === targetLayer.parenting.parentId);
+                if (grandparentIndex !== -1) {
+                  targetParentIndex = grandparentIndex;
+                }
+              }
             }
-            // Only parent if dragged layer is not already a parent
-            if (!layerHasChildren(draggedLayerIndex)) {
+            // Only parent if dragged layer is not already a parent AND target parent is not itself a child
+            const targetParent = specData.layers[targetParentIndex];
+            if (!layerHasChildren(draggedLayerIndex) && targetParent && !targetParent.parenting) {
               convertLayerToChild(draggedLayerIndex, targetParentIndex);
             }
           }
@@ -9537,6 +9554,15 @@ ${cleanedScript}
               let targetParentIndex = targetLayerIndex;
               if (targetType === 'child-layer') {
                 targetParentIndex = parseInt(label.dataset.parentLayer);
+              } else if (targetType === 'animation') {
+                // If target animation belongs to a child layer, resolve to grandparent
+                const targetLayer = specData.layers[targetLayerIndex];
+                if (targetLayer && targetLayer.parenting && targetLayer.parenting.parentId) {
+                  const grandparentIndex = specData.layers.findIndex(l => l.id === targetLayer.parenting.parentId);
+                  if (grandparentIndex !== -1) {
+                    targetParentIndex = grandparentIndex;
+                  }
+                }
               }
               // Can't parent to self or to a child layer
               const targetParent = specData.layers[targetParentIndex];
@@ -9767,9 +9793,20 @@ ${cleanedScript}
             let targetParentIndex = targetLayerIndex;
             if (targetType === 'child-layer') {
               targetParentIndex = parseInt(label.dataset.parentLayer);
+            } else if (targetType === 'animation') {
+              // If target animation belongs to a child layer, find its actual parent
+              const targetLayer = specData.layers[targetLayerIndex];
+              if (targetLayer && targetLayer.parenting && targetLayer.parenting.parentId) {
+                // Target is a child layer's animation - find the grandparent
+                const grandparentIndex = specData.layers.findIndex(l => l.id === targetLayer.parenting.parentId);
+                if (grandparentIndex !== -1) {
+                  targetParentIndex = grandparentIndex;
+                }
+              }
             }
-            // Only parent if dragged layer is not already a parent
-            if (!layerHasChildren(draggedLayerIndex)) {
+            // Only parent if dragged layer is not already a parent AND target parent is not itself a child
+            const targetParent = specData.layers[targetParentIndex];
+            if (!layerHasChildren(draggedLayerIndex) && targetParent && !targetParent.parenting) {
               convertLayerToChild(draggedLayerIndex, targetParentIndex);
             }
           }
