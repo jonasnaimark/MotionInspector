@@ -1962,8 +1962,8 @@
       position: relative;
     }
 
-    /* Only first child layer gets top margin and border (visual separation from param rows above) */
-    .timeline-label.child-layer-header.first-child-layer {
+    /* All child layer headers get top margin and border (visual separation) */
+    .timeline-label.child-layer-header {
       margin-top: 8px;
       border-top: 1px solid #222222; /* Left column slightly darker */
     }
@@ -1980,10 +1980,6 @@
     /* Attached to text in timeline mode - dashed border bar positioned like other bars */
     .timeline-track.child-layer-header:not(.table-row) {
       position: relative;
-    }
-
-    /* Only first child layer track gets top margin and border (matching left column) */
-    .timeline-track.child-layer-header.first-child-layer:not(.table-row) {
       margin-top: 8px;
       border-top: 1px solid #2a2a2a; /* Match other grid lines */
     }
@@ -1991,20 +1987,13 @@
     /* In table mode, child layer header should use normal table row layout */
     body.table-view-active .timeline-track.child-layer-header.table-row {
       display: grid;
-    }
-
-    /* Only first child layer gets top margin and border in table mode */
-    body.table-view-active .timeline-label.child-layer-header.first-child-layer {
-      margin-top: 8px;
-      border-top: 1px solid #222222; /* Left column slightly darker */
-    }
-    body.table-view-active .timeline-track.child-layer-header.table-row.first-child-layer {
       margin-top: 8px;
       border-top: 1px solid #2a2a2a; /* Right column lighter */
       position: relative;
     }
-    /* Extend vertical grid lines through the gap above first child layer */
-    body.table-view-active .timeline-track.child-layer-header.table-row.first-child-layer::before {
+
+    /* Extend vertical grid lines through the gap above all child layers in table mode */
+    body.table-view-active .timeline-track.child-layer-header.table-row::before {
       content: '';
       position: absolute;
       top: -8px;
@@ -2028,22 +2017,16 @@
       pointer-events: none;
     }
 
-    /* Vertical line segment connecting from top to the curve */
+    /* Vertical line segment connecting from top to the curve (all child headers have 8px margin-top) */
     .timeline-label.child-layer-header::before {
       content: '';
       position: absolute;
       left: 15px;
-      top: -6px;
-      height: calc(50% - 10px + 6px);
+      top: -14px;
+      height: calc(50% - 10px + 14px);
       width: 1px;
       background: #fff;
       z-index: 0;
-    }
-
-    /* Extend line for first child layer (has 8px margin-top) */
-    .timeline-label.child-layer-header.first-child-layer::before {
-      top: -14px;
-      height: calc(50% - 10px + 14px);
     }
 
     /* Curved branch connector (L-shape with rounded corner) */
@@ -2064,13 +2047,8 @@
     /* When there are more siblings below, extend vertical line to bottom */
     .timeline-label.child-layer-header.has-siblings::before {
       height: auto;
-      top: -6px;
-      bottom: -1px;
-    }
-
-    /* Extend line for first child with siblings (has 8px margin-top) */
-    .timeline-label.child-layer-header.first-child-layer.has-siblings::before {
       top: -14px;
+      bottom: -9px; /* Extend through the gap to next child header */
     }
 
     /* Continue vertical line through child rows when more children below */
@@ -2079,7 +2057,7 @@
       position: absolute;
       left: 15px;
       top: -6px;
-      bottom: -1px;
+      bottom: -9px; /* Extend through the gap to next child header */
       width: 1px;
       background: #fff;
       z-index: 0;
