@@ -1966,9 +1966,6 @@
     .timeline-label.child-layer-header {
       margin-top: 8px;
       border-top: 1px solid #222222; /* Left column slightly darker */
-      position: relative;
-      /* Lighter background in gap using box-shadow that extends upward */
-      box-shadow: 0 -8px 0 0 #1e1e1e;
     }
 
     .timeline-label.child-layer-header:hover {
@@ -1985,8 +1982,6 @@
       position: relative;
       margin-top: 8px;
       border-top: 1px solid #2a2a2a; /* Match other grid lines */
-      /* Lighter background in gap using box-shadow that extends upward */
-      box-shadow: 0 -8px 0 0 #1e1e1e;
     }
 
     /* In table mode, child layer header should use normal table row layout */
@@ -1995,8 +1990,6 @@
       margin-top: 8px;
       border-top: 1px solid #2a2a2a; /* Right column lighter */
       position: relative;
-      /* Lighter background in gap using box-shadow that extends upward */
-      box-shadow: 0 -8px 0 0 #1e1e1e;
     }
 
     /* Extend vertical grid lines through the gap above all child layers in table mode */
@@ -2542,8 +2535,8 @@
       border-radius: inherit;
       border: 1px dashed rgba(255, 255, 255, 0.4);
       pointer-events: none;
-      -webkit-mask-image: linear-gradient(90deg, #fff 0%, #fff 50%, transparent 100%);
-      mask-image: linear-gradient(90deg, #fff 0%, #fff 50%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, #fff 0%, #fff 50%, transparent 100%);
+      mask-image: linear-gradient(180deg, #fff 0%, #fff 50%, transparent 100%);
     }
 
     .timeline-bar.bar-attached:hover {
