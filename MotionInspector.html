@@ -6315,6 +6315,8 @@
                           data-parent-layer="${layerIndex}"
                           draggable="${isEditMode}">
               <span class="timeline-label-text">${childLayer.layerName}</span>
+              <button class="param-action-btn edit-only" draggable="false"></button>
+              <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
             </div>`;
 
             // Child's own animations (if any) - extra indented under child header
@@ -6335,6 +6337,7 @@
                             draggable="${isEditMode}">
                 <span class="timeline-label-text">${anim.property}</span>
                 <button class="param-action-btn edit-only" draggable="false"></button>
+                <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
               </div>`;
             });
 
@@ -6963,11 +6966,23 @@
           // For dropping animations on layer headers
           else if (draggedType === 'animation' && targetType === 'layer') {
             saveSnapshot();
+            // Save scroll position before re-render
+            const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+            const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
             const sourceLayer = specData.layers[draggedLayerIndex];
             const targetLayer = specData.layers[targetLayerIndex];
             const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
             targetLayer.animations.splice(0, 0, anim);
             renderTableView();
+
+            // Restore scroll position after re-render
+            requestAnimationFrame(() => {
+              const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+              if (newTimelineOuter) {
+                newTimelineOuter.scrollTop = scrollTop;
+              }
+            });
           }
           // For animation drops
           else if (draggedType === 'animation' && targetType === 'animation') {
@@ -6975,6 +6990,10 @@
               performAnimationMove(draggedLayerIndex, draggedAnimIndex, targetAnimIndex, dropPosition);
             } else {
               saveSnapshot();
+              // Save scroll position before re-render
+              const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+              const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
               const sourceLayer = specData.layers[draggedLayerIndex];
               const targetLayer = specData.layers[targetLayerIndex];
               const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
@@ -6983,6 +7002,14 @@
               if (dropPosition === 'after') insertIndex++;
               targetLayer.animations.splice(insertIndex, 0, anim);
               renderTableView();
+
+              // Restore scroll position after re-render
+              requestAnimationFrame(() => {
+                const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+                if (newTimelineOuter) {
+                  newTimelineOuter.scrollTop = scrollTop;
+                }
+              });
             }
           }
           // For child-layer drops on child headers
@@ -7664,13 +7691,16 @@
 
       labelsColumn.addEventListener('mousemove', (e) => {
         const mouseY = e.clientY;
+        const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+        const isCollapsed = outerWrapper && outerWrapper.classList.contains('has-scroll');
 
         // Find all buttons and their distances
         let closestButton = null;
         let closestDistance = Infinity;
 
         // Check each label's divider line
-        labels.forEach(label => {
+        const labelsArray = Array.from(labels);
+        labelsArray.forEach((label, idx) => {
           const btn = label.querySelector('.timeline-label-add-btn');
           const sectionBtn = label.querySelector('.section-divider-add-btn');
           const rect = label.getBoundingClientRect();
@@ -7681,6 +7711,19 @@
             const dividerY = rect.bottom;
             const distanceFromDivider = Math.abs(mouseY - dividerY);
             if (distanceFromDivider <= halfCellHeight) {
+              // In collapsed mode, check if next row is a section header
+              // If so, prefer the section button from that header
+              if (isCollapsed) {
+                const nextLabel = labelsArray[idx + 1];
+                if (nextLabel && nextLabel.classList.contains('layer-header') && nextLabel.classList.contains('has-divider')) {
+                  const nextSectionBtn = nextLabel.querySelector('.section-divider-add-btn');
+                  if (nextSectionBtn && distanceFromDivider < closestDistance) {
+                    closestDistance = distanceFromDivider;
+                    closestButton = nextSectionBtn;
+                    return; // Skip adding param button
+                  }
+                }
+              }
               if (distanceFromDivider < closestDistance) {
                 closestDistance = distanceFromDivider;
                 closestButton = btn;
@@ -7689,7 +7732,8 @@
           }
 
           // Check section divider line (at top of cell, for elements with has-divider)
-          if (sectionBtn) {
+          // Only show in expanded mode (non-collapsed)
+          if (sectionBtn && !isCollapsed) {
             const sectionDividerY = rect.top; // Border-top is at element's top edge
             const distanceFromSectionDivider = Math.abs(mouseY - sectionDividerY);
             // Use a larger hover zone for section dividers (about 15px total margin-top / 2)
@@ -9170,6 +9214,7 @@ ${cleanedScript}
                         draggable="${isEditMode}">
             <span class="timeline-label-text">${childLayer.layerName}</span>
             <button class="param-action-btn edit-only" draggable="false"></button>
+            <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
 
           // Child's own animations (if any) - extra indented under child header
@@ -9954,6 +9999,10 @@ ${cleanedScript}
           // For dropping animations on layer headers (empty sections or add to top)
           else if (draggedType === 'animation' && targetType === 'layer') {
             saveSnapshot();
+            // Save scroll position before re-render
+            const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+            const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
             const sourceLayer = specData.layers[draggedLayerIndex];
             const targetLayer = specData.layers[targetLayerIndex];
             const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
@@ -9961,6 +10010,14 @@ ${cleanedScript}
             // Insert at the beginning of the target layer
             targetLayer.animations.splice(0, 0, anim);
             renderTimeline();
+
+            // Restore scroll position after re-render
+            requestAnimationFrame(() => {
+              const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+              if (newTimelineOuter) {
+                newTimelineOuter.scrollTop = scrollTop;
+              }
+            });
           }
           else if (draggedType === 'animation' && targetType === 'animation') {
             // Moving an animation (within same layer or across layers)
@@ -9970,6 +10027,10 @@ ${cleanedScript}
             } else {
               // Moving to a different layer
               saveSnapshot();
+              // Save scroll position before re-render
+              const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+              const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
               const sourceLayer = specData.layers[draggedLayerIndex];
               const targetLayer = specData.layers[targetLayerIndex];
               const anim = sourceLayer.animations.splice(draggedAnimIndex, 1)[0];
@@ -9979,6 +10040,14 @@ ${cleanedScript}
 
               targetLayer.animations.splice(targetIndex, 0, anim);
               renderTimeline();
+
+              // Restore scroll position after re-render
+              requestAnimationFrame(() => {
+                const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+                if (newTimelineOuter) {
+                  newTimelineOuter.scrollTop = scrollTop;
+                }
+              });
             }
           }
           // For child-layer drops on child headers
@@ -10380,13 +10449,16 @@ ${cleanedScript}
       labelsColumn.addEventListener('mousemove', (e) => {
         const columnRect = labelsColumn.getBoundingClientRect();
         const mouseY = e.clientY;
+        const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+        const isCollapsed = outerWrapper && outerWrapper.classList.contains('has-scroll');
 
         // Find all buttons and their distances
         let closestButton = null;
         let closestDistance = Infinity;
 
         // Check each label's divider line
-        labels.forEach(label => {
+        const labelsArray = Array.from(labels);
+        labelsArray.forEach((label, idx) => {
           const btn = label.querySelector('.timeline-label-add-btn');
           const sectionBtn = label.querySelector('.section-divider-add-btn');
           const rect = label.getBoundingClientRect();
@@ -10397,6 +10469,19 @@ ${cleanedScript}
             const dividerY = rect.bottom;
             const distanceFromDivider = Math.abs(mouseY - dividerY);
             if (distanceFromDivider <= halfCellHeight) {
+              // In collapsed mode, check if next row is a section header
+              // If so, prefer the section button from that header
+              if (isCollapsed) {
+                const nextLabel = labelsArray[idx + 1];
+                if (nextLabel && nextLabel.classList.contains('layer-header') && nextLabel.classList.contains('has-divider')) {
+                  const nextSectionBtn = nextLabel.querySelector('.section-divider-add-btn');
+                  if (nextSectionBtn && distanceFromDivider < closestDistance) {
+                    closestDistance = distanceFromDivider;
+                    closestButton = nextSectionBtn;
+                    return; // Skip adding param button
+                  }
+                }
+              }
               if (distanceFromDivider < closestDistance) {
                 closestDistance = distanceFromDivider;
                 closestButton = btn;
@@ -10405,7 +10490,8 @@ ${cleanedScript}
           }
 
           // Check section divider line (at top of cell, for elements with has-divider)
-          if (sectionBtn) {
+          // Only show in expanded mode (non-collapsed) since collapsed mode uses the row above
+          if (sectionBtn && !isCollapsed) {
             const sectionDividerY = rect.top; // Border-top is at element's top edge
             const distanceFromSectionDivider = Math.abs(mouseY - sectionDividerY);
             // Use a larger hover zone for section dividers (about 15px total margin-top / 2)
@@ -11075,6 +11161,10 @@ ${cleanedScript}
       if (fromIndex === targetIndex) return;
       saveSnapshot();
 
+      // Save scroll position before re-render
+      const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+      const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
       // Remove from old position
       const layer = specData.layers.splice(fromIndex, 1)[0];
 
@@ -11087,6 +11177,14 @@ ${cleanedScript}
       } else {
         renderTimeline();
       }
+
+      // Restore scroll position after re-render
+      requestAnimationFrame(() => {
+        const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+        if (newTimelineOuter) {
+          newTimelineOuter.scrollTop = scrollTop;
+        }
+      });
 
       // Maintain selection if needed
       if (selectedAnimation !== null) {
@@ -11107,6 +11205,10 @@ ${cleanedScript}
       if (fromIndex === targetIndex) return;
       saveSnapshot();
 
+      // Save scroll position before re-render
+      const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+      const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
       // Remove from old position
       const layer = specData.layers.splice(fromIndex, 1)[0];
 
@@ -11119,6 +11221,14 @@ ${cleanedScript}
       } else {
         renderTimeline();
       }
+
+      // Restore scroll position after re-render
+      requestAnimationFrame(() => {
+        const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+        if (newTimelineOuter) {
+          newTimelineOuter.scrollTop = scrollTop;
+        }
+      });
     }
 
     // Perform animation move within layer
@@ -11130,6 +11240,10 @@ ${cleanedScript}
 
       if (fromAnimIndex === targetIndex) return;
       saveSnapshot();
+
+      // Save scroll position before re-render
+      const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+      const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
 
       const layer = specData.layers[layerIndex];
 
@@ -11145,6 +11259,14 @@ ${cleanedScript}
       } else {
         renderTimeline();
       }
+
+      // Restore scroll position after re-render
+      requestAnimationFrame(() => {
+        const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+        if (newTimelineOuter) {
+          newTimelineOuter.scrollTop = scrollTop;
+        }
+      });
 
       // Maintain selection if needed
       if (selectedAnimation !== null) {
@@ -11197,6 +11319,10 @@ ${cleanedScript}
         insertAfterIndex--;
       }
 
+      // Save scroll position before re-render
+      const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+      const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
       // Insert after the last child (or after parent if no children)
       specData.layers.splice(insertAfterIndex + 1, 0, removed);
 
@@ -11206,6 +11332,14 @@ ${cleanedScript}
       } else {
         renderTimeline();
       }
+
+      // Restore scroll position after re-render
+      requestAnimationFrame(() => {
+        const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+        if (newTimelineOuter) {
+          newTimelineOuter.scrollTop = scrollTop;
+        }
+      });
     }
 
     // Convert a child layer to a standalone layer
@@ -11225,6 +11359,10 @@ ${cleanedScript}
       if (position === 'after') targetIndex++;
       if (layerIndex < targetIndex) targetIndex--;
 
+      // Save scroll position before re-render
+      const timelineOuter = document.querySelector('.timeline-outer-wrapper');
+      const scrollTop = timelineOuter ? timelineOuter.scrollTop : 0;
+
       if (layerIndex !== targetIndex) {
         // Remove from old position
         const [removed] = specData.layers.splice(layerIndex, 1);
@@ -11238,6 +11376,14 @@ ${cleanedScript}
       } else {
         renderTimeline();
       }
+
+      // Restore scroll position after re-render
+      requestAnimationFrame(() => {
+        const newTimelineOuter = document.querySelector('.timeline-outer-wrapper');
+        if (newTimelineOuter) {
+          newTimelineOuter.scrollTop = scrollTop;
+        }
+      });
     }
 
     // Setup playhead dragging
