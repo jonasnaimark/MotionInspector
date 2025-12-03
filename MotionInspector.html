@@ -11467,24 +11467,8 @@ ${cleanedScript}
 
       html += `<div class="detail-grid">`;
 
-      // Handle Fit to Shape animations differently
-      if (anim.isFitToShape && anim.fitToShape) {
-        html += `
-          <div class="detail-item">
-            <div class="detail-label">Parent Layer</div>
-            <div class="detail-value">${anim.fitToShape.containerLayerName}</div>
-          </div>
-          <div class="detail-item">
-            <div class="detail-label">Alignment</div>
-            <div class="detail-value">${getAlignmentText(anim.fitToShape.alignment)}</div>
-          </div>
-          <div class="detail-item">
-            <div class="detail-label">Scale To</div>
-            <div class="detail-value">${getScaleToText(anim.fitToShape.scaleTo)}</div>
-          </div>
-        `;
-      } else {
-        // Normal animation details
+      // Animation details (delay, duration, easing, values)
+      {
         // Delay - editable in edit mode
         html += `<div class="detail-item">`;
         html += `<div class="detail-label">DELAY (ms)</div>`;
@@ -11536,8 +11520,8 @@ ${cleanedScript}
         html += `</div>`;
       }
 
-      // Easing (skip for Fit to Shape since it doesn't have meaningful easing)
-      if (!anim.isFitToShape) {
+      // Easing
+      {
         let easingText = '';
         let easingTextPlain = '';  // Plain text version for edit mode
 
@@ -11598,8 +11582,8 @@ ${cleanedScript}
         html += `</div>`;
       }
 
-      // Values (skip for Fit to Shape)
-      if (!anim.isFitToShape && anim.values && anim.values.formatted) {
+      // Start and End Values
+      if (anim.values && anim.values.formatted) {
         let startValue = anim.customStartValue !== undefined && anim.customStartValue !== null
           ? anim.customStartValue
           : formatDecimalValue(anim.values.formatted.startValue);
