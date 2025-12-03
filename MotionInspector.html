@@ -2961,7 +2961,9 @@
     }
 
     .detail-description-input {
-      width: 100%;
+      width: auto;
+      min-width: 100px;
+      max-width: 100%;
       background: transparent;
       border: 1px solid transparent;
       border-radius: 4px;
@@ -3079,10 +3081,14 @@
       line-height: 1.2;
       padding: 4px 6px;
       margin-left: -6px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      transition: border-color 0.2s, background-color 0.2s;
     }
 
     .detail-value.easing-editable:hover {
-      background: #222222;
+      border-color: #555;
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .spring-params, .bezier-curve {
@@ -8904,6 +8910,23 @@ ${cleanedScript}
       document.body.removeChild(temp);
     }
 
+    function autoResizeDescriptionInput(input) {
+      // Create a temporary span to measure text width
+      const temp = document.createElement('span');
+      temp.style.font = window.getComputedStyle(input).font;
+      temp.style.visibility = 'hidden';
+      temp.style.position = 'absolute';
+      temp.style.whiteSpace = 'pre';
+      temp.textContent = input.value || input.placeholder || '';
+      document.body.appendChild(temp);
+
+      // Set width with some padding, min 100px, max container width
+      const width = Math.max(temp.offsetWidth + 24, 100);
+      input.style.width = width + 'px';
+
+      document.body.removeChild(temp);
+    }
+
     // Validate numeric field (for delay and duration)
     function validateNumeric(value, previousValue) {
       // Try to parse as float
@@ -11736,6 +11759,7 @@ ${cleanedScript}
               onfocus="this.select()"
               onblur="updateAnimationField(${animIndex}, 'customDescription', this.value)"
               onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              oninput="autoResizeDescriptionInput(this)"
             />
           </div>
         `;
@@ -12034,6 +12058,10 @@ ${cleanedScript}
       // Auto-resize title input fields to fit their content
       const titleInputs = detailPanel.querySelectorAll('.detail-title-input');
       titleInputs.forEach(input => autoResizeTitleInput(input));
+
+      // Auto-resize description input to fit its content
+      const descriptionInput = detailPanel.querySelector('.detail-description-input');
+      if (descriptionInput) autoResizeDescriptionInput(descriptionInput);
 
       // Setup click-to-edit for easing field (shows formatted HTML until clicked)
       const easingEditable = detailPanel.querySelector('.easing-editable');
@@ -12484,6 +12512,7 @@ ${cleanedScript}
               onfocus="this.select()"
               onblur="updateParentedDescription(${layerIndex}, this.value)"
               onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              oninput="autoResizeDescriptionInput(this)"
             />
           </div>
         `;
@@ -12497,6 +12526,10 @@ ${cleanedScript}
       // Auto-resize title input
       const titleInput = detailPanel.querySelector('.detail-title-input');
       if (titleInput) autoResizeTitleInput(titleInput);
+
+      // Auto-resize description input
+      const descriptionInput = detailPanel.querySelector('.detail-description-input');
+      if (descriptionInput) autoResizeDescriptionInput(descriptionInput);
 
       // Update playhead position after info box is shown
       requestAnimationFrame(() => updatePlayhead());
