@@ -2346,17 +2346,20 @@
     }
 
     .table-row:not(.table-row--header) .table-desc-text {
-      font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       font-size: 11px;
-      color: #c0c0c0;
+      color: #d8d8d8;
     }
 
     .table-row:not(.table-row--header) .table-cell--delay,
-    .table-row:not(.table-row--header) .table-cell--duration,
-    .table-row:not(.table-row--header) .table-cell--easing {
+    .table-row:not(.table-row--header) .table-cell--duration {
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       font-size: 11px;
-      color: #c0c0c0;
+      color: #d8d8d8;
+    }
+
+    .table-row:not(.table-row--header) .table-cell--easing {
+      font-size: 11px;
+      color: #d8d8d8;
     }
 
     .timeline-track.table-row.table-row--layer {
@@ -6057,14 +6060,15 @@
           // Contenteditable DIV (table mode)
           const row = inputElement.closest('.table-row');
           const layerIndex = parseInt(row.dataset.layerIndex);
-          const animIndex = parseInt(row.dataset.animIndex);
+          // Use localAnimIndex for accessing layer.animations[]
+          const localAnimIndex = parseInt(row.dataset.localAnimIndex);
 
           inputElement.textContent = presetName;
 
           // Manually trigger save for table mode
           const layer = specData.layers[layerIndex];
           if (layer) {
-            const anim = layer.animations[animIndex];
+            const anim = layer.animations[localAnimIndex];
             if (anim) {
               // Save snapshot BEFORE any modifications for proper undo
               saveSnapshot();
@@ -6325,20 +6329,23 @@
       }
 
       // Helper function to render animation row cells
-      function renderAnimationRowCells(anim, layerIndex, animIndex, layerName, extraClasses = '', rowType = 'animation') {
+      function renderAnimationRowCells(anim, layerIndex, animIndex, layerName, extraClasses = '', rowType = 'animation', localAnimIndex = null) {
+        // localAnimIndex is the index within layer.animations[] for editing
+        // animIndex is the global index for showAnimationDetails
+        const actualLocalIndex = localAnimIndex !== null ? localAnimIndex : animIndex;
         const description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, anim.description, layerName);
         const isFitToShape = anim.isFitToShape || anim.fitToShape;
         let delay, duration, easingText;
 
-        if (isFitToShape) {
-          delay = '-';
-          duration = '-';
-          easingText = '-';
-        } else {
-          delay = anim.timing.delay + 'ms';
+        // Always show timing values (including for FitToShape animations)
+        // Ensure timing and easing objects exist
+        if (!anim.timing) anim.timing = { delay: 0, duration: 300 };
+        if (!anim.easing) anim.easing = { type: '-' };
+        {
+          delay = (anim.timing.delay || 0) + 'ms';
           const durationIsNumeric = typeof anim.timing.duration === 'number' && !isNaN(anim.timing.duration);
           const userSetDuration = anim.durationUserSet === true;
-          const isImportedSpring = !userSetDuration && anim.easing.type === 'spring' && durationIsNumeric;
+          const isImportedSpring = !userSetDuration && anim.easing && anim.easing.type === 'spring' && durationIsNumeric;
           duration = isImportedSpring ? '-' : (durationIsNumeric ? anim.timing.duration + 'ms' : '-');
 
           if (anim.customEasing !== undefined && anim.customEasing !== null) {
@@ -6392,11 +6399,11 @@
           }
         }
 
-        return `<div class="timeline-track table-row${extraClasses}" data-row-type="${rowType}" data-layer-index="${layerIndex}" data-anim-index="${animIndex}">
+        return `<div class="timeline-track table-row${extraClasses}" data-row-type="${rowType}" data-layer-index="${layerIndex}" data-anim-index="${animIndex}" data-local-anim-index="${actualLocalIndex}">
           <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="description"><span class="table-desc-text">${description}</span></div>
-          <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="delay">${delay}</div>
-          <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="duration">${duration}</div>
-          <div class="table-cell table-cell--easing editable-cell" contenteditable="${isEditMode && !isFitToShape}" data-field="easing">${easingText}</div>
+          <div class="table-cell table-cell--delay editable-cell" contenteditable="${isEditMode}" data-field="delay">${delay}</div>
+          <div class="table-cell table-cell--duration editable-cell" contenteditable="${isEditMode}" data-field="duration">${duration}</div>
+          <div class="table-cell table-cell--easing editable-cell" contenteditable="${isEditMode}" data-field="easing">${easingText}</div>
         </div>`;
       }
 
@@ -6452,7 +6459,8 @@
           childLayer.animations.forEach((anim, animIndex) => {
             // Use layer-array-order index (matches showAnimationDetails lookup)
             const childAnimGlobalIndex = getGlobalAnimIndexTable(childLayerIndex, animIndex);
-            html += renderAnimationRowCells(anim, childLayerIndex, childAnimGlobalIndex, childLayer.layerName, childContinueClass, 'child-animation');
+            // Pass both global index (for showAnimationDetails) and local index (for editing)
+            html += renderAnimationRowCells(anim, childLayerIndex, childAnimGlobalIndex, childLayer.layerName, childContinueClass, 'child-animation', animIndex);
           });
         });
       });
@@ -7409,7 +7417,8 @@
         cell.addEventListener('blur', (e) => {
           const row = cell.closest('.table-row');
           const layerIndex = parseInt(row.dataset.layerIndex);
-          const animIndex = parseInt(row.dataset.animIndex);
+          // Use localAnimIndex for editing (index within layer.animations[])
+          const localAnimIndex = parseInt(row.dataset.localAnimIndex);
           const fieldName = cell.dataset.field;
           let newValue = cell.textContent.trim();
           const originalValue = cell.dataset.originalValue || '';
@@ -7429,7 +7438,7 @@
             return;
           }
 
-          const anim = layer.animations[animIndex];
+          const anim = layer.animations[localAnimIndex];
           if (!anim) return;
 
           // Check if value changed - if not, skip
@@ -7507,8 +7516,8 @@
             }
           }
 
-          // Refresh the view to show updates
-          renderTableView();
+          // Refresh the view to show updates (use refreshActiveView to sync detail panel)
+          refreshActiveView();
         });
       });
 
@@ -8691,7 +8700,8 @@ ${cleanedScript}
       }
 
       // If an animation is selected, refresh its detail panel and re-apply selected state
-      if (selectedAnimation !== null) {
+      // Only show detail panel in timeline mode, not table mode
+      if (viewMode !== 'table' && selectedAnimation !== null) {
         showAnimationDetails(selectedAnimation);
         // Re-apply selected class to timeline bar and label after re-render
         const bar = document.querySelector(`.timeline-bar[data-anim-index="${selectedAnimation}"]`);
@@ -8700,7 +8710,8 @@ ${cleanedScript}
         if (label) label.classList.add('selected');
       }
       // If a parented layer is selected, refresh its detail panel and re-apply selected state
-      if (selectedParentedLayerIndex !== null) {
+      // Only show detail panel in timeline mode, not table mode
+      if (viewMode !== 'table' && selectedParentedLayerIndex !== null) {
         showParentedLayerDetails(selectedParentedLayerIndex);
         // Re-apply selected class to bar and label after re-render
         const bar = document.querySelector(`.timeline-bar[data-layer-index="${selectedParentedLayerIndex}"][data-is-attached="true"]`);
