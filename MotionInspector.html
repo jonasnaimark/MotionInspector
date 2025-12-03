@@ -5409,6 +5409,11 @@
     });
 
     video.addEventListener('ended', () => {
+      // Don't auto-loop if user dragged playhead to the end while paused
+      if (isDraggingPlayhead || justFinishedDragging) {
+        return;
+      }
+
       // Check if looping is enabled
       if (isLoopEnabled) {
         // Pause 500ms at the end, then restart
