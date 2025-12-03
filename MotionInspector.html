@@ -4046,10 +4046,13 @@
 
       tabs.splice(index, 1);
 
-      // If deleting current tab, switch to first tab
+      // If deleting current tab, switch to another tab
       if (index === currentTabIndex) {
-        currentTabIndex = 0;
-        switchTab(0);
+        // Temporarily set to -1 so switchTab doesn't early-return
+        currentTabIndex = -1;
+        // Switch to the tab that's now at the deleted position, or the last tab
+        const newIndex = Math.min(index, tabs.length - 1);
+        switchTab(newIndex);
       } else if (index < currentTabIndex) {
         // Adjust current index if tab before it was deleted
         currentTabIndex--;
