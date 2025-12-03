@@ -1964,7 +1964,7 @@
 
     /* All child layer headers get top margin and border (visual separation) */
     .timeline-label.child-layer-header {
-      margin-top: 8px;
+      margin-top: 15px;
       border-top: 1px solid #222222; /* Left column slightly darker */
     }
 
@@ -1980,14 +1980,14 @@
     /* Attached to text in timeline mode - dashed border bar positioned like other bars */
     .timeline-track.child-layer-header:not(.table-row) {
       position: relative;
-      margin-top: 8px;
+      margin-top: 15px;
       border-top: 1px solid #2a2a2a; /* Match other grid lines */
     }
 
     /* In table mode, child layer header should use normal table row layout */
     body.table-view-active .timeline-track.child-layer-header.table-row {
       display: grid;
-      margin-top: 8px;
+      margin-top: 15px;
       border-top: 1px solid #2a2a2a; /* Right column lighter */
       position: relative;
     }
@@ -1996,10 +1996,10 @@
     body.table-view-active .timeline-track.child-layer-header.table-row::before {
       content: '';
       position: absolute;
-      top: -8px;
+      top: -15px;
       left: 0;
       right: 0;
-      height: 8px;
+      height: 15px;
       background: linear-gradient(to right,
         transparent calc(100% - var(--table-easing-width, 200px) - 160px - 1px),
         #2e2e2e calc(100% - var(--table-easing-width, 200px) - 160px - 1px),
@@ -2017,13 +2017,13 @@
       pointer-events: none;
     }
 
-    /* Vertical line segment connecting from top to the curve (all child headers have 8px margin-top) */
+    /* Vertical line segment connecting from top to the curve (all child headers have 15px margin-top) */
     .timeline-label.child-layer-header::before {
       content: '';
       position: absolute;
       left: 15px;
-      top: -14px;
-      height: calc(50% - 10px + 14px);
+      top: -21px;
+      height: calc(50% - 10px + 21px);
       width: 1px;
       background: #fff;
       z-index: 0;
@@ -2047,8 +2047,8 @@
     /* When there are more siblings below, extend vertical line to bottom */
     .timeline-label.child-layer-header.has-siblings::before {
       height: auto;
-      top: -14px;
-      bottom: -9px; /* Extend through the gap to next child header */
+      top: -21px;
+      bottom: -16px; /* Extend through the 15px gap to next child header */
     }
 
     /* Continue vertical line through child rows when more children below */
@@ -2057,7 +2057,7 @@
       position: absolute;
       left: 15px;
       top: -6px;
-      bottom: -9px; /* Extend through the gap to next child header */
+      bottom: -16px; /* Extend through the 15px gap to next child header */
       width: 1px;
       background: #fff;
       z-index: 0;
@@ -2535,8 +2535,8 @@
       border-radius: inherit;
       border: 1px dashed rgba(255, 255, 255, 0.4);
       pointer-events: none;
-      -webkit-mask-image: linear-gradient(180deg, #fff 0%, #fff 50%, transparent 100%);
-      mask-image: linear-gradient(180deg, #fff 0%, #fff 50%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, #fff 0%, #fff 50%, transparent 100%);
+      mask-image: linear-gradient(90deg, #fff 0%, #fff 50%, transparent 100%);
     }
 
     .timeline-bar.bar-attached:hover {
