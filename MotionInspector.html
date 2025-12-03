@@ -6200,6 +6200,7 @@
       // Labels
       // Track which layers have been rendered as children (to skip in main loop)
       const renderedAsChild = new Set();
+      let isFirstVisibleLayer = true;
 
       specData.layers.forEach((layer, layerIndex) => {
         // Skip layers that have parenting - they'll be rendered under their parent
@@ -6211,9 +6212,10 @@
         const children = childrenByParent[layer.id] || [];
         const hasChildren = children.length > 0;
 
-        // Determine divider class - skip divider if previous visible layer was our parent
-        // For now, keep standard divider logic
-        const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        // Determine divider class - only add divider if not the first visible layer
+        const dividerClass = isFirstVisibleLayer ? '' : ' has-divider';
+        const showSectionDividerBtn = !isFirstVisibleLayer;
+        isFirstVisibleLayer = false;
 
         // Layer header label
         html += `<div class="timeline-label layer-header${dividerClass}"
@@ -6221,10 +6223,10 @@
                       data-layer-index="${layerIndex}"
                       draggable="${isEditMode}"
                       data-drag-type="layer"
-                      data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
+                      data-is-section-divider="${showSectionDividerBtn ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
           <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
-          ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
+          ${showSectionDividerBtn ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
         // Animation labels for this parent layer
@@ -6397,6 +6399,7 @@
       }
 
       // Table rows - each row exactly 32px to match timeline tracks
+      let isFirstVisibleLayerRight = true;
       specData.layers.forEach((layer, layerIndex) => {
         // Skip layers that have parenting - they'll be rendered under their parent
         if (layer.parenting) {
@@ -6408,7 +6411,8 @@
         const hasChildren = children.length > 0;
 
         // Layer header row (empty cells to match left column layer header)
-        const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        const dividerClass = isFirstVisibleLayerRight ? '' : ' has-divider';
+        isFirstVisibleLayerRight = false;
         html += `<div class="timeline-track layer-header${dividerClass} table-row table-row--layer" data-layer-index="${layerIndex}">
           <div class="table-cell table-cell--desc"></div>
           <div class="table-cell table-cell--delay"></div>
@@ -8982,6 +8986,7 @@ ${cleanedScript}
       });
 
       let animIndex = 0;
+      let isFirstVisibleLayerTimeline = true;
       specData.layers.forEach((layer, layerIndex) => {
         // Skip layers that have parenting - they'll be rendered under their parent
         // Don't count animations here - they'll be counted when rendering under parent
@@ -8993,16 +8998,18 @@ ${cleanedScript}
         const children = childrenByParent[layer.id] || [];
         const hasChildren = children.length > 0;
 
-        // Layer header label (add divider class if not first layer)
-        const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        // Layer header label (add divider class if not first visible layer)
+        const dividerClass = isFirstVisibleLayerTimeline ? '' : ' has-divider';
+        const showSectionDividerBtn = !isFirstVisibleLayerTimeline;
+        isFirstVisibleLayerTimeline = false;
         html += `<div class="timeline-label layer-header${dividerClass}"
                       draggable="${isEditMode}"
                       data-drag-type="layer"
                       data-layer-index="${layerIndex}"
-                      data-is-section-divider="${layerIndex > 0 ? 'true' : 'false'}">
+                      data-is-section-divider="${showSectionDividerBtn ? 'true' : 'false'}">
           <span class="timeline-label-text">${layer.layerName}</span>
           <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
-          ${layerIndex > 0 ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
+          ${showSectionDividerBtn ? '<button class="section-divider-add-btn edit-only" draggable="false">+</button>' : ''}
         </div>`;
 
         // Animation labels for this parent layer
@@ -9191,6 +9198,7 @@ ${cleanedScript}
 
       // Timeline tracks
       animIndex = 0;
+      let isFirstVisibleLayerTimelineRight = true;
       specData.layers.forEach((layer, layerIndex) => {
         // Skip layers that have parenting - they'll be rendered under their parent
         // Don't count animations here - they'll be counted when rendering under parent
@@ -9201,8 +9209,9 @@ ${cleanedScript}
         // Check if this layer has children
         const children = childrenByParent[layer.id] || [];
 
-        // Empty track for layer header (add divider class if not first layer)
-        const dividerClass = layerIndex > 0 ? ' has-divider' : '';
+        // Empty track for layer header (add divider class if not first visible layer)
+        const dividerClass = isFirstVisibleLayerTimelineRight ? '' : ' has-divider';
+        isFirstVisibleLayerTimelineRight = false;
         html += `<div class="timeline-track layer-header${dividerClass}"></div>`;
 
         // Animation tracks for this parent layer
