@@ -3287,14 +3287,39 @@
         }
       });
       // Migrate parenting from parentName to parentId if needed
+      // Also create placeholder parent layers for orphaned children
+      const orphanedChildren = [];
       specData.layers.forEach(layer => {
         if (layer.parenting && layer.parenting.parentName && !layer.parenting.parentId) {
           // Find parent layer by name and get its ID
           const parentLayer = specData.layers.find(l => l.layerName === layer.parenting.parentName);
           if (parentLayer && parentLayer.id) {
             layer.parenting.parentId = parentLayer.id;
+          } else {
+            // Parent not in selection - mark as orphaned
+            orphanedChildren.push(layer);
           }
         }
+      });
+
+      // Create placeholder parent layers for orphaned children
+      orphanedChildren.forEach(childLayer => {
+        const parentName = childLayer.parenting.parentName;
+        // Check if we already created a placeholder for this parent
+        let placeholderParent = specData.layers.find(l => l.layerName === parentName && l.isPlaceholder);
+        if (!placeholderParent) {
+          // Create placeholder parent with no animations
+          placeholderParent = {
+            layerName: parentName,
+            animations: [],
+            id: generateLayerId(),
+            isPlaceholder: true // Mark as placeholder so we know it's not real data
+          };
+          // Add placeholder at the beginning of layers array
+          specData.layers.unshift(placeholderParent);
+        }
+        // Link child to placeholder parent
+        childLayer.parenting.parentId = placeholderParent.id;
       });
       // Set parentingDescription from fitToShape info if layer has parenting and fitToShape animations
       specData.layers.forEach(layer => {
