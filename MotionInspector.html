@@ -1329,7 +1329,8 @@
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
     }
 
-    .easing-autocomplete-item:hover {
+    .easing-autocomplete-item:hover,
+    .easing-autocomplete-item.highlighted {
       background: #3a3a3a;
     }
 
@@ -5948,6 +5949,8 @@
     let easingAutocomplete = null;
     let autocompleteTarget = null;
     let easingShowPending = false;
+    let easingHighlightedIndex = -1;
+    let easingPresetClickPending = false; // Flag to prevent blur from saving during preset selection
 
     function createEasingAutocomplete() {
       const presets = [
@@ -6052,11 +6055,23 @@
         requestAnimationFrame(() => {
           dropdown.classList.add('visible');
           easingShowPending = false;
+          // Highlight first item by default for immediate keyboard selection
+          easingHighlightedIndex = 0;
+          updateEasingHighlight(0);
         });
       });
 
+      // Use mousedown to set flag BEFORE blur fires (mousedown happens before blur)
+      dropdown.onmousedown = (e) => {
+        const item = e.target.closest('.easing-autocomplete-item');
+        if (item) {
+          easingPresetClickPending = true;
+        }
+      };
+
       // Use event delegation on the dropdown itself (prevents duplicate listeners)
       dropdown.onclick = (e) => {
+        easingPresetClickPending = false; // Reset flag
         const item = e.target.closest('.easing-autocomplete-item');
         if (!item) return;
 
@@ -6071,19 +6086,20 @@
         const springPresets = ['Standard Spring', 'Slow Spring', 'Fast Spring', 'Slow Bounce Spring', 'Medium Bounce Spring', 'Fast Bounce Spring'];
         const isSpring = springPresets.includes(presetName);
 
-        // Set the value and trigger save based on element type
-        if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
-          // For info box elements, get animIndex from data attribute or onblur handler
-          let animIndex = null;
-          if (inputElement.dataset.animIndex !== undefined) {
+        // Check if this is an infobox element (textarea/input) or table cell
+        const isInfoboxElement = inputElement && (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT');
+        const isTableCell = inputElement && inputElement.classList && inputElement.classList.contains('editable-cell');
+
+        if (isInfoboxElement) {
+          // For info box elements, use selectedAnimation as the source of truth
+          // This is more reliable than the closure's inputElement which can become stale
+          let animIndex = selectedAnimation;
+
+          // Fallback to data attribute if selectedAnimation is not set
+          if (animIndex === null && inputElement.dataset && inputElement.dataset.animIndex !== undefined) {
             animIndex = parseInt(inputElement.dataset.animIndex);
-          } else {
-            const onblurAttr = inputElement.getAttribute('onblur');
-            const match = onblurAttr && onblurAttr.match(/updateAnimationField\((\d+),\s*'easing'/);
-            if (match) {
-              animIndex = parseInt(match[1]);
-            }
           }
+
           if (animIndex !== null) {
 
             // Find the animation in specData
@@ -6128,15 +6144,22 @@
                   // Set easing directly (not through updateAnimationField to avoid double snapshot)
                   anim.customEasing = presetName;
 
-                  // Refresh the view
+                  // Refresh the view and focus next field (Start Value)
                   refreshActiveView();
+                  requestAnimationFrame(() => {
+                    const nextField = document.querySelector('#detailPanel [tabindex="7"]');
+                    if (nextField) {
+                      nextField.focus();
+                      if (nextField.select) nextField.select();
+                    }
+                  });
                   return;
                 }
                 currentIndex++;
               }
             }
           }
-        } else {
+        } else if (isTableCell) {
           // Contenteditable DIV (table mode)
           const row = inputElement.closest('.table-row');
           const layerIndex = parseInt(row.dataset.layerIndex);
@@ -6192,10 +6215,59 @@
 
     function hideEasingAutocomplete() {
       easingShowPending = false;
+      easingHighlightedIndex = -1;
+      easingPresetClickPending = false;
       if (easingAutocomplete) {
         easingAutocomplete.classList.remove('visible');
         autocompleteTarget = null;
       }
+    }
+
+    // Update the highlighted item in easing autocomplete
+    function updateEasingHighlight(index) {
+      if (!easingAutocomplete) return;
+      const items = easingAutocomplete.querySelectorAll('.easing-autocomplete-item');
+      items.forEach((item, i) => {
+        item.classList.toggle('highlighted', i === index);
+      });
+      // Scroll highlighted item into view
+      if (index >= 0 && index < items.length) {
+        items[index].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    // Handle keyboard navigation in easing autocomplete
+    // Returns true if the event was handled
+    function handleEasingAutocompleteKeydown(e) {
+      if (!easingAutocomplete || !easingAutocomplete.classList.contains('visible')) {
+        return false;
+      }
+
+      const items = easingAutocomplete.querySelectorAll('.easing-autocomplete-item');
+      const itemCount = items.length;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        easingHighlightedIndex = (easingHighlightedIndex + 1) % itemCount;
+        updateEasingHighlight(easingHighlightedIndex);
+        return true;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        easingHighlightedIndex = easingHighlightedIndex <= 0 ? itemCount - 1 : easingHighlightedIndex - 1;
+        updateEasingHighlight(easingHighlightedIndex);
+        return true;
+      } else if (e.key === 'Enter' && easingHighlightedIndex >= 0) {
+        e.preventDefault();
+        // Simulate click on highlighted item
+        items[easingHighlightedIndex].click();
+        return true;
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        hideEasingAutocomplete();
+        return true;
+      }
+
+      return false;
     }
 
     // Close autocomplete when clicking outside
@@ -7517,15 +7589,41 @@
           });
         }
 
-        // Handle Enter key
+        // Handle Tab/Enter key navigation
         cell.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
+          // Handle autocomplete navigation first for easing fields
+          if (cell.dataset.field === 'easing' && handleEasingAutocompleteKeydown(e)) {
+            return;
+          }
+
+          if (e.key === 'Tab' || e.key === 'Enter') {
             e.preventDefault();
             hideEasingAutocomplete();
+
+            // Get all editable cells and find current index
+            const allCells = Array.from(document.querySelectorAll('.editable-cell[contenteditable="true"]'));
+            const currentIndex = allCells.indexOf(cell);
+
+            // Find next/prev cell index (Enter always forward, Tab respects Shift)
+            const direction = (e.key === 'Enter' || !e.shiftKey) ? 1 : -1;
+            const nextIndex = currentIndex + direction;
+
+            // Blur current cell (triggers save, which may refresh view)
             cell.blur();
+
+            // Focus next cell after potential refresh - re-query cells since view may have re-rendered
+            if (nextIndex >= 0 && nextIndex < allCells.length) {
+              requestAnimationFrame(() => {
+                const freshCells = Array.from(document.querySelectorAll('.editable-cell[contenteditable="true"]'));
+                if (nextIndex < freshCells.length) {
+                  freshCells[nextIndex].focus();
+                }
+              });
+            }
           } else if (e.key === 'Escape') {
             // Restore original value
             cell.textContent = cell.dataset.originalValue || '';
+            hideEasingAutocomplete();
             cell.blur();
           }
         });
@@ -9023,6 +9121,113 @@ ${cleanedScript}
       });
 
       return availableParents;
+    }
+
+    // Handle Tab/Enter key in infobox fields - save and move to next/prev field
+    function handleInfoboxTab(event, currentTabIndex, animIndex, fieldName, value) {
+      // Handle Tab or Enter (Enter acts like Tab forward)
+      if (event.key !== 'Tab' && event.key !== 'Enter') return false;
+
+      event.preventDefault();
+      // Enter always goes forward, Tab respects Shift
+      const nextTabIndex = (event.key === 'Enter' || !event.shiftKey) ? currentTabIndex + 1 : currentTabIndex - 1;
+
+      // Save the current field value
+      if (fieldName === 'layerName') {
+        // Find layer index from animIndex and update
+        let currentIndex = 0;
+        for (let layerIndex = 0; layerIndex < specData.layers.length; layerIndex++) {
+          const layer = specData.layers[layerIndex];
+          for (let animIdx = 0; animIdx < layer.animations.length; animIdx++) {
+            if (currentIndex === animIndex) {
+              saveSnapshot();
+              layer.layerName = value;
+              break;
+            }
+            currentIndex++;
+          }
+        }
+      } else {
+        updateAnimationFieldNoRefresh(animIndex, fieldName, value);
+      }
+
+      // Refresh and focus the next field
+      refreshActiveView();
+      requestAnimationFrame(() => {
+        const nextField = document.querySelector(`#detailPanel [tabindex="${nextTabIndex}"]`);
+        if (nextField) {
+          nextField.focus();
+          if (nextField.select) nextField.select();
+        }
+      });
+
+      return true;
+    }
+
+    // Update animation field without refreshing (for Tab navigation)
+    function updateAnimationFieldNoRefresh(animIndex, fieldName, newValue) {
+      saveSnapshot();
+      let currentIndex = 0;
+      for (let layerIndex = 0; layerIndex < specData.layers.length; layerIndex++) {
+        const layer = specData.layers[layerIndex];
+        for (let animIdx = 0; animIdx < layer.animations.length; animIdx++) {
+          if (currentIndex === animIndex) {
+            const anim = layer.animations[animIdx];
+            if (fieldName === 'customDescription') {
+              anim.description = newValue;
+            } else if (fieldName === 'delay') {
+              anim.timing.delay = validateNumeric(newValue, anim.timing.delay);
+            } else if (fieldName === 'duration') {
+              const num = parseFloat(newValue);
+              if (!isNaN(num) && num >= 0) {
+                anim.timing.duration = num;
+                anim.durationUserSet = true;
+              } else if (newValue === '-' || newValue.trim() === '') {
+                anim.timing.duration = '-';
+                anim.durationUserSet = true;
+              }
+            } else if (fieldName === 'startValue') {
+              anim.customStartValue = newValue;
+            } else if (fieldName === 'endValue') {
+              anim.customEndValue = newValue;
+            } else if (fieldName === 'property') {
+              if (anim.description === undefined || anim.description === null) {
+                anim.description = getAnimationDescription(anim.property, anim.values, anim.fitToShape, null, layer.layerName);
+              }
+              anim.property = newValue;
+            } else if (fieldName === 'easing') {
+              anim.customEasing = newValue;
+              // Detect spring parameters and auto-switch to spring style
+              const springKeywords = ['stiffness', 'damping', 'mass'];
+              const lowerValue = newValue.toLowerCase();
+              const hasSpringParams = springKeywords.some(keyword => lowerValue.includes(keyword));
+              // Detect curve parameters (cubic-bezier or 4 comma-separated numbers)
+              const hasCubicKeyword = lowerValue.includes('cubic');
+              const curveNumberPattern = /[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+/;
+              const hasCurveParams = hasCubicKeyword || curveNumberPattern.test(newValue);
+              if (hasSpringParams) {
+                anim.timing.duration = '-';
+                anim.durationUserSet = true;
+                const springParams = parseSpringParams(newValue);
+                if (springParams) {
+                  anim.calculatedSpringDuration = calculateSpringDuration(
+                    springParams.stiffness,
+                    springParams.damping,
+                    springParams.mass
+                  );
+                }
+              } else if (hasCurveParams) {
+                if (anim.timing.duration === '-' || anim.timing.duration === undefined || anim.timing.duration === null) {
+                  anim.timing.duration = 300;
+                }
+                anim.durationUserSet = true;
+              }
+            }
+            return;
+          }
+          currentIndex++;
+        }
+      }
     }
 
     // Update an animation field and refresh views
@@ -11741,7 +11946,7 @@ ${cleanedScript}
           onfocus="this.select()"
           onblur="updateLayerField(${layerIndex}, 'layerName', this.value)"
           oninput="autoResizeTitleInput(this)"
-          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+          onkeydown="handleInfoboxTab(event, 1, ${animIndex}, 'layerName', this.value)"
         />`;
         html += `<span> › </span>`;
         html += `<input
@@ -11753,7 +11958,7 @@ ${cleanedScript}
           onfocus="this.select()"
           onblur="updateAnimationField(${animIndex}, 'property', this.value)"
           oninput="autoResizeTitleInput(this)"
-          onkeydown="if(event.key === 'Enter') { this.blur(); }"
+          onkeydown="handleInfoboxTab(event, 2, ${animIndex}, 'property', this.value)"
         />`;
       } else {
         html += `<span>${layer.layerName} › ${anim.property}</span>`;
@@ -11793,7 +11998,7 @@ ${cleanedScript}
               tabindex="3"
               onfocus="this.select()"
               onblur="updateAnimationField(${animIndex}, 'customDescription', this.value)"
-              onkeydown="if(event.key === 'Enter') { this.blur(); }"
+              onkeydown="handleInfoboxTab(event, 3, ${animIndex}, 'customDescription', this.value)"
               oninput="autoResizeDescriptionInput(this)"
             />
           </div>
@@ -11821,7 +12026,7 @@ ${cleanedScript}
                 tabindex="4"
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'delay', this.value)"
-                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                onkeydown="handleInfoboxTab(event, 4, ${animIndex}, 'delay', this.value)"
               />
             </div>
           `;
@@ -11851,7 +12056,7 @@ ${cleanedScript}
                 tabindex="5"
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'duration', this.value)"
-                onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                onkeydown="handleInfoboxTab(event, 5, ${animIndex}, 'duration', this.value)"
               />
             </div>
           `;
@@ -12015,7 +12220,7 @@ ${cleanedScript}
                   tabindex="7"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
-                  onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.blur(); }"
+                  onkeydown="handleInfoboxTab(event, 7, ${animIndex}, 'startValue', this.value)"
                 >${startValue.replace(/"/g, '&quot;')}</textarea>
               </div>
             `;
@@ -12029,7 +12234,7 @@ ${cleanedScript}
                   tabindex="7"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
-                  onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                  onkeydown="handleInfoboxTab(event, 7, ${animIndex}, 'startValue', this.value)"
                 />
               </div>
             `;
@@ -12052,7 +12257,7 @@ ${cleanedScript}
                   tabindex="8"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
-                  onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.blur(); }"
+                  onkeydown="handleInfoboxTab(event, 8, ${animIndex}, 'endValue', this.value)"
                 >${endValue.replace(/"/g, '&quot;')}</textarea>
               </div>
             `;
@@ -12066,7 +12271,7 @@ ${cleanedScript}
                   tabindex="8"
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
-                  onkeydown="if(event.key === 'Enter') { this.blur(); }"
+                  onkeydown="handleInfoboxTab(event, 8, ${animIndex}, 'endValue', this.value)"
                 />
               </div>
             `;
@@ -12107,6 +12312,28 @@ ${cleanedScript}
       // Setup click-to-edit for easing field (shows formatted HTML until clicked)
       const easingEditable = detailPanel.querySelector('.easing-editable');
       if (easingEditable) {
+        // When tabbing to easing, automatically open the editor with popup
+        easingEditable.addEventListener('focus', function() {
+          // Small delay to ensure focus is settled, then trigger click to open editor
+          requestAnimationFrame(() => {
+            this.click();
+          });
+        });
+        // Handle keydown for Tab navigation (though focus handler will usually trigger first)
+        easingEditable.addEventListener('keydown', function(e) {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const nextTabIndex = e.shiftKey ? 5 : 7;
+            const nextField = document.querySelector(`#detailPanel [tabindex="${nextTabIndex}"]`);
+            if (nextField) {
+              nextField.focus();
+              if (nextField.select) nextField.select();
+            }
+          } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click(); // Trigger the click handler to convert to textarea
+          }
+        });
         easingEditable.addEventListener('click', function() {
           const animIdx = parseInt(this.dataset.animIndex);
           const plainText = this.dataset.plain;
@@ -12136,6 +12363,10 @@ ${cleanedScript}
           // Use setTimeout to allow any pending click events (like preset selection) to fire first
           textarea.addEventListener('blur', () => {
             setTimeout(() => {
+              // Skip save if a preset click is pending (let the preset click handler do the save)
+              if (easingPresetClickPending) {
+                return;
+              }
               // Only save if the textarea is still in the DOM (wasn't replaced by preset selection)
               if (document.body.contains(textarea)) {
                 hideEasingAutocomplete();
@@ -12151,10 +12382,38 @@ ${cleanedScript}
           });
 
           textarea.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            // Handle autocomplete navigation first (Arrow Up/Down, Enter to select, Escape)
+            if (handleEasingAutocompleteKeydown(e)) {
+              return;
+            }
+
+            if (e.key === 'Tab') {
               e.preventDefault();
               hideEasingAutocomplete();
-              textarea.blur();
+              // Save the value and navigate
+              updateAnimationFieldNoRefresh(animIdx, 'easing', textarea.value);
+              refreshActiveView();
+              requestAnimationFrame(() => {
+                const nextTabIndex = e.shiftKey ? 5 : 7;
+                const nextField = document.querySelector(`#detailPanel [tabindex="${nextTabIndex}"]`);
+                if (nextField) {
+                  nextField.focus();
+                  if (nextField.select) nextField.select();
+                }
+              });
+            } else if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              hideEasingAutocomplete();
+              // Save the value and navigate to next field
+              updateAnimationFieldNoRefresh(animIdx, 'easing', textarea.value);
+              refreshActiveView();
+              requestAnimationFrame(() => {
+                const nextField = document.querySelector('#detailPanel [tabindex="7"]');
+                if (nextField) {
+                  nextField.focus();
+                  if (nextField.select) nextField.select();
+                }
+              });
             }
           });
         });
