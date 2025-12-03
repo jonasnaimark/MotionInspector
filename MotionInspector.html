@@ -12042,6 +12042,9 @@ ${cleanedScript}
           const animIdx = parseInt(this.dataset.animIndex);
           const plainText = this.dataset.plain;
 
+          // Capture the original height before replacing
+          const originalHeight = this.offsetHeight;
+
           // Replace with textarea
           const textarea = document.createElement('textarea');
           textarea.className = 'detail-value-input';
@@ -12054,9 +12057,8 @@ ${cleanedScript}
           textarea.focus();
           textarea.select();
 
-          // Auto-resize
-          textarea.style.height = 'auto';
-          textarea.style.height = (textarea.scrollHeight + 4) + 'px';
+          // Set height to match original element (accounting for border)
+          textarea.style.height = (originalHeight - 2) + 'px';
 
           // Show autocomplete
           showEasingAutocomplete(textarea, textarea.value.trim());
