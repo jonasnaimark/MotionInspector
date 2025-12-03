@@ -1666,7 +1666,7 @@
     .timeline-label.layer-header {
       font-weight: 600;
       font-size: 12.5px;
-      border-bottom: 1px solid #2a2a2a; /* Match vertical grid lines */
+      border-bottom: 1px solid #222222; /* Left column slightly darker */
       height: 32px;
     }
 
@@ -1722,7 +1722,7 @@
       overflow: visible;
       text-overflow: ellipsis;
       height: 32px;
-      border-bottom: 1px solid #2a2a2a; /* Match vertical grid lines */
+      border-bottom: 1px solid #222222; /* Left column slightly darker */
       position: relative;
       box-sizing: border-box;
       cursor: grab;
@@ -1950,7 +1950,7 @@
     /* Only first child layer gets top margin and border (visual separation from param rows above) */
     .timeline-label.child-layer-header.first-child-layer {
       margin-top: 8px;
-      border-top: 1px solid #2a2a2a; /* Match other grid lines */
+      border-top: 1px solid #222222; /* Left column slightly darker */
     }
 
     .timeline-label.child-layer-header:hover {
@@ -1979,10 +1979,13 @@
     }
 
     /* Only first child layer gets top margin and border in table mode */
-    body.table-view-active .timeline-label.child-layer-header.first-child-layer,
+    body.table-view-active .timeline-label.child-layer-header.first-child-layer {
+      margin-top: 8px;
+      border-top: 1px solid #222222; /* Left column slightly darker */
+    }
     body.table-view-active .timeline-track.child-layer-header.table-row.first-child-layer {
       margin-top: 8px;
-      border-top: 1px solid #2a2a2a; /* Match other grid lines */
+      border-top: 1px solid #2a2a2a; /* Right column lighter */
     }
 
     /* Vertical line segment connecting from top to the curve */
@@ -2364,23 +2367,23 @@
     }
 
     body.table-view-active .timeline-label.layer-header {
-      border-bottom: 1px solid #2a2a2a; /* Match timeline horizontal lines */
+      border-bottom: 1px solid #222222; /* Left column slightly darker */
       padding: 0 12px;
     }
 
     body.table-view-active .timeline-label {
       height: 32px;
-      border-bottom: 1px solid #2a2a2a; /* Match timeline horizontal lines */
+      border-bottom: 1px solid #222222; /* Left column slightly darker */
       box-sizing: border-box;
     }
 
     body.table-view-active .timeline-label.layer-header {
-      border-bottom: 1px solid #2a2a2a; /* Match timeline horizontal lines */
+      border-bottom: 1px solid #222222; /* Left column slightly darker */
     }
 
     body.table-view-active .timeline-label.indented {
       padding-left: 32px;
-      border-bottom: 1px solid #2a2a2a; /* Match timeline horizontal lines */
+      border-bottom: 1px solid #222222; /* Left column slightly darker */
     }
 
     body.table-view-active .timeline-label.indented.child-anim {
