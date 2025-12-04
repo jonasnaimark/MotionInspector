@@ -2672,7 +2672,7 @@
     .bar-height { background: #ca317d; }
     .bar-blur { background: #595959; }
     .bar-transform { background: #6c1c90; }
-    .bar-default { background: #056e96; }
+    .bar-default { background: #056e53; }
 
     /* Spring gradient fade-out (1.2x brighter defaults) */
     .bar-spring.bar-opacity { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
@@ -2684,7 +2684,7 @@
     .bar-spring.bar-height { background: linear-gradient(90deg, #ca317d 0%, #ca317d 50%, rgba(202, 49, 125, 0) 100%); }
     .bar-spring.bar-blur { background: linear-gradient(90deg, #595959 0%, #595959 50%, rgba(89, 89, 89, 0) 100%); }
     .bar-spring.bar-transform { background: linear-gradient(90deg, #6c1c90 0%, #6c1c90 50%, rgba(108, 28, 144, 0) 100%); }
-    .bar-spring.bar-default { background: linear-gradient(90deg, #056e96 0%, #056e96 50%, rgba(5, 110, 150, 0) 100%); }
+    .bar-spring.bar-default { background: linear-gradient(90deg, #056e53 0%, #056e53 50%, rgba(5, 110, 83, 0) 100%); }
 
     /* Spring bars - remove base box-shadow, use gradient border instead */
     .bar-spring { box-shadow: none; }
@@ -2994,13 +2994,16 @@
     }
 
     .detail-value-input {
-      width: 100%;
+      width: auto;
+      min-width: 120px;
+      max-width: 100%;
       background: transparent;
       border: 1px solid transparent;
       border-radius: 4px;
       padding: 4px 6px;
       margin-left: -6px;
       font-size: 12px;
+      line-height: 1.2;
       color: #ffffff;
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
       outline: none;
@@ -3047,6 +3050,61 @@
       background: #fff;
     }
 
+    /* Value field with clear button */
+    .value-field-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .value-clear-btn {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #555;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .value-field-wrapper:hover .value-clear-btn,
+    .value-field-wrapper:focus-within .value-clear-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .value-field-wrapper:hover .detail-value-input {
+      border-color: #555;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .value-clear-btn:hover {
+      background: #777;
+    }
+
+    .value-clear-btn::before,
+    .value-clear-btn::after {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 1.5px;
+      background: #fff;
+    }
+
+    .value-clear-btn::before {
+      transform: rotate(45deg);
+    }
+
+    .value-clear-btn::after {
+      transform: rotate(-45deg);
+    }
+
     .detail-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr;
@@ -3090,6 +3148,8 @@
       border: 1px solid transparent;
       border-radius: 4px;
       transition: border-color 0.2s, background-color 0.2s;
+      min-height: 24px;
+      box-sizing: border-box;
     }
 
     .detail-value.easing-editable:hover {
@@ -5995,11 +6055,6 @@
       // Always show all presets (no filtering)
       let filtered = [...presets];
 
-      // Reverse order for info box (curves first, then springs)
-      if (isInInfoBox) {
-        filtered = filtered.reverse();
-      }
-
       // Build dropdown HTML
       let html = '';
       filtered.forEach(preset => {
@@ -6055,9 +6110,9 @@
         requestAnimationFrame(() => {
           dropdown.classList.add('visible');
           easingShowPending = false;
-          // Highlight first item by default for immediate keyboard selection
-          easingHighlightedIndex = 0;
-          updateEasingHighlight(0);
+          // Start with no selection - highlight appears when using arrow keys
+          easingHighlightedIndex = -1;
+          updateEasingHighlight(-1);
         });
       });
 
@@ -6408,7 +6463,7 @@
                         draggable="${isEditMode}"
                         data-drag-type="animation"
                         data-anim-in-layer="${animIndexInLayer}">
-            <span class="timeline-label-text">${anim.property}</span>
+            <span class="timeline-label-text">${formatPropertyName(anim.property)}</span>
             <button class="param-action-btn edit-only" draggable="false"></button>
             <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
@@ -6454,7 +6509,7 @@
                             data-anim-in-layer="${animIdx}"
                             data-drag-type="animation"
                             draggable="${isEditMode}">
-                <span class="timeline-label-text">${anim.property}</span>
+                <span class="timeline-label-text">${formatPropertyName(anim.property)}</span>
                 <button class="param-action-btn edit-only" draggable="false"></button>
                 <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
               </div>`;
@@ -8551,10 +8606,26 @@ ${cleanedScript}
       return grouped;
     }
 
+    // Transform corner radius property names for display
+    function formatPropertyName(property) {
+      const prop = property.toLowerCase();
+      // Corner radius property transformations
+      if (prop === 'unified radius' || prop === 'unified corners') return 'Corner Radius';
+      if (prop === 'top left') return 'Top Left Corner';
+      if (prop === 'top right') return 'Top Right Corner';
+      if (prop === 'bottom left') return 'Bottom Left Corner';
+      if (prop === 'bottom right') return 'Bottom Right Corner';
+      if (prop === 'tl') return 'Top Left Corner';
+      if (prop === 'tr') return 'Top Right Corner';
+      if (prop === 'bl') return 'Bottom Left Corner';
+      if (prop === 'br') return 'Bottom Right Corner';
+      return property; // Return original if no transformation needed
+    }
+
     // Get color class for property
     function getPropertyColorClass(property) {
       const prop = property.toLowerCase();
-      if (prop.includes('add parameter')) return 'bar-scale'; // Pink color for new parameters
+      if (prop.includes('add parameter')) return 'bar-default'; // Teal color for new parameters
       if (prop.includes('width & height')) return 'bar-width'; // Grouped Width & Height uses Width color
       if (prop.includes('position')) return 'bar-position-x'; // Grouped position uses same color as X Position
       if (prop.includes('opacity')) return 'bar-opacity';
@@ -8566,7 +8637,7 @@ ${cleanedScript}
       if (prop.includes('height')) return 'bar-height';
       if (prop.includes('blur')) return 'bar-blur';
       if (prop.includes('transform')) return 'bar-transform';
-      if (prop.includes('corner')) return 'bar-position-x'; // Corner radius/smoothing uses blue
+      if (prop.includes('corner') || prop.includes('radius') || prop === 'top left' || prop === 'top right' || prop === 'bottom left' || prop === 'bottom right' || prop === 'tl' || prop === 'tr' || prop === 'bl' || prop === 'br') return 'bar-position-x'; // Corner radius uses blue
       return 'bar-default';
     }
 
@@ -8582,9 +8653,9 @@ ${cleanedScript}
         'bar-height': '#ca317d',
         'bar-blur': '#595959',
         'bar-transform': '#6c1c90',
-        'bar-default': '#056e96'
+        'bar-default': '#056e53'
       };
-      return colorMap[colorClass] || '#056e96';
+      return colorMap[colorClass] || '#056e53';
     }
 
     // Brighten a hex color to match the selected state (1.2x brightness)
@@ -8923,6 +8994,7 @@ ${cleanedScript}
         // Handle corner radius properties (IndieCorners, Squircle, generic corner/radius)
         else if (prop === 'tl' || prop === 'tr' || prop === 'bl' || prop === 'br' ||
                  prop === 'unified radius' || prop === 'unified corners' ||
+                 prop === 'top left' || prop === 'top right' || prop === 'bottom left' || prop === 'bottom right' ||
                  prop.includes('corner') || prop.includes('radius') ||
                  prop.includes('border radius')) {
           const startRounded = Math.round(typeof values.startValue === 'string' ? parseFloat(values.startValue) : values.startValue);
@@ -8930,19 +9002,19 @@ ${cleanedScript}
 
           // Special case: Sharp to rounded
           if (startRounded === 0 && endRounded > 0) {
-            description = `Corner animates from sharp (0px) -rounded (${endRounded}px)`;
+            description = `Radius animates 0px – ${endRounded}px`;
           }
           // Special case: Rounded to sharp
           else if (startRounded > 0 && endRounded === 0) {
-            description = `Corner animates from rounded (${startRounded}px) -sharp (0px)`;
+            description = `Radius animates ${startRounded}px – 0px`;
           }
           // Zero change
           else if (startRounded === endRounded) {
-            description = `Corner stays at ${startRounded}px`;
+            description = `Radius stays at ${startRounded}px`;
           }
           // Default
           else {
-            description = `Corner animates from ${startRounded}px - ${endRounded}px`;
+            description = `Radius animates ${startRounded}px – ${endRounded}px`;
           }
         }
         else {
@@ -9050,6 +9122,25 @@ ${cleanedScript}
 
       // Set width with some padding, min 100px, max container width
       const width = Math.max(temp.offsetWidth + 24, 100);
+      input.style.width = width + 'px';
+
+      document.body.removeChild(temp);
+    }
+
+    function autoResizeValueInput(input) {
+      // Create a temporary span to measure text width
+      const temp = document.createElement('span');
+      temp.style.font = window.getComputedStyle(input).font;
+      temp.style.visibility = 'hidden';
+      temp.style.position = 'absolute';
+      temp.style.whiteSpace = 'pre';
+      temp.textContent = input.value || input.placeholder || '';
+      document.body.appendChild(temp);
+
+      // Set width with padding, min 120px, max based on grid cell
+      const detailItem = input.closest('.detail-item');
+      const maxWidth = detailItem ? detailItem.offsetWidth : 200;
+      const width = Math.min(Math.max(temp.offsetWidth + 20, 120), maxWidth);
       input.style.width = width + 'px';
 
       document.body.removeChild(temp);
@@ -9228,6 +9319,11 @@ ${cleanedScript}
           currentIndex++;
         }
       }
+    }
+
+    // Clear a value field (startValue or endValue)
+    function clearValueField(animIndex, fieldName) {
+      updateAnimationField(animIndex, fieldName, '-');
     }
 
     // Update an animation field and refresh views
@@ -9465,7 +9561,7 @@ ${cleanedScript}
                         data-anim-index="${globalAnimIndex}"
                         data-layer-index="${layerIndex}"
                         data-anim-in-layer="${animIndexInLayer}">
-            <span class="timeline-label-text">${anim.property}</span>
+            <span class="timeline-label-text">${formatPropertyName(anim.property)}</span>
             <button class="param-action-btn edit-only" draggable="false"></button>
             <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
           </div>`;
@@ -9504,7 +9600,7 @@ ${cleanedScript}
                           data-anim-index="${childAnimGlobalIndex}"
                           data-layer-index="${childLayerIndex}"
                           data-anim-in-layer="${animIndexInLayer}">
-              <span class="timeline-label-text">${anim.property}</span>
+              <span class="timeline-label-text">${formatPropertyName(anim.property)}</span>
               <button class="param-action-btn edit-only" draggable="false"></button>
               <button class="timeline-label-add-btn edit-only" draggable="false">+</button>
             </div>`;
@@ -11953,7 +12049,7 @@ ${cleanedScript}
         html += `<input
           type="text"
           class="detail-title-input detail-title-input-property"
-          value="${anim.property.replace(/"/g, '&quot;')}"
+          value="${formatPropertyName(anim.property).replace(/"/g, '&quot;')}"
           maxlength="21"
           tabindex="2"
           onfocus="this.select()"
@@ -11962,7 +12058,7 @@ ${cleanedScript}
           onkeydown="handleInfoboxTab(event, 2, ${animIndex}, 'property', this.value)"
         />`;
       } else {
-        html += `<span>${layer.layerName} › ${anim.property}</span>`;
+        html += `<span>${layer.layerName} › ${formatPropertyName(anim.property)}</span>`;
       }
 
       // Color picker panel
@@ -12028,6 +12124,7 @@ ${cleanedScript}
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'delay', this.value)"
                 onkeydown="handleInfoboxTab(event, 4, ${animIndex}, 'delay', this.value)"
+                oninput="autoResizeValueInput(this)"
               />
             </div>
           `;
@@ -12058,6 +12155,7 @@ ${cleanedScript}
                 onfocus="this.select()"
                 onblur="updateAnimationField(${animIndex}, 'duration', this.value)"
                 onkeydown="handleInfoboxTab(event, 5, ${animIndex}, 'duration', this.value)"
+                oninput="autoResizeValueInput(this)"
               />
             </div>
           `;
@@ -12083,7 +12181,7 @@ ${cleanedScript}
 
           if (isPreset) {
             easingTextPlain = spring.preset;
-            easingText = spring.preset;
+            easingText = formatSpringPreset(spring.preset, !isEditMode);  // Add links in read mode
           } else {
             // Custom spring values as text
             const springText = `Stiffness: ${spring.custom.stiffness}, Damping: ${spring.custom.damping}, Damping Ratio: ${spring.custom.dampingRatio}, Mass: ${spring.custom.mass}`;
@@ -12102,7 +12200,7 @@ ${cleanedScript}
           }
 
           easingTextPlain = presetName || bezierValue;
-          easingText = presetName || bezierValue;
+          easingText = formatSpringPreset(presetName || bezierValue, !isEditMode);  // Add links in read mode
         } else {
           easingTextPlain = anim.easing.type;
           easingText = anim.easing.type;
@@ -12134,6 +12232,10 @@ ${cleanedScript}
         endValue = scaleFormattedValue(endValue, anim.property);
 
         // For grouped Position, only show values that changed with (X)/(Y) labels
+        // Respect custom values if set (e.g., from clear button)
+        const hasCustomStart = anim.customStartValue !== undefined && anim.customStartValue !== null;
+        const hasCustomEnd = anim.customEndValue !== undefined && anim.customEndValue !== null;
+
         if (anim.isGrouped && anim.groupType === 'position' && Array.isArray(anim.values.change)) {
           const [xChange, yChange] = anim.values.change;
           const groupedAnims = anim.groupedAnimations || [];
@@ -12152,13 +12254,47 @@ ${cleanedScript}
             endParts.push(`${scaleValue(Math.round(yAnim.values.endValue))}px (Y)`);
           }
 
-          startValue = startParts.length > 0 ? startParts.join('\n') : '-';
-          endValue = endParts.length > 0 ? endParts.join('\n') : '-';
+          // Only use calculated value if no custom value is set
+          if (!hasCustomStart) {
+            startValue = startParts.length > 0 ? startParts.join('\n') : '-';
+          }
+          if (!hasCustomEnd) {
+            endValue = endParts.length > 0 ? endParts.join('\n') : '-';
+          }
+        }
+        // For grouped Width & Height, show values with (W)/(H) labels
+        // Respect custom values if set (e.g., from clear button)
+        else if (anim.isGrouped && anim.groupType === 'size' && Array.isArray(anim.values.change)) {
+          const [widthChange, heightChange] = anim.values.change;
+          const groupedAnims = anim.groupedAnimations || [];
+          const widthAnim = groupedAnims.find(a => a.property?.toLowerCase().includes('width'));
+          const heightAnim = groupedAnims.find(a => a.property?.toLowerCase().includes('height'));
+
+          const startParts = [];
+          const endParts = [];
+
+          if (widthChange !== 0 && widthAnim?.values) {
+            startParts.push(`${scaleValue(Math.round(widthAnim.values.startValue))}px (W)`);
+            endParts.push(`${scaleValue(Math.round(widthAnim.values.endValue))}px (W)`);
+          }
+          if (heightChange !== 0 && heightAnim?.values) {
+            startParts.push(`${scaleValue(Math.round(heightAnim.values.startValue))}px (H)`);
+            endParts.push(`${scaleValue(Math.round(heightAnim.values.endValue))}px (H)`);
+          }
+
+          // Only use calculated value if no custom value is set
+          if (!hasCustomStart) {
+            startValue = startParts.length > 0 ? startParts.join('\n') : '-';
+          }
+          if (!hasCustomEnd) {
+            endValue = endParts.length > 0 ? endParts.join('\n') : '-';
+          }
         }
         // Handle pre-combined Position format like "(197px, 538px)" from JSON
-        else if (anim.property?.toLowerCase() === 'position' && startValue.includes(',')) {
+        else if (anim.property?.toLowerCase() === 'position' && (startValue.includes(',') || endValue.includes(','))) {
           // Parse "(Xpx, Ypx)" format
           const parsePositionValue = (val) => {
+            if (val === '-') return null;
             const match = val.match(/\(?\s*(-?\d+\.?\d*)px?\s*,\s*(-?\d+\.?\d*)px?\s*\)?/);
             if (match) return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
             return null;
@@ -12166,41 +12302,70 @@ ${cleanedScript}
           const startPos = parsePositionValue(startValue);
           const endPos = parsePositionValue(endValue);
 
-          if (startPos && endPos) {
-            const xChanged = Math.round(startPos.x) !== Math.round(endPos.x);
-            const yChanged = Math.round(startPos.y) !== Math.round(endPos.y);
+          // Only format if we can parse at least one position to determine which axes changed
+          const refPos = startPos || endPos;
+          if (refPos) {
+            // Use original values to determine axis changes if both are available
+            const origStartPos = parsePositionValue(anim.values?.formatted?.startValue || '');
+            const origEndPos = parsePositionValue(anim.values?.formatted?.endValue || '');
+
+            let xChanged = false;
+            let yChanged = false;
+            if (origStartPos && origEndPos) {
+              xChanged = Math.round(origStartPos.x) !== Math.round(origEndPos.x);
+              yChanged = Math.round(origStartPos.y) !== Math.round(origEndPos.y);
+            } else if (startPos && endPos) {
+              xChanged = Math.round(startPos.x) !== Math.round(endPos.x);
+              yChanged = Math.round(startPos.y) !== Math.round(endPos.y);
+            } else {
+              // If only one value available, show both axes
+              xChanged = true;
+              yChanged = true;
+            }
 
             const startParts = [];
             const endParts = [];
 
             if (xChanged) {
-              startParts.push(`${scaleValue(Math.round(startPos.x))}px (X)`);
-              endParts.push(`${scaleValue(Math.round(endPos.x))}px (X)`);
+              if (startPos) startParts.push(`${scaleValue(Math.round(startPos.x))}px (X)`);
+              if (endPos) endParts.push(`${scaleValue(Math.round(endPos.x))}px (X)`);
             }
             if (yChanged) {
-              startParts.push(`${scaleValue(Math.round(startPos.y))}px (Y)`);
-              endParts.push(`${scaleValue(Math.round(endPos.y))}px (Y)`);
+              if (startPos) startParts.push(`${scaleValue(Math.round(startPos.y))}px (Y)`);
+              if (endPos) endParts.push(`${scaleValue(Math.round(endPos.y))}px (Y)`);
             }
 
-            startValue = startParts.length > 0 ? startParts.join('\n') : '-';
-            endValue = endParts.length > 0 ? endParts.join('\n') : '-';
+            // Preserve "-" if it was explicitly set, otherwise use formatted parts
+            if (startValue !== '-') {
+              startValue = startParts.length > 0 ? startParts.join('\n') : '-';
+            }
+            if (endValue !== '-') {
+              endValue = endParts.length > 0 ? endParts.join('\n') : '-';
+            }
           }
         }
         // Handle Scale format like "100%, 100%" - simplify to single value if X and Y are same
-        else if (anim.property?.toLowerCase().includes('scale') && startValue.includes(',')) {
+        // Respect custom values if set (e.g., from clear button)
+        else if (anim.property?.toLowerCase().includes('scale') && (startValue.includes(',') || endValue.includes(','))) {
           const parseScaleValue = (val) => {
             const match = val.match(/(-?\d+\.?\d*)%?\s*,\s*(-?\d+\.?\d*)%?/);
             if (match) return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
             return null;
           };
-          const startScale = parseScaleValue(startValue);
-          const endScale = parseScaleValue(endValue);
 
-          if (startScale && startScale.x === startScale.y) {
-            startValue = `${Math.round(startScale.x)}%`;
+          // Only process start value if no custom value is set
+          if (!hasCustomStart) {
+            const startScale = parseScaleValue(startValue);
+            if (startScale && startScale.x === startScale.y) {
+              startValue = `${Math.round(startScale.x)}%`;
+            }
           }
-          if (endScale && endScale.x === endScale.y) {
-            endValue = `${Math.round(endScale.x)}%`;
+          // Only process end value if no custom value is set
+          if (!hasCustomEnd) {
+            const endScale = parseScaleValue(endValue);
+            if (endScale && endScale.x === endScale.y) {
+              endValue = `${Math.round(endScale.x)}%`;
+            }
           }
         }
 
@@ -12208,13 +12373,42 @@ ${cleanedScript}
         if (startValue === '') startValue = '-';
         if (endValue === '') endValue = '-';
 
+        // Determine unit based on property type
+        const propLower = (anim.property || '').toLowerCase();
+        let valueUnit = '';
+        if (propLower.includes('opacity') || propLower.includes('scale')) {
+          valueUnit = '%';
+        } else if (propLower.includes('position') || propLower.includes('width') || propLower.includes('height') || propLower.includes('size') || propLower.includes('blur') || propLower.includes('feather') || propLower.includes('radius') || propLower.includes('offset') || propLower.includes('distance') || propLower.includes('spread')) {
+          valueUnit = 'px';
+        } else if (propLower.includes('rotation') || propLower.includes('angle') || propLower.includes('skew')) {
+          valueUnit = '°';
+        }
+
+        // Strip units from values for cleaner display
+        const stripUnit = (val, unit) => {
+          if (!val || val === '-') return val;
+          // Handle multiline values (e.g., position with X/Y)
+          return val.split('\n').map(line => {
+            // Remove the unit but keep any suffix like (X) or (Y)
+            return line.replace(new RegExp(unit.replace('°', '\\°') + '(?=\\s|$|\\))', 'g'), '').trim();
+          }).join('\n');
+        };
+
+        if (valueUnit) {
+          startValue = stripUnit(startValue, valueUnit);
+          endValue = stripUnit(endValue, valueUnit);
+        }
+
+        const startLabel = valueUnit ? `Start Value (${valueUnit})` : 'Start Value';
+        const endLabel = valueUnit ? `End Value (${valueUnit})` : 'End Value';
+
         html += `<div class="detail-item">`;
-        html += `<div class="detail-label">Start Value</div>`;
+        html += `<div class="detail-label">${startLabel}</div>`;
         if (isEditMode) {
           const hasNewline = startValue.includes('\n');
           if (hasNewline) {
             html += `
-              <div class="detail-value">
+              <div class="detail-value value-field-wrapper">
                 <textarea
                   class="detail-value-input"
                   rows="2"
@@ -12222,12 +12416,14 @@ ${cleanedScript}
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
                   onkeydown="handleInfoboxTab(event, 7, ${animIndex}, 'startValue', this.value)"
+                  oninput="autoResizeValueInput(this)"
                 >${startValue.replace(/"/g, '&quot;')}</textarea>
+                <button class="value-clear-btn" onclick="clearValueField(${animIndex}, 'startValue')" title="Clear value"></button>
               </div>
             `;
           } else {
             html += `
-              <div class="detail-value">
+              <div class="detail-value value-field-wrapper">
                 <input
                   type="text"
                   class="detail-value-input"
@@ -12236,7 +12432,9 @@ ${cleanedScript}
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'startValue', this.value)"
                   onkeydown="handleInfoboxTab(event, 7, ${animIndex}, 'startValue', this.value)"
+                  oninput="autoResizeValueInput(this)"
                 />
+                <button class="value-clear-btn" onclick="clearValueField(${animIndex}, 'startValue')" title="Clear value"></button>
               </div>
             `;
           }
@@ -12246,12 +12444,12 @@ ${cleanedScript}
         html += `</div>`;
 
         html += `<div class="detail-item">`;
-        html += `<div class="detail-label">End Value</div>`;
+        html += `<div class="detail-label">${endLabel}</div>`;
         if (isEditMode) {
           const hasNewline = endValue.includes('\n');
           if (hasNewline) {
             html += `
-              <div class="detail-value">
+              <div class="detail-value value-field-wrapper">
                 <textarea
                   class="detail-value-input"
                   rows="2"
@@ -12259,12 +12457,14 @@ ${cleanedScript}
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
                   onkeydown="handleInfoboxTab(event, 8, ${animIndex}, 'endValue', this.value)"
+                  oninput="autoResizeValueInput(this)"
                 >${endValue.replace(/"/g, '&quot;')}</textarea>
+                <button class="value-clear-btn" onclick="clearValueField(${animIndex}, 'endValue')" title="Clear value"></button>
               </div>
             `;
           } else {
             html += `
-              <div class="detail-value">
+              <div class="detail-value value-field-wrapper">
                 <input
                   type="text"
                   class="detail-value-input"
@@ -12273,7 +12473,9 @@ ${cleanedScript}
                   onfocus="this.select()"
                   onblur="updateAnimationField(${animIndex}, 'endValue', this.value)"
                   onkeydown="handleInfoboxTab(event, 8, ${animIndex}, 'endValue', this.value)"
+                  oninput="autoResizeValueInput(this)"
                 />
+                <button class="value-clear-btn" onclick="clearValueField(${animIndex}, 'endValue')" title="Clear value"></button>
               </div>
             `;
           }
@@ -12309,6 +12511,10 @@ ${cleanedScript}
       // Auto-resize description input to fit its content
       const descriptionInput = detailPanel.querySelector('.detail-description-input');
       if (descriptionInput) autoResizeDescriptionInput(descriptionInput);
+
+      // Auto-resize value inputs (delay, duration, start/end values)
+      const valueInputs = detailPanel.querySelectorAll('.detail-value-input');
+      valueInputs.forEach(input => autoResizeValueInput(input));
 
       // Setup click-to-edit for easing field (shows formatted HTML until clicked)
       const easingEditable = detailPanel.querySelector('.easing-editable');
@@ -12348,14 +12554,15 @@ ${cleanedScript}
           textarea.rows = 1;
           textarea.value = plainText;
           textarea.style.width = '100%';
+          textarea.style.overflow = 'hidden';
           textarea.dataset.animIndex = animIdx; // Store anim index for preset selection
 
           this.replaceWith(textarea);
           textarea.focus();
           textarea.select();
 
-          // Set height to match original element (accounting for border)
-          textarea.style.height = (originalHeight - 2) + 'px';
+          // Set height to match original element
+          textarea.style.height = originalHeight + 'px';
 
           // Show autocomplete
           showEasingAutocomplete(textarea, textarea.value.trim());
