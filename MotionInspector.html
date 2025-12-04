@@ -1644,9 +1644,10 @@
     }
 
     .timeline-row {
-      min-height: 32px;
+      min-height: 34px;
       border-bottom: 1px solid #2a2a2a; /* Match vertical grid lines */
       position: relative;
+      box-sizing: border-box;
     }
 
     .timeline-row:hover .timeline-label,
@@ -1677,14 +1678,14 @@
       font-weight: 600;
       font-size: 12.5px;
       border-bottom: 1px solid #222222; /* Left column slightly darker */
-      height: 32px;
+      height: 34px;
     }
 
     .timeline-track.layer-header {
       background: transparent;
       font-weight: 600;
       border-bottom: 1px solid #2a2a2a; /* Match vertical grid lines */
-      height: 32px;
+      height: 34px;
     }
 
     /* Default: 16px section gap for short specs without scrollbar */
@@ -1731,7 +1732,7 @@
       white-space: nowrap;
       overflow: visible;
       text-overflow: ellipsis;
-      height: 32px;
+      height: 34px;
       border-bottom: 1px solid #222222; /* Left column slightly darker */
       position: relative;
       box-sizing: border-box;
@@ -2208,7 +2209,7 @@
 
     .timeline-track {
       position: relative;
-      height: 32px;
+      height: 34px;
       border-bottom: 1px solid #2a2a2a; /* Match vertical grid lines */
       display: flex;
       align-items: center;
@@ -2364,9 +2365,10 @@
       color: #d8d8d8;
     }
 
-    /* Child layer description (Scales to fit / Attached to) in light blue */
+    /* Child layer description (Scales to fit / Attached to) in white italic */
     .table-row--child-layer .table-cell--desc .table-desc-text {
-      color: #6DB3E8;
+      color: #ffffff;
+      font-style: italic;
     }
 
     .timeline-track.table-row.table-row--layer {
@@ -2400,7 +2402,7 @@
     }
 
     body.table-view-active .timeline-label {
-      height: 32px;
+      height: 34px;
       border-bottom: 1px solid #222222; /* Left column slightly darker */
       box-sizing: border-box;
     }
@@ -2429,7 +2431,7 @@
     }
 
     body.table-view-active .timeline-track.table-row {
-      height: 32px;
+      height: 34px;
     }
 
     .table-gap-label {
@@ -2464,12 +2466,12 @@
 
     .timeline-bar {
       position: absolute;
-      height: 24px;
+      height: 26px;
       border-radius: 6px;
       display: flex;
       align-items: center;
       padding: 0 8px;
-      font-size: 11px;
+      font-size: 12px;
       color: white;
       cursor: grab;
       transition: all 0.1s;
@@ -3217,7 +3219,7 @@
     }
 
     .empty-timeline-bar {
-      height: 24px;
+      height: 26px;
       background: #252525;
       border-radius: 4px;
       flex: 1;
@@ -6670,9 +6672,9 @@
           const tableAttachedDescription = childLayer.parentingDescription || `Attached to ${parentName}`;
           html += `<div class="timeline-track table-row table-row--child-layer child-layer-header${siblingClass}${firstChildClass}" data-layer-index="${childLayerIndex}" data-row-type="child-layer" data-drag-type="child-layer" data-parent-layer="${layerIndex}" data-parent-name="${parentName}">
             <div class="table-cell table-cell--desc editable-cell" contenteditable="${isEditMode}" data-field="parentingDescription"><span class="table-desc-text">${tableAttachedDescription}</span></div>
-            <div class="table-cell table-cell--delay">—</div>
-            <div class="table-cell table-cell--duration">—</div>
-            <div class="table-cell table-cell--easing">—</div>
+            <div class="table-cell table-cell--delay">-</div>
+            <div class="table-cell table-cell--duration">-</div>
+            <div class="table-cell table-cell--easing">-</div>
           </div>`;
 
           // Child's own animation rows (if any)
