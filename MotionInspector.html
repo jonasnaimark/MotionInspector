@@ -9363,16 +9363,17 @@ ${cleanedScript}
     }
 
     // Get available parent layers for a given layer
-    // Returns layers that can be selected as parents (top-level only, excluding current layer)
+    // Returns layers that can be selected as parents (supports multi-level parenting)
     function getAvailableParentLayers(currentLayerIndex) {
       if (!specData || !specData.layers) return [];
 
       const availableParents = [];
       specData.layers.forEach((layer, index) => {
-        // Exclude the current layer
+        // Exclude the current layer (can't parent to self)
         if (index === currentLayerIndex) return;
-        // Exclude layers that already have a parent (only allow 1 level of nesting)
-        if (layer.parenting) return;
+        // Exclude descendants of current layer (prevents circular parenting)
+        // isDescendantOf(ancestorIdx, descendantIdx) checks if descendant has ancestor in its parent chain
+        if (isDescendantOf(index, currentLayerIndex)) return;
         // This layer can be a parent
         availableParents.push({ name: layer.layerName, index: index });
       });
@@ -12960,12 +12961,14 @@ ${cleanedScript}
 
         // Parent to dropdown
         const parentOptions = getAvailableParentLayers(layerIndex);
+        const currentParentName = layer.parenting ? layer.parenting.parentName : '';
         html += `<div class="parent-selector-container">`;
         html += `<span class="parent-selector-label">Parented to:</span>`;
         html += `<select class="parent-selector" onchange="setLayerParentFromSection(${layerIndex}, this.value)">`;
-        html += `<option value="">None</option>`;
+        html += `<option value="" ${!currentParentName ? 'selected' : ''}>None</option>`;
         parentOptions.forEach(opt => {
-          html += `<option value="${opt.name}">${opt.name}</option>`;
+          const selected = opt.name === currentParentName ? 'selected' : '';
+          html += `<option value="${opt.name}" ${selected}>${opt.name}</option>`;
         });
         html += `</select>`;
         html += `</div>`;
@@ -13239,7 +13242,7 @@ ${cleanedScript}
         html += `<div class="parent-selector-container">`;
         html += `<span class="parent-selector-label">Parented to:</span>`;
         html += `<select class="parent-selector" onchange="changeLayerParent(${layerIndex}, this.value)">`;
-        html += `<option value="">None</option>`;
+        html += `<option value="" ${!parentName ? 'selected' : ''}>None</option>`;
         parentOptions.forEach(opt => {
           const selected = opt.name === parentName ? 'selected' : '';
           html += `<option value="${opt.name}" ${selected}>${opt.name}</option>`;
