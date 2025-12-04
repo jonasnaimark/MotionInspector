@@ -7122,34 +7122,40 @@
             isValidDrop = true;
           } else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
             // Layer dropped on animation or child-layer row = parenting (supports multi-level)
-            // Only allow if dragged layer is not a parent itself (prevent moving subtrees)
-            if (!layerHasChildren(draggedLayerIndex)) {
-              // Find which layer to parent to
-              let targetParentIndex = targetLayerIndex;
-              if (targetType === 'child-layer') {
-                // Parent to this child layer (creating grandchild)
-                targetParentIndex = targetLayerIndex;
-              } else if (targetType === 'animation') {
-                // Parent to the layer that owns this animation
-                targetParentIndex = targetLayerIndex;
-              }
-              // Can't parent to self - check for circular parenting
-              const wouldCreateCycle = isDescendantOf(targetParentIndex, draggedLayerIndex);
-              if (targetParentIndex !== draggedLayerIndex && !wouldCreateCycle) {
+            // Allow even if dragged layer has children (moves entire subtree)
+            const targetParentIndex = targetLayerIndex;
+            // Can't parent to self - check for circular parenting
+            const wouldCreateCycle = isDescendantOf(targetParentIndex, draggedLayerIndex);
+            if (targetParentIndex !== draggedLayerIndex && !wouldCreateCycle) {
+              isValidDrop = true;
+              isParentingDrop = true;
+            }
+          } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
+            // Child layer dropped on another child layer
+            if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
+              // Same parent - allow reordering
+              isValidDrop = true;
+              isChildLayerDrop = true;
+            } else if (draggedLayerIndex !== targetLayerIndex) {
+              // Different parent or re-parenting to become child of target
+              // Check for circular parenting (allows moving subtrees)
+              const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+              if (!wouldCreateCycle) {
                 isValidDrop = true;
                 isParentingDrop = true;
               }
-            }
-          } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
-            // Child layers can only be reordered within same parent
-            if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
-              isValidDrop = true;
-              isChildLayerDrop = true;
             }
           } else if (draggedType === 'child-layer' && targetType === 'layer') {
             // Child dropped on layer header = un-parenting
             isValidDrop = true;
             isUnparentingDrop = true;
+          } else if (draggedType === 'child-layer' && targetType === 'animation') {
+            // Child layer dropped on animation row - parent to that layer (allows moving subtrees)
+            const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+            if (draggedLayerIndex !== targetLayerIndex && !wouldCreateCycle) {
+              isValidDrop = true;
+              isParentingDrop = true;
+            }
           }
 
           if (!isValidDrop) return;
@@ -7286,26 +7292,21 @@
           }
           // For layer drops on animation/child-layer rows: convert to child (parenting)
           else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
-            // Find the parent section for this target
-            let targetParentIndex = targetLayerIndex;
-            if (targetType === 'child-layer') {
-              targetParentIndex = parseInt(label.dataset.parentLayer);
-            } else if (targetType === 'animation') {
-              // If target animation belongs to a child layer, find its actual parent
-              const targetLayer = specData.layers[targetLayerIndex];
-              if (targetLayer && targetLayer.parenting && targetLayer.parenting.parentId) {
-                // Target is a child layer's animation - find the grandparent
-                const grandparentIndex = specData.layers.findIndex(l => l.id === targetLayer.parenting.parentId);
-                if (grandparentIndex !== -1) {
-                  targetParentIndex = grandparentIndex;
-                }
-              }
-            }
-            // Only parent if dragged layer is not already a parent AND target parent is not itself a child
-            const targetParent = specData.layers[targetParentIndex];
-            if (!layerHasChildren(draggedLayerIndex) && targetParent && !targetParent.parenting) {
-              convertLayerToChild(draggedLayerIndex, targetParentIndex);
-            }
+            // Parent to the target layer (supports multi-level parenting)
+            // Allows moving entire subtrees (layers with children)
+            const targetParentIndex = targetLayerIndex;
+            convertLayerToChild(draggedLayerIndex, targetParentIndex);
+          }
+          // For child-layer drops on another child-layer: re-parent to become child of target
+          else if (draggedType === 'child-layer' && targetType === 'child-layer' && draggedParentLayer !== targetParentLayer) {
+            // Re-parenting: make dragged child-layer a child of target child-layer
+            // Allows moving entire subtrees
+            convertLayerToChild(draggedLayerIndex, targetLayerIndex);
+          }
+          // For child-layer drops on animation: re-parent to that layer
+          else if (draggedType === 'child-layer' && targetType === 'animation') {
+            // Allows moving entire subtrees
+            convertLayerToChild(draggedLayerIndex, targetLayerIndex);
           }
           // For child-layer drops on layer headers: convert to standalone (un-parenting)
           else if (draggedType === 'child-layer' && targetType === 'layer') {
@@ -10328,40 +10329,41 @@ ${cleanedScript}
           } else if (draggedType === 'layer' && targetType === 'layer') {
             isValidDrop = true;
           } else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
-            // Layer dropped on animation or child-layer row = parenting
-            // Only allow if dragged layer is not a parent itself
-            if (!layerHasChildren(draggedLayerIndex)) {
-              // Find which parent section this target belongs to
-              let targetParentIndex = targetLayerIndex;
-              if (targetType === 'child-layer') {
-                targetParentIndex = parseInt(label.dataset.parentLayer);
-              } else if (targetType === 'animation') {
-                // If target animation belongs to a child layer, resolve to grandparent
-                const targetLayer = specData.layers[targetLayerIndex];
-                if (targetLayer && targetLayer.parenting && targetLayer.parenting.parentId) {
-                  const grandparentIndex = specData.layers.findIndex(l => l.id === targetLayer.parenting.parentId);
-                  if (grandparentIndex !== -1) {
-                    targetParentIndex = grandparentIndex;
-                  }
-                }
-              }
-              // Can't parent to self or to a child layer
-              const targetParent = specData.layers[targetParentIndex];
-              if (targetParentIndex !== draggedLayerIndex && !targetParent.parenting) {
+            // Layer dropped on animation or child-layer row = parenting (supports multi-level)
+            // Allow even if dragged layer has children (moves entire subtree)
+            const targetParentIndex = targetLayerIndex;
+            // Can't parent to self - check for circular parenting
+            const wouldCreateCycle = isDescendantOf(targetParentIndex, draggedLayerIndex);
+            if (targetParentIndex !== draggedLayerIndex && !wouldCreateCycle) {
+              isValidDrop = true;
+              isParentingDrop = true;
+            }
+          } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
+            // Child layer dropped on another child layer
+            if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
+              // Same parent - allow reordering
+              isValidDrop = true;
+              isChildLayerDrop = true;
+            } else if (draggedLayerIndex !== targetLayerIndex) {
+              // Different parent or re-parenting to become child of target
+              // Check for circular parenting (allows moving subtrees)
+              const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+              if (!wouldCreateCycle) {
                 isValidDrop = true;
                 isParentingDrop = true;
               }
-            }
-          } else if (draggedType === 'child-layer' && targetType === 'child-layer') {
-            // Child layers can only be reordered within same parent
-            if (draggedParentLayer === targetParentLayer && draggedLayerIndex !== targetLayerIndex) {
-              isValidDrop = true;
-              isChildLayerDrop = true;
             }
           } else if (draggedType === 'child-layer' && targetType === 'layer') {
             // Child dropped on layer header = un-parenting
             isValidDrop = true;
             isUnparentingDrop = true;
+          } else if (draggedType === 'child-layer' && targetType === 'animation') {
+            // Child layer dropped on animation row - parent to that layer (allows moving subtrees)
+            const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+            if (draggedLayerIndex !== targetLayerIndex && !wouldCreateCycle) {
+              isValidDrop = true;
+              isParentingDrop = true;
+            }
           }
 
           if (!isValidDrop) return;
@@ -10570,26 +10572,10 @@ ${cleanedScript}
           }
           // For layer drops on animation/child-layer rows: convert to child (parenting)
           else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
-            // Find the parent section for this target
-            let targetParentIndex = targetLayerIndex;
-            if (targetType === 'child-layer') {
-              targetParentIndex = parseInt(label.dataset.parentLayer);
-            } else if (targetType === 'animation') {
-              // If target animation belongs to a child layer, find its actual parent
-              const targetLayer = specData.layers[targetLayerIndex];
-              if (targetLayer && targetLayer.parenting && targetLayer.parenting.parentId) {
-                // Target is a child layer's animation - find the grandparent
-                const grandparentIndex = specData.layers.findIndex(l => l.id === targetLayer.parenting.parentId);
-                if (grandparentIndex !== -1) {
-                  targetParentIndex = grandparentIndex;
-                }
-              }
-            }
-            // Only parent if dragged layer is not already a parent AND target parent is not itself a child
-            const targetParent = specData.layers[targetParentIndex];
-            if (!layerHasChildren(draggedLayerIndex) && targetParent && !targetParent.parenting) {
-              convertLayerToChild(draggedLayerIndex, targetParentIndex);
-            }
+            // Parent directly to the target layer (supports multi-level parenting)
+            // Allows moving entire subtrees (layers with children)
+            const targetParentIndex = targetLayerIndex;
+            convertLayerToChild(draggedLayerIndex, targetParentIndex);
           }
           // For child-layer drops on layer headers: convert to standalone (un-parenting)
           else if (draggedType === 'child-layer' && targetType === 'layer') {
@@ -10653,7 +10639,7 @@ ${cleanedScript}
           else if (draggedType === 'child-layer' && targetType === 'child-layer') {
             const targetParentLayer = label.dataset.parentLayer ? parseInt(label.dataset.parentLayer) : null;
             if (draggedParentLayer === targetParentLayer) {
-              // Determine if dropping before or after (for last child with no animations)
+              // Same parent - reorder within parent
               const rect = label.getBoundingClientRect();
               const distanceFromBottom = rect.bottom - e.clientY;
               const isLastChild = !label.classList.contains('has-siblings');
@@ -10662,7 +10648,17 @@ ${cleanedScript}
 
               const childDropPosition = (isLastChild && hasNoAnimations && distanceFromBottom <= 10) ? 'after' : 'before';
               performChildLayerMove(draggedLayerIndex, targetLayerIndex, childDropPosition);
+            } else {
+              // Different parent - re-parent to the target child layer (multi-level parenting)
+              // Allows moving entire subtrees
+              convertLayerToChild(draggedLayerIndex, targetLayerIndex);
             }
+          }
+          // For child-layer drops on animation rows: re-parent to that layer
+          else if (draggedType === 'child-layer' && targetType === 'animation') {
+            // Re-parent to the layer that owns this animation
+            // Allows moving entire subtrees
+            convertLayerToChild(draggedLayerIndex, targetLayerIndex);
           }
           // For child-layer drops on child-animation rows (bottom of last anim = drop after that child)
           else if (draggedType === 'child-layer' && label.classList.contains('child-anim')) {
