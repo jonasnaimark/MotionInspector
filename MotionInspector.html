@@ -11837,6 +11837,7 @@ ${cleanedScript}
         if (bar) {
           bar.style.background = color;
           bar.style.borderColor = color;
+          bar.style.setProperty('--bar-color', color); // For text overflow gradient
         }
 
         // Update color picker dot
@@ -12433,24 +12434,27 @@ ${cleanedScript}
         updatePlayhead();
 
         // Smart scroll: ensure the selected row isn't hidden by the detail panel
-        const timelineContainer = document.querySelector('.timeline-container');
-        const selectedBar = document.querySelector('.timeline-bar.selected');
+        // Use double RAF to ensure panel has fully rendered with correct height
+        requestAnimationFrame(() => {
+          const outerWrapper = document.querySelector('.timeline-outer-wrapper');
+          const selectedBar = document.querySelector('.timeline-bar.selected');
+          const panel = document.getElementById('detailPanel');
 
-        if (timelineContainer && selectedBar && detailPanel) {
-          const containerRect = timelineContainer.getBoundingClientRect();
-          const barRect = selectedBar.getBoundingClientRect();
-          const panelRect = detailPanel.getBoundingClientRect();
+          if (outerWrapper && selectedBar && panel && panel.offsetHeight > 0) {
+            const barRect = selectedBar.getBoundingClientRect();
+            const panelRect = panel.getBoundingClientRect();
 
-          // Calculate the bottom edge of visible area (above the detail panel)
-          const visibleBottom = panelRect.top - 20; // 20px margin
+            // Calculate the bottom edge of visible area (above the detail panel)
+            const visibleBottom = panelRect.top - 20; // 20px margin
 
-          // If the selected bar is below the visible area or will be covered by the panel
-          if (barRect.bottom > visibleBottom) {
-            // Calculate how much to scroll
-            const scrollAmount = barRect.bottom - visibleBottom;
-            timelineContainer.scrollTop += scrollAmount;
+            // If the selected bar is below the visible area or will be covered by the panel
+            if (barRect.bottom > visibleBottom) {
+              // Calculate how much to scroll
+              const scrollAmount = barRect.bottom - visibleBottom;
+              outerWrapper.scrollTop += scrollAmount;
+            }
           }
-        }
+        });
       });
     }
 
