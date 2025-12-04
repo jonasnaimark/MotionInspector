@@ -2090,9 +2090,12 @@
       left: 31px;
     }
 
-    /* Depth-2 headers with grandchildren - keep line at 31px (override has-child-line's 15px) */
+    /* Depth-2 headers with grandchildren - keep line at 31px and extend through row */
     .timeline-label.child-layer-header.depth-2.has-child-line::before {
       left: 31px;
+      height: auto;
+      top: -21px;
+      bottom: -16px; /* Extend through to children below, like has-siblings does */
     }
 
     .timeline-label.child-layer-header.depth-2.has-child-line::after {
@@ -3451,6 +3454,12 @@
     // Ensure all layers have unique IDs (for backward compatibility with old specs)
     function ensureLayerIds(specData) {
       if (!specData || !specData.layers) return;
+
+      // Filter out "parented" layerType entries - these are duplicates representing
+      // inherited animations, not actual separate layers. The real layer already exists
+      // with its own animations and the parenting relationship is captured there.
+      specData.layers = specData.layers.filter(layer => layer.layerType !== 'parented');
+
       specData.layers.forEach(layer => {
         if (!layer.id) {
           layer.id = generateLayerId();
