@@ -1990,7 +1990,7 @@
     body.table-view-active .timeline-track.child-layer-header.table-row {
       display: grid;
       margin-top: 15px;
-      border-top: 1px solid #2a2a2a; /* Right column lighter */
+      border-top: 1px solid #252525; /* Match data row borders */
       position: relative;
     }
 
@@ -2004,16 +2004,16 @@
       height: 15px;
       background: linear-gradient(to right,
         transparent calc(100% - var(--table-easing-width, 200px) - 160px - 1px),
-        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 160px - 1px),
-        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 160px),
+        #252525 calc(100% - var(--table-easing-width, 200px) - 160px - 1px),
+        #252525 calc(100% - var(--table-easing-width, 200px) - 160px),
         transparent calc(100% - var(--table-easing-width, 200px) - 160px),
         transparent calc(100% - var(--table-easing-width, 200px) - 80px - 1px),
-        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 80px - 1px),
-        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 80px),
+        #252525 calc(100% - var(--table-easing-width, 200px) - 80px - 1px),
+        #252525 calc(100% - var(--table-easing-width, 200px) - 80px),
         transparent calc(100% - var(--table-easing-width, 200px) - 80px),
         transparent calc(100% - var(--table-easing-width, 200px) - 1px),
-        #2e2e2e calc(100% - var(--table-easing-width, 200px) - 1px),
-        #2e2e2e calc(100% - var(--table-easing-width, 200px)),
+        #252525 calc(100% - var(--table-easing-width, 200px) - 1px),
+        #252525 calc(100% - var(--table-easing-width, 200px)),
         transparent calc(100% - var(--table-easing-width, 200px))
       );
       pointer-events: none;
@@ -2280,7 +2280,7 @@
       height: 100%;
       padding-left: 0;
       padding-right: 12px;
-      border-right: 1px solid #2e2e2e; /* Lighter for data rows */
+      border-right: 1px solid #252525; /* Darker for less busy look */
       color: #c0c0c0;
       white-space: normal;
       overflow: hidden;
@@ -2301,7 +2301,7 @@
 
     .table-cell--delay,
     .table-cell--duration {
-      border-right: 1px solid #2e2e2e; /* Lighter for data rows */
+      border-right: 1px solid #252525; /* Darker for less busy look */
       color: #c0c0c0;
       font-family: 'SFMono-Regular', ui-monospace, Menlo, Monaco, 'Roboto Mono', monospace;
     }
@@ -2341,7 +2341,7 @@
     .table-row--layer .table-cell {
       font-weight: 600;
       color: inherit;
-      border-right: 1px solid #2e2e2e; /* Lighter for data rows */
+      border-right: 1px solid #252525; /* Darker for less busy look */
     }
 
     .table-row--layer .table-cell:last-child {
@@ -2434,6 +2434,11 @@
       height: 34px;
     }
 
+    /* Darker horizontal grid lines for data rows in table mode */
+    body.table-view-active .timeline-track.table-row:not(.table-row--header) {
+      border-bottom-color: #252525;
+    }
+
     .table-gap-label {
       height: 8px;
       min-height: 8px;
@@ -2449,13 +2454,13 @@
     .table-gap-row {
       height: 8px;
       min-height: 8px !important;
-      border-top: 1px solid #222222;
+      border-top: 1px solid #252525;
       border-bottom: none !important;
     }
 
     .table-gap-row .table-cell {
       padding: 0;
-      border-right: 1px solid #222222;
+      border-right: 1px solid #252525;
       height: 100%;
       min-height: inherit;
     }
