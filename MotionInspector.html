@@ -460,9 +460,6 @@
       position: absolute;
       top: 16px;
       right: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
       z-index: 10;
     }
 
@@ -495,23 +492,48 @@
       border-color: rgba(255, 255, 255, 0.3);
     }
 
-    .flow-video-trash {
-      width: 32px;
-      height: 32px;
+    .flow-video-delete {
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      background: rgba(40, 40, 40, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: relative;
       transition: background 0.15s ease, border-color 0.15s ease;
-      font-size: 14px;
+      padding: 0;
+      margin: -4px -8px -4px 5px;
+      flex-shrink: 0;
     }
 
-    .flow-video-trash:hover {
-      background: rgba(255, 80, 80, 0.4);
-      border-color: rgba(255, 80, 80, 0.5);
+    .flow-video-delete::before,
+    .flow-video-delete::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 1px;
+      transition: background 0.15s ease;
+    }
+
+    .flow-video-delete::before {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .flow-video-delete::after {
+      transform: translate(-50%, -50%) rotate(-45deg);
+    }
+
+    .flow-video-delete:hover {
+      background: rgba(255, 80, 80, 0.6);
+    }
+
+    .flow-video-delete:hover::before,
+    .flow-video-delete:hover::after {
+      background: white;
     }
 
     /* Flow video lightbox */
@@ -3058,19 +3080,27 @@
 
     .detail-panel-close {
       background: #333;
-      border: none;
-      color: #e0e0e0;
-      font-size: 16px;
+      border: 1px solid #555;
       cursor: pointer;
       padding: 0;
-      padding-top: 2px;
       width: 28px;
       height: 28px;
+      border-radius: 50%;
+      transition: all 0.2s;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
-      transition: all 0.2s;
+    }
+
+    .detail-panel-close svg {
+      width: 12px;
+      height: 12px;
+      stroke: #e0e0e0;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      margin-top: 1px;
     }
 
     .detail-panel-close:hover {
@@ -3300,19 +3330,39 @@
     }
 
     .value-clear-btn {
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      background: #555;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: relative;
       opacity: 0;
       pointer-events: none;
       padding: 0;
       flex-shrink: 0;
+      transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+    }
+
+    .value-clear-btn::before,
+    .value-clear-btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 1px;
+      transition: background 0.15s ease;
+    }
+
+    .value-clear-btn::before {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .value-clear-btn::after {
+      transform: translate(-50%, -50%) rotate(-45deg);
     }
 
     .value-field-wrapper:hover .value-clear-btn,
@@ -3327,24 +3377,12 @@
     }
 
     .value-clear-btn:hover {
-      background: #777;
+      background: rgba(255, 80, 80, 0.6);
     }
 
-    .value-clear-btn::before,
-    .value-clear-btn::after {
-      content: '';
-      position: absolute;
-      width: 8px;
-      height: 1.5px;
-      background: #fff;
-    }
-
-    .value-clear-btn::before {
-      transform: rotate(45deg);
-    }
-
-    .value-clear-btn::after {
-      transform: rotate(-45deg);
+    .value-clear-btn:hover::before,
+    .value-clear-btn:hover::after {
+      background: white;
     }
 
     .detail-grid {
@@ -3541,8 +3579,8 @@
         <div class="flow-video-controls edit-mode">
           <div class="flow-video-btn" id="flowVideoBtn" onclick="handleFlowVideoBtnClick(event)">
             <span id="flowVideoBtnText">Add Flow</span>
+            <button class="flow-video-delete" id="flowVideoDelete" onclick="event.stopPropagation(); removeFlowVideo();" style="display: none;"></button>
           </div>
-          <button class="flow-video-trash" id="flowVideoTrash" onclick="removeFlowVideo();" style="display: none;">🗑️</button>
         </div>
         <input type="file" id="flowVideoInput" accept="video/*" style="display: none;" onchange="handleFlowVideoSelect(event)">
         <div id="videoEmptyState" class="video-empty-state edit-only" onclick="document.getElementById('videoInput').click()">
@@ -4312,14 +4350,14 @@
     // Update flow video button state
     function updateFlowVideoButton() {
       const btnText = document.getElementById('flowVideoBtnText');
-      const trashBtn = document.getElementById('flowVideoTrash');
+      const deleteBtn = document.getElementById('flowVideoDelete');
 
       if (flowVideo) {
         if (btnText) btnText.textContent = 'Replace Flow';
-        if (trashBtn) trashBtn.style.display = 'flex';
+        if (deleteBtn) deleteBtn.style.display = 'flex';
       } else {
         if (btnText) btnText.textContent = 'Add Flow';
-        if (trashBtn) trashBtn.style.display = 'none';
+        if (deleteBtn) deleteBtn.style.display = 'none';
       }
     }
 
@@ -12452,6 +12490,7 @@ ${cleanedScript}
     // Toggle color picker panel
     function toggleColorPicker(event, animIndex) {
       event.stopPropagation();
+      if (isExportMode) return; // Disable color picker in exports
       const panel = document.getElementById('colorPickerPanel');
       const dot = document.getElementById('colorPickerDot');
 
@@ -12639,10 +12678,10 @@ ${cleanedScript}
       if (isEditMode) {
         html += `<div class="detail-panel-actions">`;
         html += `<button class="detail-panel-action-btn delete" tabindex="9" onclick="deleteAnimation(${animIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
-        html += `<button class="detail-panel-close" tabindex="10" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
+        html += `<button class="detail-panel-close" tabindex="10" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></button>`;
         html += `</div>`;
       } else {
-        html += `<button class="detail-panel-close" tabindex="10" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());">&times;</button>`;
+        html += `<button class="detail-panel-close" tabindex="10" onclick="document.getElementById('detailPanel').innerHTML=''; selectedAnimation = null; document.querySelectorAll('.timeline-bar').forEach(b => b.classList.remove('selected')); document.querySelectorAll('.timeline-label.indented').forEach(l => l.classList.remove('selected')); document.querySelectorAll('.timeline-label.child-layer-header').forEach(l => l.classList.remove('selected')); requestAnimationFrame(() => updatePlayhead());"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></button>`;
       }
 
       html += `</div>`;
@@ -13299,10 +13338,10 @@ ${cleanedScript}
         html += `</div>`;
 
         html += `<button class="detail-panel-action-btn delete" onclick="deleteSection(${layerIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
-        html += `<button class="detail-panel-close" onclick="closeSectionDetails()">&times;</button>`;
+        html += `<button class="detail-panel-close" onclick="closeSectionDetails()"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></button>`;
         html += `</div>`;
       } else {
-        html += `<button class="detail-panel-close" onclick="closeSectionDetails()">&times;</button>`;
+        html += `<button class="detail-panel-close" onclick="closeSectionDetails()"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></button>`;
       }
 
       html += `</div>`; // detail-panel-header
@@ -13576,10 +13615,10 @@ ${cleanedScript}
         html += `</div>`;
 
         html += `<button class="detail-panel-action-btn delete" onclick="deleteParentedLayer(${layerIndex})"><span style="font-size: 11px; position: relative; top: -1px; margin-right: -2px;">🗑️</span>&nbsp; Delete</button>`;
-        html += `<button class="detail-panel-close" onclick="closeParentedDetails()">&times;</button>`;
+        html += `<button class="detail-panel-close" onclick="closeParentedDetails()"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></button>`;
         html += `</div>`;
       } else {
-        html += `<button class="detail-panel-close" onclick="closeParentedDetails()">&times;</button>`;
+        html += `<button class="detail-panel-close" onclick="closeParentedDetails()"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></button>`;
       }
 
       html += `</div>`;
