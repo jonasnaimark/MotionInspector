@@ -6163,11 +6163,14 @@
 
       // Check if looping is enabled
       if (isLoopEnabled) {
-        // Pause 500ms at the end, then restart
+        // Pause 500ms at the end, then rewind and pause 500ms at start before playing
         loopTimeoutId = setTimeout(() => {
           video.currentTime = 0;
-          video.play();
-          loopTimeoutId = null;
+          // Pause at start before playing
+          loopTimeoutId = setTimeout(() => {
+            video.play();
+            loopTimeoutId = null;
+          }, 500);
         }, 500);
       } else {
         const playPauseBtn = document.getElementById('playPauseBtn');
@@ -6807,15 +6810,8 @@
                   // Set easing directly (not through updateAnimationField to avoid double snapshot)
                   anim.customEasing = presetName;
 
-                  // Refresh the view and focus next field (Start Value)
+                  // Refresh the view (easing field will be unfocused)
                   refreshActiveView();
-                  requestAnimationFrame(() => {
-                    const nextField = document.querySelector('#detailPanel [tabindex="7"]');
-                    if (nextField) {
-                      nextField.focus();
-                      if (nextField.select) nextField.select();
-                    }
-                  });
                   return;
                 }
                 currentIndex++;
@@ -8325,14 +8321,14 @@
             const allCells = Array.from(document.querySelectorAll('.editable-cell[contenteditable="true"]'));
             const currentIndex = allCells.indexOf(cell);
 
-            // Find next/prev cell index (Enter always forward, Tab respects Shift)
-            const direction = (e.key === 'Enter' || !e.shiftKey) ? 1 : -1;
+            // Enter stays on same cell, Tab moves to next/prev
+            const direction = e.key === 'Enter' ? 0 : (e.shiftKey ? -1 : 1);
             const nextIndex = currentIndex + direction;
 
             // Blur current cell (triggers save, which may refresh view)
             cell.blur();
 
-            // Focus next cell after potential refresh - re-query cells since view may have re-rendered
+            // Focus cell after potential refresh - re-query cells since view may have re-rendered
             if (nextIndex >= 0 && nextIndex < allCells.length) {
               requestAnimationFrame(() => {
                 const freshCells = Array.from(document.querySelectorAll('.editable-cell[contenteditable="true"]'));
@@ -9920,12 +9916,14 @@ ${cleanedScript}
 
     // Handle Tab/Enter key in infobox fields - save and move to next/prev field
     function handleInfoboxTab(event, currentTabIndex, animIndex, fieldName, value) {
-      // Handle Tab or Enter (Enter acts like Tab forward)
+      // Handle Tab or Enter
       if (event.key !== 'Tab' && event.key !== 'Enter') return false;
 
       event.preventDefault();
-      // Enter always goes forward, Tab respects Shift
-      const nextTabIndex = (event.key === 'Enter' || !event.shiftKey) ? currentTabIndex + 1 : currentTabIndex - 1;
+
+      // Enter saves but stays on same field, Tab moves to next/prev
+      const nextTabIndex = event.key === 'Enter' ? currentTabIndex :
+                          (event.shiftKey ? currentTabIndex - 1 : currentTabIndex + 1);
 
       // Save the current field value
       if (fieldName === 'layerName') {
@@ -13397,16 +13395,9 @@ ${cleanedScript}
             } else if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               hideEasingAutocomplete();
-              // Save the value and navigate to next field
+              // Save the value and defocus
               updateAnimationFieldNoRefresh(animIdx, 'easing', textarea.value);
               refreshActiveView();
-              requestAnimationFrame(() => {
-                const nextField = document.querySelector('#detailPanel [tabindex="7"]');
-                if (nextField) {
-                  nextField.focus();
-                  if (nextField.select) nextField.select();
-                }
-              });
             }
           });
         });
