@@ -468,8 +468,8 @@
       top: 16px;
       right: 16px;
       padding: 8px 14px;
-      border-radius: 20px;
-      background: rgba(40, 40, 40, 0.9);
+      border-radius: 8px;
+      background: rgba(20, 20, 20, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.15);
       color: white;
       font-size: 12px;
@@ -488,9 +488,10 @@
     }
 
     .flow-video-btn:hover {
-      background: rgba(60, 60, 60, 0.95);
-      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(35, 35, 35, 0.95);
+      border-color: rgba(255, 255, 255, 0.25);
     }
+
 
     .flow-video-delete {
       width: 20px;
@@ -584,15 +585,15 @@
 
     .flow-lightbox-close {
       position: absolute;
-      top: -32px;
-      right: -32px;
-      width: 32px;
-      height: 32px;
+      top: 18px;
+      right: 40px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      background: rgba(60, 60, 60, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #333;
+      border: 1px solid #525252;
       color: white;
-      font-size: 20px;
+      font-size: 24px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -602,7 +603,7 @@
     }
 
     .flow-lightbox-close:hover {
-      background: rgba(80, 80, 80, 0.95);
+      background: #444;
     }
 
     .video-nav-arrow {
@@ -727,7 +728,7 @@
       font-weight: 300;
       text-align: center;
       padding: 2px 8px;
-      margin: 0;
+      margin: 4px 0 0 0;
       resize: none;
       outline: none;
       overflow: hidden;
@@ -832,7 +833,7 @@
       font-weight: 300;
       text-align: left;
       padding: 0;
-      margin: 0;
+      margin: 4px 0 0 0;
       resize: none;
       outline: none;
       overflow: hidden;
@@ -924,7 +925,7 @@
       font-size: 12.5px;
       color: #7db3ea;
       font-weight: 500;
-      height: 44px;
+      height: 45px;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -943,7 +944,7 @@
       cursor: pointer;
       font-size: 11px;
       width: 52px;
-      height: 29px;
+      height: 30px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -990,8 +991,8 @@
       background: #333;
       border: 1px solid #555;
       border-radius: 50%;
-      width: 29px;
-      height: 29px;
+      width: 30px;
+      height: 30px;
       color: #e0e0e0;
       cursor: pointer;
       font-size: 18px;
@@ -4397,13 +4398,13 @@
 
       videoContainer.appendChild(video);
       wrapper.appendChild(videoContainer);
-      wrapper.appendChild(closeBtn);
       lightbox.appendChild(wrapper);
+      lightbox.appendChild(closeBtn);
       document.body.appendChild(lightbox);
 
       // Fade main video to 20% so it's not weird seeing it blurred behind
       const mainVideo = document.getElementById('videoPlayer');
-      if (mainVideo) mainVideo.style.opacity = '0.2';
+      if (mainVideo) mainVideo.style.opacity = '0.1';
 
       // Force reflow then add visible class for fade-in animation
       lightbox.offsetHeight;
@@ -6074,7 +6075,7 @@
         // If ruler exists in header, extend playhead up into it
         if (timelineRuler) {
           const rulerRect = timelineRuler.getBoundingClientRect();
-          playhead.style.top = `${rulerRect.top + 32}px`; // Start within ruler area
+          playhead.style.top = `${rulerRect.top + 34}px`; // Start within ruler area
         } else {
           playhead.style.top = `${wrapperRect.top}px`;
         }
@@ -12402,7 +12403,7 @@ ${cleanedScript}
         // Position playhead to extend from ruler down through content
         if (timelineRuler) {
           const rulerRect = timelineRuler.getBoundingClientRect();
-          playhead.style.top = `${rulerRect.top + 32}px`;
+          playhead.style.top = `${rulerRect.top + 34}px`;
         } else {
           playhead.style.top = `${wrapperRect.top}px`;
         }
