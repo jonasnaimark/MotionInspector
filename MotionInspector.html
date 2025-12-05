@@ -267,6 +267,7 @@
     }
 
     .video-section {
+      position: relative;
       background: #000;
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 10px;
@@ -353,6 +354,11 @@
       position: relative;
       z-index: 1;
       overflow: hidden;
+    }
+
+    /* Smooth transition for main video when lightbox opens/closes */
+    .video-section video {
+      transition: opacity 0.25s ease;
     }
 
     .video-overlay {
@@ -446,6 +452,135 @@
     .video-wrapper:has(.video-overlay:hover) .video-fullscreen-btn.edit-mode {
       opacity: 0;
       pointer-events: none;
+    }
+
+    /* Flow video button - top right of video section */
+    /* Flow video button container */
+    .flow-video-controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .flow-video-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: rgba(40, 40, 40, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      z-index: 10;
+    }
+
+    /* When inside controls wrapper, remove standalone positioning */
+    .flow-video-controls .flow-video-btn {
+      position: static;
+    }
+
+    .flow-video-btn:hover {
+      background: rgba(60, 60, 60, 0.95);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .flow-video-trash {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(40, 40, 40, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      font-size: 14px;
+    }
+
+    .flow-video-trash:hover {
+      background: rgba(255, 80, 80, 0.4);
+      border-color: rgba(255, 80, 80, 0.5);
+    }
+
+    /* Flow video lightbox */
+    .flow-lightbox {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 60px;
+      box-sizing: border-box;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .flow-lightbox.visible {
+      opacity: 1;
+    }
+
+    .flow-lightbox-video-wrapper {
+      position: relative;
+      transform: scale(0.96);
+      transition: transform 0.25s ease;
+    }
+
+    .flow-lightbox.visible .flow-lightbox-video-wrapper {
+      transform: scale(1);
+    }
+
+    .flow-lightbox-video-container {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .flow-lightbox video {
+      display: block;
+      max-width: 90vw;
+      max-height: calc(100vh - 120px);
+    }
+
+    .flow-lightbox-close {
+      position: absolute;
+      top: -32px;
+      right: -32px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(60, 60, 60, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+      z-index: 1;
+    }
+
+    .flow-lightbox-close:hover {
+      background: rgba(80, 80, 80, 0.95);
     }
 
     .video-nav-arrow {
@@ -3403,6 +3538,13 @@
         <div class="video-nav-arrow left" id="videoNavLeft" onclick="switchVideo(-1)">‹</div>
         <div class="video-nav-arrow right" id="videoNavRight" onclick="switchVideo(1)">›</div>
         <div class="video-drop-text">Drop to add video</div>
+        <div class="flow-video-controls edit-mode">
+          <div class="flow-video-btn" id="flowVideoBtn" onclick="handleFlowVideoBtnClick(event)">
+            <span id="flowVideoBtnText">Add Flow</span>
+          </div>
+          <button class="flow-video-trash" id="flowVideoTrash" onclick="removeFlowVideo();" style="display: none;">🗑️</button>
+        </div>
+        <input type="file" id="flowVideoInput" accept="video/*" style="display: none;" onchange="handleFlowVideoSelect(event)">
         <div id="videoEmptyState" class="video-empty-state edit-only" onclick="document.getElementById('videoInput').click()">
           <div class="video-empty-state-btn">
             <span>📁</span>
@@ -3683,6 +3825,9 @@
     let nextTabId = 2;
     const MAX_TABS = 6;
     const MAX_VIDEOS_PER_TAB = 2;
+
+    // Flow video - global to entire spec (not per-tab)
+    let flowVideo = null; // { src: base64, file: File }
 
     // Helper functions to get current tab data
     function getCurrentTab() {
@@ -4123,6 +4268,138 @@
       updateVideoOverlayButtons();
 
       syncLegacyVariables();
+    }
+
+    // ===== FLOW VIDEO FUNCTIONS =====
+
+    // Handle click on flow video button
+    function handleFlowVideoBtnClick(event) {
+      if (flowVideo) {
+        // If flow video exists, clicking text opens lightbox (in export mode)
+        // In edit mode, clicking opens file picker to replace
+        document.getElementById('flowVideoInput').click();
+      } else {
+        // No flow video - open file picker to add
+        document.getElementById('flowVideoInput').click();
+      }
+    }
+
+    // Handle flow video file selection
+    function handleFlowVideoSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        flowVideo = {
+          src: e.target.result,
+          file: file
+        };
+        updateFlowVideoButton();
+      };
+      reader.readAsDataURL(file);
+
+      // Reset input so same file can be selected again
+      event.target.value = '';
+    }
+
+    // Remove flow video
+    function removeFlowVideo() {
+      flowVideo = null;
+      updateFlowVideoButton();
+    }
+
+    // Update flow video button state
+    function updateFlowVideoButton() {
+      const btnText = document.getElementById('flowVideoBtnText');
+      const trashBtn = document.getElementById('flowVideoTrash');
+
+      if (flowVideo) {
+        if (btnText) btnText.textContent = 'Replace Flow';
+        if (trashBtn) trashBtn.style.display = 'flex';
+      } else {
+        if (btnText) btnText.textContent = 'Add Flow';
+        if (trashBtn) trashBtn.style.display = 'none';
+      }
+    }
+
+    // Open flow video lightbox
+    function openFlowLightbox() {
+      if (!flowVideo || !flowVideo.src) return;
+
+      // Create lightbox
+      const lightbox = document.createElement('div');
+      lightbox.className = 'flow-lightbox';
+      lightbox.id = 'flowLightbox';
+      lightbox.onclick = function(e) {
+        if (e.target === lightbox) closeFlowLightbox();
+      };
+
+      // Create wrapper for video and close button
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flow-lightbox-video-wrapper';
+
+      // Create video container
+      const videoContainer = document.createElement('div');
+      videoContainer.className = 'flow-lightbox-video-container';
+
+      // Create video
+      const video = document.createElement('video');
+      video.src = flowVideo.src;
+      video.autoplay = true;
+      video.loop = true;
+      video.controls = true;
+      video.playbackRate = 1;
+
+      // Create close button
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'flow-lightbox-close';
+      closeBtn.innerHTML = '×';
+      closeBtn.onclick = closeFlowLightbox;
+
+      videoContainer.appendChild(video);
+      wrapper.appendChild(videoContainer);
+      wrapper.appendChild(closeBtn);
+      lightbox.appendChild(wrapper);
+      document.body.appendChild(lightbox);
+
+      // Fade main video to 20% so it's not weird seeing it blurred behind
+      const mainVideo = document.getElementById('videoPlayer');
+      if (mainVideo) mainVideo.style.opacity = '0.2';
+
+      // Force reflow then add visible class for fade-in animation
+      lightbox.offsetHeight;
+      lightbox.classList.add('visible');
+
+      // Add ESC key listener
+      document.addEventListener('keydown', handleFlowLightboxEsc);
+    }
+
+    // Close flow video lightbox
+    function closeFlowLightbox() {
+      const lightbox = document.getElementById('flowLightbox');
+      if (!lightbox) return;
+
+      // Restore main video opacity
+      const mainVideo = document.getElementById('videoPlayer');
+      if (mainVideo) mainVideo.style.opacity = '1';
+
+      // Remove visible class to trigger fade-out
+      lightbox.classList.remove('visible');
+
+      // Remove after transition completes
+      setTimeout(() => {
+        lightbox.remove();
+      }, 250);
+
+      document.removeEventListener('keydown', handleFlowLightboxEsc);
+    }
+
+    // Handle ESC key for lightbox
+    function handleFlowLightboxEsc(e) {
+      if (e.key === 'Escape') {
+        closeFlowLightbox();
+      }
     }
 
     // Maintain legacy references for backward compatibility
@@ -4797,7 +5074,7 @@
       // Adjust video section padding for landscape videos
       const videoSection = document.querySelector('.video-section');
       if (videoSection) {
-        videoSection.style.padding = isSquareOrWider ? '24px' : '48px';
+        videoSection.style.padding = isSquareOrWider ? '44px' : '68px';
       }
 
       const viewportMaxHeight = Math.max(0, window.innerHeight - 96);
@@ -8202,7 +8479,7 @@
 
     // Get the base HTML template for export (without the export button and JSZip)
     // videoSectionRatio: null = default/minimum, number = user-specified ratio
-    function getExportTemplate(videoFileName, tabsJson, videoSectionRatio = null, compactSpacing = false) {
+    function getExportTemplate(videoFileName, tabsJson, videoSectionRatio = null, compactSpacing = false, flowVideoSrc = null) {
       // Get all the styles from this page
       const styleElement = document.querySelector('style');
       const styles = styleElement ? styleElement.textContent : '';
@@ -8289,6 +8566,9 @@
       <div class="video-section">
         <div class="video-nav-arrow left" id="videoNavLeft" onclick="switchVideo(-1)">‹</div>
         <div class="video-nav-arrow right" id="videoNavRight" onclick="switchVideo(1)">›</div>
+        <div class="flow-video-btn" id="flowVideoBtn" onclick="openFlowLightbox()" style="display: none;">
+          <span>View Flow</span>
+        </div>
         <div id="videoEmptyState" class="video-empty-state edit-only" style="display: none;">
           <div class="video-empty-state-btn">
             <span>📁</span>
@@ -8326,6 +8606,7 @@ ${cleanedScript}
     const EMBEDDED_TABS = ${tabsJson};
     const EXPORT_VIDEO_RATIO = ${videoSectionRatio};
     const EXPORT_COMPACT_SPACING = ${compactSpacing};
+    const EMBEDDED_FLOW_VIDEO = ${flowVideoSrc ? JSON.stringify(flowVideoSrc) : 'null'};
 
     window.addEventListener('DOMContentLoaded', () => {
       // Initialize grid based on exported ratio
@@ -8461,6 +8742,15 @@ ${cleanedScript}
         }
       }
 
+      // Initialize flow video if embedded
+      if (EMBEDDED_FLOW_VIDEO) {
+        flowVideo = { src: EMBEDDED_FLOW_VIDEO };
+        const flowBtn = document.getElementById('flowVideoBtn');
+        if (flowBtn) {
+          flowBtn.style.display = 'flex';
+        }
+      }
+
       renderTimeline();
 
       // Apply compact spacing immediately if it was compact in the editor
@@ -8582,7 +8872,8 @@ ${cleanedScript}
 
         // Generate clean HTML template
         const tabsJson = JSON.stringify(exportTabs);
-        const exportHtml = getExportTemplate('', tabsJson, exportRatio, needsCompactSpacing);
+        const flowVideoSrc = flowVideo ? flowVideo.src : null;
+        const exportHtml = getExportTemplate('', tabsJson, exportRatio, needsCompactSpacing, flowVideoSrc);
 
         // Create download link with spec name
         const specName = tabs[0].specData.compName;
