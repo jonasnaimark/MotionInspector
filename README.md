@@ -1,4 +1,4 @@
-# Motion Inspector
+# Spectrum Editor
 
 A web-based timeline visualization tool for After Effects animation specifications with synchronized video playback.
 
@@ -15,15 +15,17 @@ A web-based timeline visualization tool for After Effects animation specificatio
   - Duration and timing
 - **Property-Specific Colors**: Different animation properties are color-coded for easy identification
 - **Spring Animations**: Special handling for spring-based animations with preset links
+- **Project & Spec Organization**: Header fields for Project name and Spec name with dynamic page title
 
 ## Usage
 
-1. Open `MotionInspector.html` in a modern web browser
+1. Open `SpectrumEditor.html` in a modern web browser
 2. Paste your After Effects animation spec JSON (copied from your motion spec tool)
 3. Optionally upload a reference video to sync with the timeline
 4. Use the playback controls to play, pause, or adjust playback speed
 5. Drag the playhead to scrub through the timeline
 6. Click on any animation bar to view detailed information
+7. Edit the Project and Spec name fields in the header to organize your specs
 
 ## Tech Stack
 
@@ -33,14 +35,14 @@ A web-based timeline visualization tool for After Effects animation specificatio
 
 ## Export
 
-Use the "Export as Standalone HTML" button to create a self-contained HTML file that includes:
+Use the "Export Zip" button to create a self-contained package that includes:
 - The animation spec data
 - Embedded video (if uploaded)
-- All functionality in a single file for easy sharing
+- All functionality in a single HTML file for easy sharing
 
 ## Development
 
-This is a single-file application. All code is contained in `MotionInspector.html`.
+This is a single-file application. All code is contained in `SpectrumEditor.html`.
 
 ## License
 

@@ -1,8 +1,44 @@
 # Changelog
 
-All notable changes to Motion Inspector will be documented in this file.
+All notable changes to Spectrum Editor will be documented in this file.
 
-## [Unreleased] - 2025-11-25
+## [Unreleased] - 2025-12-04
+
+### Added
+- **Project & Spec name fields**: New header layout with two editable text fields
+  - Project field on left with min-width, flexes to content size
+  - SVG chevron separator (60% opacity) between fields
+  - Spec name field takes remaining space on right
+  - Both fields editable in edit mode with same styling as before
+  - 40px gap before timeline/table toggle
+- **Dynamic page title**: Browser tab title updates based on field values
+  - Shows "Spectrum Editor" when both fields are at defaults
+  - Shows "Project: Spec Name" when either field is customized
+  - Updates in real-time as fields are edited
+
+### Changed
+- **Renamed project**: Motion Inspector → Spectrum Editor
+  - HTML file renamed to `SpectrumEditor.html`
+  - Default spec name changed to "Motion Spec"
+  - All references updated throughout codebase
+- **Lightbox close button**: Redesigned to match header circular buttons
+  - Size increased to 40x40px (matches Copy Spec button)
+  - Repositioned to top-right corner (18px top, 40px right)
+  - Styling matches btn-circular with #333 background and #525252 border
+- **Lightbox video dimming**: Main video now dims to 10% (was 20%) when lightbox opens
+- **Flow video button hover**: Made hover effect more subtle
+  - Background changes from rgba(20,20,20) to rgba(35,35,35)
+  - Border opacity changes from 0.15 to 0.25
+- **Description text spacing**: Moved "Add optional description" text down 4px
+  - Applied to both video and timeline description inputs
+- **Table mode empty cells**: Removed dashes from non-applicable rows
+  - "Attached to [parent]" rows now show empty cells for delay/duration/easing
+  - "Fit to shape" rows now show empty cells for delay/duration/easing
+
+### Fixed
+- **Timeline not rendering**: Fixed querySelector('h1') error after changing title to span elements
+
+## [Previous] - 2025-11-25
 
 ### Added
 - **Per-video color system**: Timeline bar colors are now stored independently for each video in a tab
