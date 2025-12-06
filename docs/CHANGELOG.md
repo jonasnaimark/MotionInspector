@@ -2,7 +2,27 @@
 
 All notable changes to Spectrum Editor will be documented in this file.
 
-## [Unreleased] - 2025-12-04
+## [Unreleased] - 2025-12-06
+
+### Added
+- **Dynamic author contact in help tooltips**: Help button (?) now shows author-specific contact
+  - Reads `metadata.author` from JSON spec
+  - Maps author names to Slack DM links (jonas, devon, remington)
+  - Falls back to #motion channel if no author match
+  - Links open in new tab with brighter styling (#7cc4ff) and bold text
+- **Auto-populated project name**: Project field now auto-fills from `metadata.projectName`
+  - URL decodes the name
+  - Removes leading date prefixes (YYMMDD_)
+  - Removes trailing version patterns (- 001, _v01, _01)
+  - Replaces underscores with spaces
+  - Splits CamelCase into separate words
+  - See `docs/ProjectNameRules.md` for full parsing rules
+
+### Changed
+- **Help tooltip styling**: Darker border (#666 → #444) for better visual separation
+- **Help tooltip links**: Brighter color (#4a90e2 → #7cc4ff) and bold (font-weight: 600)
+
+## [Previous] - 2025-12-04
 
 ### Added
 - **Project & Spec name fields**: New header layout with two editable text fields

@@ -1204,7 +1204,7 @@
     .help-tooltip {
       position: fixed;
       background: #2a2a2a;
-      border: 1px solid #666;
+      border: 1px solid #444;
       border-radius: 8px;
       padding: 10px 14px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -1230,8 +1230,9 @@
     .help-tooltip.arrow-left { transform-origin: left center; }
 
     .help-tooltip a {
-      color: #4a90e2;
+      color: #7cc4ff;
       text-decoration: none;
+      font-weight: 600;
     }
 
     .help-tooltip a:hover {
@@ -1244,8 +1245,8 @@
       width: 10px;
       height: 10px;
       background: #2a2a2a;
-      border-left: 1px solid #666;
-      border-top: 1px solid #666;
+      border-left: 1px solid #444;
+      border-top: 1px solid #444;
     }
 
     .help-tooltip.arrow-up::before {
@@ -3934,6 +3935,62 @@
       }
     }
 
+    // Helper function to get contact HTML based on author name
+    function getAuthorContactHtml(author) {
+      if (!author) return 'Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a>';
+
+      const authorLower = author.toLowerCase();
+      let slackUrl = null;
+      let displayName = null;
+
+      if (authorLower.includes('jonas')) {
+        slackUrl = 'https://app.slack.com/client/ETFSVLNMV/D044X3269FA';
+        displayName = 'jonas.naimark@';
+      } else if (authorLower.includes('devon')) {
+        slackUrl = 'https://app.slack.com/client/ETFSVLNMV/D06P7H3FTC3';
+        displayName = 'devon.stern@';
+      } else if (authorLower.includes('remington')) {
+        slackUrl = 'https://app.slack.com/client/ETFSVLNMV/D044H9XKADV';
+        displayName = 'remington.mcelhaney@';
+      }
+
+      if (slackUrl) {
+        return `Questions? Contact <a href="${slackUrl}" target="_blank">${displayName}</a>`;
+      }
+      return 'Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a>';
+    }
+
+    // Helper function to clean project name from JSON metadata
+    function cleanProjectName(name) {
+      if (!name) return null;
+
+      // 1. URL decode
+      let cleaned = decodeURIComponent(name);
+
+      // 2. Remove leading date prefix (YYMMDD_)
+      cleaned = cleaned.replace(/^\d{6}_/, '');
+
+      // 3a. Remove " - ###" and anything after
+      cleaned = cleaned.replace(/\s-\s\d+.*$/, '');
+
+      // 3b. Remove _v## suffix
+      cleaned = cleaned.replace(/_v\d+$/, '');
+
+      // 3c. Remove _## suffix
+      cleaned = cleaned.replace(/_\d+$/, '');
+
+      // 4. Replace underscores with spaces
+      cleaned = cleaned.replace(/_/g, ' ');
+
+      // 5. Split CamelCase into words (insert space before uppercase that follows lowercase)
+      cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+      // 6. Trim and collapse multiple spaces
+      cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+      return cleaned || null;
+    }
+
     // Helper functions to get current tab data
     function getCurrentTab() {
       if (currentTabIndex === -1) return null;
@@ -4770,9 +4827,11 @@
       } else if (specTitle) {
         specTitle.textContent = 'Motion Spec';
       }
-      // Update project title
-      if (projectTitle && tab1Spec && tab1Spec.projectName) {
-        projectTitle.textContent = tab1Spec.projectName;
+      // Update project title from metadata.projectName
+      const rawProjectName = tab1Spec?.metadata?.projectName;
+      const cleanedProjectName = cleanProjectName(rawProjectName);
+      if (projectTitle && cleanedProjectName) {
+        projectTitle.textContent = cleanedProjectName;
       } else if (projectTitle) {
         projectTitle.textContent = 'Project';
       }
@@ -6271,12 +6330,14 @@
           });
         }
         // Update project title only if pasting into Tab 1 (global project)
-        if (projectTitle && data.projectName && currentTabIndex === 0) {
-          projectTitle.textContent = data.projectName;
+        const rawProjectName = data.metadata?.projectName;
+        const cleanedProjectName = cleanProjectName(rawProjectName);
+        if (projectTitle && cleanedProjectName && currentTabIndex === 0) {
+          projectTitle.textContent = cleanedProjectName;
           // Update ALL tabs' projectName to maintain global project
           tabs.forEach(tab => {
             if (tab.specData) {
-              tab.specData.projectName = data.projectName;
+              tab.specData.projectName = cleanedProjectName;
             }
           });
         }
@@ -8675,6 +8736,18 @@
       const styleElement = document.querySelector('style');
       const styles = styleElement ? styleElement.textContent : '';
 
+      // Extract author from first tab's metadata for contact tooltip
+      let authorContactHtml = 'Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a>';
+      try {
+        const tabsData = JSON.parse(tabsJson);
+        const author = tabsData?.[0]?.specData?.metadata?.author;
+        if (author) {
+          authorContactHtml = getAuthorContactHtml(author);
+        }
+      } catch (e) {
+        // Keep default if parsing fails
+      }
+
       // Build custom CSS for the exported file
       // If ratio is null, use default layout (video at minimum width)
       // If ratio is set, preserve the user's chosen split
@@ -8835,9 +8908,11 @@ ${cleanedScript}
       if (specTitle && tab1Spec && tab1Spec.compName) {
         specTitle.textContent = tab1Spec.compName;
       }
-      // Update project title
-      if (projectTitle && tab1Spec && tab1Spec.projectName) {
-        projectTitle.textContent = tab1Spec.projectName;
+      // Update project title from metadata.projectName
+      const exportRawProjectName = tab1Spec?.metadata?.projectName;
+      const exportCleanedProjectName = cleanProjectName(exportRawProjectName);
+      if (projectTitle && exportCleanedProjectName) {
+        projectTitle.textContent = exportCleanedProjectName;
       }
       // Update document title as "Project: Spec Name" or "Spectrum Editor" if defaults
       const project = projectTitle ? projectTitle.textContent.trim() : '';
@@ -8981,7 +9056,7 @@ ${cleanedScript}
   <div id="helpTooltipPlayhead" class="help-tooltip arrow-down-center">Drag playhead to scrub the video</div>
   <div id="helpTooltipViewMode" class="help-tooltip arrow-up-center">Switch between view modes</div>
   <div id="helpTooltipColorBar" class="help-tooltip arrow-up-center">Click to see animation details</div>
-  <div id="helpTooltipSlack" class="help-tooltip arrow-right">Questions? Find us in <a href="https://airbnb.enterprise.slack.com/archives/C0A48KDC0" target="_blank">#motion</a></div>
+  <div id="helpTooltipSlack" class="help-tooltip arrow-right">${authorContactHtml}</div>
 
 </body>
 </html>`;
