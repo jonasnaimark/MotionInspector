@@ -27,6 +27,10 @@ All notable changes to Spectrum Editor will be documented in this file.
   - Added document-level dragover to clear indicators when cursor leaves valid drop zones
   - Dragover handlers now clear all indicators first, then re-add only if position is valid
   - Eliminates phantom indicators when dragging to edges or outside the timeline
+- **Parenting drop zone on layer headers**: Can now drop to parent a layer by hovering anywhere on the section header
+  - Top 10px of header = reorder sections (shows top indicator)
+  - Rest of header = parent to that section (shows bottom indicator)
+  - Fixes inability to drop "above the first param row" for parenting
 
 ## [Previous] - 2025-12-04
 

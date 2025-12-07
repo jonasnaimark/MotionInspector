@@ -7705,7 +7705,20 @@
             isValidDrop = true;
             isDropOnLayerHeader = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
-            isValidDrop = true;
+            // Layer on layer header - could be reorder (top 10px) or parenting (rest of header)
+            const headerRect = label.getBoundingClientRect();
+            const distFromTop = e.clientY - headerRect.top;
+            if (distFromTop <= 10) {
+              // Top 10px = reorder sections
+              isValidDrop = true;
+            } else {
+              // Rest of header = parent to this section
+              const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+              if (targetLayerIndex !== draggedLayerIndex && !wouldCreateCycle) {
+                isValidDrop = true;
+                isParentingDrop = true;
+              }
+            }
           } else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
             // Layer dropped on animation or child-layer row = parenting (supports multi-level)
             // Allow even if dragged layer has children (moves entire subtree)
@@ -7866,10 +7879,18 @@
           const midpoint = rect.top + rect.height / 2;
           const dropPosition = e.clientY < midpoint ? 'before' : 'after';
 
-          // For layer drops on layer headers: only allow drops in top half (before)
+          // For layer drops on layer headers: top 10px = reorder, rest = parenting
           if (draggedType === 'layer' && targetType === 'layer') {
-            if (dropPosition === 'after') return;
-            performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
+            const distFromTop = e.clientY - rect.top;
+            if (distFromTop <= 10) {
+              // Reorder sections
+              performLayerMove(draggedLayerIndex, targetLayerIndex, 'before');
+            } else {
+              // Parent to this section
+              if (targetLayerIndex !== draggedLayerIndex) {
+                convertLayerToChild(draggedLayerIndex, targetLayerIndex);
+              }
+            }
           }
           // For layer drops on animation/child-layer rows: convert to child (parenting)
           else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
@@ -10970,7 +10991,20 @@ ${cleanedScript}
             isValidDrop = true;
             isDropOnLayerHeader = true;
           } else if (draggedType === 'layer' && targetType === 'layer') {
-            isValidDrop = true;
+            // Layer on layer header - could be reorder (top 10px) or parenting (rest of header)
+            const headerRect = label.getBoundingClientRect();
+            const distFromTop = e.clientY - headerRect.top;
+            if (distFromTop <= 10) {
+              // Top 10px = reorder sections
+              isValidDrop = true;
+            } else {
+              // Rest of header = parent to this section
+              const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+              if (targetLayerIndex !== draggedLayerIndex && !wouldCreateCycle) {
+                isValidDrop = true;
+                isParentingDrop = true;
+              }
+            }
           } else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
             // Layer dropped on animation or child-layer row = parenting (supports multi-level)
             // Allow even if dragged layer has children (moves entire subtree)
@@ -11195,14 +11229,18 @@ ${cleanedScript}
           const midpoint = rect.top + rect.height / 2;
           let dropPosition = e.clientY < midpoint ? 'before' : 'after';
 
-          // For layer drops: only allow drops in top half (before)
+          // For layer drops on layer headers: top 10px = reorder, rest = parenting
           if (draggedType === 'layer' && targetType === 'layer') {
-            if (dropPosition === 'after') {
-              // Don't allow drops on bottom half of any section header
-              return;
+            const distFromTop = e.clientY - rect.top;
+            if (distFromTop <= 10) {
+              // Reorder sections
+              performLayerMove(draggedLayerIndex, targetLayerIndex, 'before');
+            } else {
+              // Parent to this section
+              if (targetLayerIndex !== draggedLayerIndex) {
+                convertLayerToChild(draggedLayerIndex, targetLayerIndex);
+              }
             }
-            // Moving a layer
-            performLayerMove(draggedLayerIndex, targetLayerIndex, dropPosition);
           }
           // For layer drops on animation/child-layer rows: convert to child (parenting)
           else if (draggedType === 'layer' && (targetType === 'animation' || targetType === 'child-layer')) {
