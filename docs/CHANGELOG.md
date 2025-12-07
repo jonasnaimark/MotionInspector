@@ -33,6 +33,15 @@ All notable changes to Spectrum Editor will be documented in this file.
   - Fixes inability to drop "above the first param row" for parenting
   - Works for both standalone layers AND child layers being re-parented to different sections
 
+### Refactored
+- **Drag-drop code consolidation**: Eliminated ~400 lines of duplicated code between table and timeline modes
+  - Created shared helper functions: `clearAllDragIndicators()`, `getDragContext()`, `validateDragOver()`, `executeDrop()`
+  - Added `findCorrespondingTimelineTrack()` helper for timeline mode indicator pairing
+  - Main dragover handlers reduced from ~200 lines each to ~25 lines
+  - Drop handlers reduced from ~130 lines each to ~20 lines
+  - Bottom divider handlers now share validation and execution logic
+  - Validation logic centralized in single `validateDragOver()` function covering all 11 drag type combinations
+
 ## [Previous] - 2025-12-04
 
 ### Added
