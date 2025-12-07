@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project - Spectrum Browser</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      overflow-y: scroll;
+    }
+
+    body {
+      font-family: 'Airbnb Cereal VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #141414;
+      color: #ffffff;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .page {
+      padding: 60px 80px;
+      max-width: 1000px;
+      margin: 0 auto;
+      min-height: 100vh;
+      transition: max-width 0.2s ease;
+    }
+
+    .page.two-column-mode {
+      max-width: 1200px;
+    }
+
+    @media (max-width: 700px) {
+      .page {
+        padding: 40px 24px;
+      }
+    }
+
+    .page-header {
+      margin-bottom: 8px;
+    }
+
+    .page-title {
+      font-size: 42px;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+      margin-bottom: 0;
+    }
+
+    .page-description {
+      font-size: 18px;
+      color: #aaa;
+      font-weight: 400;
+      margin-top: -4px;
+      margin-bottom: 20px;
+    }
+
+    .page-subtitle {
+      font-size: 16px;
+      color: #888;
+      font-weight: 400;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      margin-bottom: 32px;
+      background: transparent;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #888;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      text-decoration: none;
+    }
+
+    .back-btn:hover {
+      border-color: #555;
+      color: #fff;
+      background: #1c1c1c;
+    }
+
+    .spec-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .spec-row {
+      display: flex;
+      align-items: center;
+      padding: 20px 24px;
+      background: #212121;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      gap: 16px;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+    }
+
+    .spec-row:hover {
+      background: #292929;
+    }
+
+    .spec-row.dragging {
+      opacity: 0.5;
+    }
+
+    .spec-row.drag-over-top::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4a90e2;
+      border-radius: 1px;
+    }
+
+    .spec-row.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4a90e2;
+      border-radius: 1px;
+    }
+
+    .spec-row:hover .drag-handle {
+      opacity: 1;
+    }
+
+
+    .drag-handle {
+      color: #555;
+      font-size: 12px;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      cursor: grab;
+      padding: 4px;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .drag-handle span {
+      display: block;
+      width: 14px;
+      height: 2px;
+      background: #555;
+      border-radius: 1px;
+    }
+
+    .spec-row:hover .drag-handle {
+      opacity: 1;
+    }
+
+    .drag-handle:hover span {
+      background: #888;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .spec-name {
+      flex: 1;
+      font-size: 17px;
+      font-weight: 400;
+    }
+
+    .spec-meta {
+      font-size: 14px;
+      color: #777;
+      line-height: 1.4;
+      text-align: right;
+    }
+
+    .overflow-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #666;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .overflow-btn:hover {
+      background: #333;
+      color: #fff;
+    }
+
+    /* Dropdown menu */
+    .dropdown-menu {
+      position: absolute;
+      top: 60px;
+      right: 8px;
+      background: #252525;
+      border: 1px solid #3a3a3a;
+      border-radius: 12px;
+      padding: 8px;
+      min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all 0.15s ease;
+    }
+
+    .dropdown-menu.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dropdown-item:hover {
+      background: #333;
+      color: #fff;
+    }
+
+    .dropdown-item.danger {
+      color: #e57373;
+    }
+
+    .dropdown-item.danger:hover {
+      background: #3a2525;
+      color: #ff8a80;
+    }
+
+    .dropdown-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .add-spec-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 24px;
+      margin-top: 8px;
+      background: transparent;
+      border: 1px dashed #333;
+      border-radius: 12px;
+      color: #555;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: 100%;
+      font-family: inherit;
+      text-decoration: none;
+    }
+
+    .add-spec-btn:hover {
+      border-color: #555;
+      color: #888;
+      background: #1a1a1a;
+    }
+
+    .add-spec-btn .plus-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #888;
+      transition: all 0.15s ease;
+    }
+
+    .add-spec-btn:hover .plus-icon {
+      background: #444;
+      color: #fff;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 40px;
+      right: 40px;
+      height: 56px;
+      padding: 0 24px;
+      border-radius: 28px;
+      background: #fff;
+      border: none;
+      color: #141414;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+      text-decoration: none;
+    }
+
+    .fab:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5);
+    }
+
+    .fab:active {
+      transform: scale(0.98);
+    }
+
+    .fab-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .fab-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .column-toggle {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .column-toggle-btn {
+      padding: 8px 16px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: transparent;
+      color: #666;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .column-toggle-btn:hover {
+      border-color: #555;
+      color: #888;
+    }
+
+    .column-toggle-btn.selected {
+      background: #333;
+      border-color: #444;
+      color: #fff;
+    }
+
+    .two-column-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .column-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #888;
+      padding: 8px 0 16px;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .column-title:focus {
+      color: #fff;
+    }
+
+    .spec-list.drag-over-empty {
+      background: rgba(74, 144, 226, 0.1);
+      border-radius: 12px;
+      min-height: 60px;
+    }
+
+    .spec-list[data-column] {
+      min-height: 60px;
+      padding: 4px;
+      margin: -4px;
+      border-radius: 12px;
+      transition: background 0.15s ease;
+    }
+
+    .list-container {
+      position: relative;
+    }
+
+    .add-title-btn {
+      display: flex;
+      align-items: center;
+      padding: 12px 24px;
+      background: transparent;
+      border: 1px dashed #333;
+      border-radius: 12px;
+      color: #555;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: 100%;
+      font-family: inherit;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .list-container:hover .add-title-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .add-title-btn:hover {
+      border-color: #666;
+      color: #bbb;
+    }
+
+    .add-title-btn.top {
+      margin-bottom: 6px;
+    }
+
+    .add-title-btn.bottom {
+      margin-top: 6px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      padding: 20px 24px;
+      background: transparent;
+      border-radius: 12px;
+      cursor: grab;
+      transition: all 0.15s ease;
+      gap: 16px;
+      position: relative;
+    }
+
+    .title-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .title-row.dragging {
+      opacity: 0.5;
+    }
+
+    .title-row.drag-over-top::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4a90e2;
+      border-radius: 1px;
+    }
+
+    .title-row.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4a90e2;
+      border-radius: 1px;
+    }
+
+    .title-row .title-input {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #bbb;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      padding: 0;
+    }
+
+    .title-row .title-input:focus {
+      color: #fff;
+    }
+
+    .title-row .title-input::placeholder {
+      color: #555;
+    }
+
+    .title-row .delete-title-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: #999;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+    }
+
+    .title-row:hover .delete-title-btn {
+      opacity: 1;
+    }
+
+    .title-row .delete-title-btn:hover {
+      background: #333;
+      color: #e57373;
+    }
+
+    .dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .dialog-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .dialog {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+      transform: scale(0.95) translateY(10px);
+      transition: all 0.2s ease;
+    }
+
+    .dialog-overlay.open .dialog {
+      transform: scale(1) translateY(0);
+    }
+
+    .dialog-title {
+      font-size: 24px;
+      font-weight: 500;
+      margin-bottom: 28px;
+      color: #fff;
+    }
+
+    .dialog-field {
+      margin-bottom: 20px;
+    }
+
+    .dialog-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #999;
+      margin-bottom: 8px;
+    }
+
+    .dialog-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: #141414;
+      border: 1px solid #333;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .dialog-input:focus {
+      border-color: #555;
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+      justify-content: flex-end;
+    }
+
+    .dialog-btn {
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      border: none;
+    }
+
+    .dialog-btn.cancel {
+      background: transparent;
+      border: 1px solid #333;
+      color: #999;
+    }
+
+    .dialog-btn.cancel:hover {
+      border-color: #555;
+      color: #fff;
+      background: #252525;
+    }
+
+    .dialog-btn.primary {
+      background: #fff;
+      color: #141414;
+    }
+
+    .dialog-btn.primary:hover {
+      background: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a href="index.html" class="back-btn">
+      <span>←</span> All Projects
+    </a>
+
+    <div class="page-header">
+      <h1 class="page-title" id="projectTitle">PDP Native</h1>
+      <p class="page-description" id="projectDescription">M13: Guest App</p>
+      <div class="column-toggle">
+        <button class="column-toggle-btn selected" onclick="setColumnMode(1)">1 Column</button>
+        <button class="column-toggle-btn" onclick="setColumnMode(2)">2 Columns</button>
+      </div>
+    </div>
+
+    <div id="specContainer">
+      <div class="spec-list" id="specList"></div>
+    </div>
+
+    <a href="spec.html" class="fab">
+      <span class="fab-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="10" y1="4" x2="10" y2="16"/><line x1="4" y1="10" x2="16" y2="10"/></svg></span>
+      <span>Create Spec</span>
+    </a>
+
+    <div class="dialog-overlay" id="renameDialogOverlay" onclick="closeRenameDialog()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <h2 class="dialog-title">Rename Spec</h2>
+        <div class="dialog-field">
+          <label class="dialog-label">Spec name</label>
+          <input type="text" class="dialog-input" id="renameInput">
+        </div>
+        <div class="dialog-actions">
+          <button class="dialog-btn cancel" onclick="closeRenameDialog()">Cancel</button>
+          <button class="dialog-btn primary" onclick="submitRename()">Rename</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const defaultSpecs = [
+      { name: "Explore to PDP", updated: "3 days ago", author: "@jonas" },
+      { name: "P2 to PDP", updated: "5 days ago", author: "@remington" },
+      { name: "P3.5", updated: "1 week ago", author: "@devon" },
+      { name: "Book-it bar & Tips", updated: "1 week ago", author: "@jonas" },
+      { name: "PDP scrolling", updated: "2 weeks ago", author: "@remington" },
+      { name: "Gallery", updated: "2 weeks ago", author: "@jonas" },
+      { name: "Services detail view", updated: "3 weeks ago", author: "@devon" },
+      { name: "Press states", updated: "3 weeks ago", author: "@jonas" },
+      { name: "Cohosts carousel", updated: "1 month ago", author: "@remington" },
+      { name: "Map", updated: "1 month ago", author: "@devon" },
+    ];
+
+    // Load from localStorage or use defaults
+    let specs = JSON.parse(localStorage.getItem('specs')) || [...defaultSpecs];
+    let column1Specs = JSON.parse(localStorage.getItem('column1Specs')) || [];
+    let column2Specs = JSON.parse(localStorage.getItem('column2Specs')) || [];
+
+    function saveToStorage() {
+      localStorage.setItem('specs', JSON.stringify(specs));
+      localStorage.setItem('column1Specs', JSON.stringify(column1Specs));
+      localStorage.setItem('column2Specs', JSON.stringify(column2Specs));
+    }
+
+    // Get project name from URL if provided
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectName = urlParams.get('name') || 'PDP Native';
+    document.getElementById('projectTitle').textContent = projectName;
+
+    // Random description
+    const descriptions = ['M13: Host App', 'M13', 'M13: Guest App', '2025 Host App', 'N8', 'M13: Messages'];
+    document.getElementById('projectDescription').textContent = descriptions[Math.floor(Math.random() * descriptions.length)];
+
+    let draggedRow = null;
+    let draggedColumn = null;
+    let columnMode = parseInt(localStorage.getItem('columnMode')) || 1;
+    let column1Title = localStorage.getItem('column1Title') || '';
+    let column2Title = localStorage.getItem('column2Title') || '';
+
+    // Initialize column arrays when switching to 2-column mode
+    function initializeColumns() {
+      if (column1Specs.length === 0 && column2Specs.length === 0) {
+        const midpoint = Math.ceil(specs.length / 2);
+        column1Specs = specs.slice(0, midpoint);
+        column2Specs = specs.slice(midpoint);
+        saveToStorage();
+      }
+    }
+
+    function setColumnMode(mode) {
+      columnMode = mode;
+      localStorage.setItem('columnMode', mode);
+      document.querySelectorAll('.column-toggle-btn').forEach((btn, i) => {
+        btn.classList.toggle('selected', i + 1 === mode);
+      });
+      document.querySelector('.page').classList.toggle('two-column-mode', mode === 2);
+      if (mode === 2) {
+        initializeColumns();
+      }
+      renderSpecs();
+    }
+
+    function renderTitleRow(item, index, columnId) {
+      return `
+        <div class="title-row" draggable="true" data-index="${index}" data-column="${columnId || ''}" data-type="title">
+          <input type="text" class="title-input" value="${item.name}" placeholder="Section title"
+            onclick="event.stopPropagation()"
+            onchange="updateTitle(${index}, '${columnId || ''}', this.value)">
+          <button class="delete-title-btn" onclick="event.stopPropagation(); deleteItem(${index}, '${columnId || ''}')">×</button>
+        </div>
+      `;
+    }
+
+    function renderSpecRow(spec, index, columnId) {
+      const menuId = columnId ? `menu-${columnId}-${index}` : `menu-${index}`;
+      return `
+        <div class="spec-row" draggable="true" data-index="${index}" data-column="${columnId || ''}" data-type="spec" onclick="navigateToSpec('${encodeURIComponent(spec.name)}')">
+          <span class="spec-name">${spec.name}</span>
+          <span class="spec-meta">${spec.updated}<br>${spec.author}</span>
+          <button class="overflow-btn" onclick="event.preventDefault(); event.stopPropagation(); toggleMenu('${menuId}')">⋯</button>
+          <div class="dropdown-menu" id="${menuId}">
+            <div class="dropdown-item" onclick="event.stopPropagation(); renameSpec(${index}, '${columnId || ''}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Rename
+            </div>
+            <div class="dropdown-item" onclick="event.stopPropagation(); copyLink(${index}, '${columnId || ''}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+              Copy Link
+            </div>
+            <div class="dropdown-item danger" onclick="event.stopPropagation(); deleteItem(${index}, '${columnId || ''}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Delete
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderItem(item, index, columnId) {
+      if (item.type === 'title') {
+        return renderTitleRow(item, index, columnId);
+      }
+      return renderSpecRow(item, index, columnId);
+    }
+
+    function renderSpecs() {
+      const container = document.getElementById('specContainer');
+
+      const hasTopTitle = (arr) => arr.length > 0 && arr[0].type === 'title';
+
+      if (columnMode === 1) {
+        const showTopBtn = !hasTopTitle(specs);
+        container.innerHTML = `
+          <div class="list-container">
+            ${showTopBtn ? '<button class="add-title-btn top" onclick="addTitle(\'top\', \'\')">Add title</button>' : ''}
+            <div class="spec-list" id="specList">${specs.map((item, i) => renderItem(item, i, '')).join('')}</div>
+            <button class="add-title-btn bottom" onclick="addTitle('bottom', '')">Add title</button>
+          </div>
+        `;
+      } else {
+        const showTopBtn1 = !hasTopTitle(column1Specs);
+        const showTopBtn2 = !hasTopTitle(column2Specs);
+        container.innerHTML = `
+          <div class="two-column-layout">
+            <div class="column" data-column="1">
+              <div class="list-container">
+                ${showTopBtn1 ? '<button class="add-title-btn top" onclick="addTitle(\'top\', \'1\')">Add title</button>' : ''}
+                <div class="spec-list" data-column="1">${column1Specs.map((item, i) => renderItem(item, i, '1')).join('')}</div>
+                <button class="add-title-btn bottom" onclick="addTitle('bottom', '1')">Add title</button>
+              </div>
+            </div>
+            <div class="column" data-column="2">
+              <div class="list-container">
+                ${showTopBtn2 ? '<button class="add-title-btn top" onclick="addTitle(\'top\', \'2\')">Add title</button>' : ''}
+                <div class="spec-list" data-column="2">${column2Specs.map((item, i) => renderItem(item, i, '2')).join('')}</div>
+                <button class="add-title-btn bottom" onclick="addTitle('bottom', '2')">Add title</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Add dragover to empty columns
+        document.querySelectorAll('.spec-list[data-column]').forEach(list => {
+          list.addEventListener('dragover', handleColumnDragOver);
+          list.addEventListener('dragleave', handleColumnDragLeave);
+          list.addEventListener('drop', handleColumnDrop);
+        });
+      }
+
+      // Add drag and drop listeners to both spec rows and title rows
+      document.querySelectorAll('.spec-row, .title-row').forEach(row => {
+        row.addEventListener('dragstart', handleDragStart);
+        row.addEventListener('dragend', handleDragEnd);
+        row.addEventListener('dragover', handleDragOver);
+        row.addEventListener('dragleave', handleDragLeave);
+        row.addEventListener('drop', handleDrop);
+      });
+    }
+
+    function navigateToSpec(specName) {
+      window.location.href = `spec.html?project=${encodeURIComponent(projectName)}&spec=${specName}`;
+    }
+
+    function toggleMenu(menuId) {
+      // Close all other menus
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        if (menu.id !== menuId) {
+          menu.classList.remove('open');
+        }
+      });
+
+      const menu = document.getElementById(menuId);
+      if (menu) menu.classList.toggle('open');
+    }
+
+    function getSpecArray(columnId) {
+      if (columnId === '1') return column1Specs;
+      if (columnId === '2') return column2Specs;
+      return specs;
+    }
+
+    let renameTarget = null;
+
+    function renameSpec(index, columnId) {
+      renameTarget = { index, columnId };
+      const arr = getSpecArray(columnId);
+      const spec = arr[index];
+      document.getElementById('renameInput').value = spec.name;
+      document.getElementById('renameDialogOverlay').classList.add('open');
+      setTimeout(() => document.getElementById('renameInput').focus(), 100);
+      closeAllMenus();
+    }
+
+    function closeRenameDialog() {
+      document.getElementById('renameDialogOverlay').classList.remove('open');
+      renameTarget = null;
+    }
+
+    function submitRename() {
+      if (renameTarget) {
+        const arr = getSpecArray(renameTarget.columnId);
+        const newName = document.getElementById('renameInput').value.trim();
+        if (newName) {
+          arr[renameTarget.index].name = newName;
+          saveToStorage();
+          renderSpecs();
+        }
+      }
+      closeRenameDialog();
+    }
+
+    // Close dialog on Escape key, submit on Enter
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeRenameDialog();
+      }
+      if (e.key === 'Enter' && renameTarget) {
+        submitRename();
+      }
+    });
+
+    function copyLink(index, columnId) {
+      const arr = getSpecArray(columnId);
+      const spec = arr[index];
+      const url = `${window.location.origin}/spec.html?project=${encodeURIComponent(projectName)}&spec=${encodeURIComponent(spec.name)}`;
+      navigator.clipboard.writeText(url);
+      closeAllMenus();
+    }
+
+    function deleteSpec(index, columnId) {
+      const arr = getSpecArray(columnId);
+      const spec = arr[index];
+      if (confirm(`Delete "${spec.name}"?`)) {
+        arr.splice(index, 1);
+        renderSpecs();
+        updateSpecCount();
+      }
+      closeAllMenus();
+    }
+
+    function addTitle(position, columnId) {
+      const arr = getSpecArray(columnId);
+      const newTitle = { type: 'title', name: '' };
+      if (position === 'top') {
+        arr.unshift(newTitle);
+      } else {
+        arr.push(newTitle);
+      }
+      saveToStorage();
+      renderSpecs();
+      // Focus the new input
+      const inputs = document.querySelectorAll('.title-input');
+      if (position === 'top') {
+        inputs[0]?.focus();
+      } else {
+        inputs[inputs.length - 1]?.focus();
+      }
+    }
+
+    function updateTitle(index, columnId, value) {
+      const arr = getSpecArray(columnId);
+      arr[index].name = value;
+      saveToStorage();
+    }
+
+    function deleteItem(index, columnId) {
+      const arr = getSpecArray(columnId);
+      const item = arr[index];
+      if (item.type === 'title' || confirm(`Delete "${item.name}"?`)) {
+        arr.splice(index, 1);
+        saveToStorage();
+        renderSpecs();
+        updateSpecCount();
+      }
+      closeAllMenus();
+    }
+
+    function updateSpecCount() {
+      const countSpecs = (arr) => arr.filter(item => item.type !== 'title').length;
+      const totalSpecs = columnMode === 2
+        ? countSpecs(column1Specs) + countSpecs(column2Specs)
+        : countSpecs(specs);
+      document.getElementById('projectMeta').textContent = `${totalSpecs} Motion specs · Updated 1 week ago`;
+    }
+
+    function closeAllMenus() {
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.remove('open');
+      });
+    }
+
+    // Close menus when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.overflow-btn') && !e.target.closest('.dropdown-menu')) {
+        closeAllMenus();
+      }
+    });
+
+    // Drag and drop handlers
+    function handleDragStart(e) {
+      draggedRow = this;
+      draggedColumn = this.dataset.column || null;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragEnd(e) {
+      this.classList.remove('dragging');
+      document.querySelectorAll('.spec-row, .title-row').forEach(row => {
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      document.querySelectorAll('.spec-list').forEach(list => {
+        list.classList.remove('drag-over-empty');
+      });
+      draggedRow = null;
+      draggedColumn = null;
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (this !== draggedRow) {
+        const rect = this.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+
+        this.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (e.clientY < midpoint) {
+          this.classList.add('drag-over-top');
+        } else {
+          this.classList.add('drag-over-bottom');
+        }
+      }
+    }
+
+    function handleDragLeave(e) {
+      this.classList.remove('drag-over-top', 'drag-over-bottom');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      const isTop = this.classList.contains('drag-over-top');
+      this.classList.remove('drag-over-top', 'drag-over-bottom');
+
+      if (draggedRow && this !== draggedRow) {
+        const fromIndex = parseInt(draggedRow.dataset.index);
+        let toIndex = parseInt(this.dataset.index);
+        const targetColumn = this.dataset.column || null;
+
+        // Get source and target arrays
+        const sourceArray = getSpecArray(draggedColumn);
+        const targetArray = getSpecArray(targetColumn);
+
+        // Cross-column move
+        if (draggedColumn !== targetColumn && columnMode === 2) {
+          // Remove from source
+          const [moved] = sourceArray.splice(fromIndex, 1);
+
+          // Adjust target index based on drop position
+          if (!isTop) {
+            toIndex++;
+          }
+
+          // Add to target
+          targetArray.splice(toIndex, 0, moved);
+        } else {
+          // Same column/list reorder
+          // Adjust index based on drop position
+          if (fromIndex < toIndex && isTop) {
+            toIndex--;
+          } else if (fromIndex > toIndex && !isTop) {
+            toIndex++;
+          }
+
+          // Reorder array
+          const [moved] = sourceArray.splice(fromIndex, 1);
+          sourceArray.splice(toIndex, 0, moved);
+        }
+
+        saveToStorage();
+        renderSpecs();
+      }
+    }
+
+    // Column-level drag handlers for dropping into empty columns
+    function handleColumnDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      // Only show drop indicator on empty list or when dragging over the list itself
+      if (this.children.length === 0 || e.target === this) {
+        this.classList.add('drag-over-empty');
+      }
+    }
+
+    function handleColumnDragLeave(e) {
+      this.classList.remove('drag-over-empty');
+    }
+
+    function handleColumnDrop(e) {
+      e.preventDefault();
+      this.classList.remove('drag-over-empty');
+
+      if (draggedRow) {
+        const fromIndex = parseInt(draggedRow.dataset.index);
+        const targetColumn = this.dataset.column;
+
+        // Only process if dropping directly on the list (not on a row)
+        if (e.target === this || e.target.classList.contains('spec-list')) {
+          const sourceArray = getSpecArray(draggedColumn);
+          const targetArray = getSpecArray(targetColumn);
+
+          // Remove from source
+          const [moved] = sourceArray.splice(fromIndex, 1);
+
+          // Add to end of target
+          targetArray.push(moved);
+
+          saveToStorage();
+          renderSpecs();
+        }
+      }
+    }
+
+    // Initial render with saved column mode
+    setColumnMode(columnMode);
+  </script>
+</body>
+</html>

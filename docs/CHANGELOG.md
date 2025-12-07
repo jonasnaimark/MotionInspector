@@ -22,6 +22,12 @@ All notable changes to Spectrum Editor will be documented in this file.
 - **Help tooltip styling**: Darker border (#666 → #444) for better visual separation
 - **Help tooltip links**: Brighter color (#4a90e2 → #7cc4ff) and bold (font-weight: 600)
 
+### Fixed
+- **Drag-drop indicator accuracy**: Blue drop line now only shows when drop would actually work
+  - Added document-level dragover to clear indicators when cursor leaves valid drop zones
+  - Dragover handlers now clear all indicators first, then re-add only if position is valid
+  - Eliminates phantom indicators when dragging to edges or outside the timeline
+
 ## [Previous] - 2025-12-04
 
 ### Added
