@@ -31,6 +31,7 @@ All notable changes to Spectrum Editor will be documented in this file.
   - Top 10px of header = reorder sections (shows top indicator)
   - Rest of header = parent to that section (shows bottom indicator)
   - Fixes inability to drop "above the first param row" for parenting
+  - Works for both standalone layers AND child layers being re-parented to different sections
 
 ## [Previous] - 2025-12-04
 

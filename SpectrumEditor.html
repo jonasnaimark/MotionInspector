@@ -7745,9 +7745,21 @@
               }
             }
           } else if (draggedType === 'child-layer' && targetType === 'layer') {
-            // Child dropped on layer header = un-parenting
-            isValidDrop = true;
-            isUnparentingDrop = true;
+            // Child on layer header - could be un-parenting (top 10px) or re-parenting (rest)
+            const headerRect = label.getBoundingClientRect();
+            const distFromTop = e.clientY - headerRect.top;
+            if (distFromTop <= 10) {
+              // Top 10px = un-parent (become standalone)
+              isValidDrop = true;
+              isUnparentingDrop = true;
+            } else {
+              // Rest of header = re-parent to this section
+              const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+              if (targetLayerIndex !== draggedLayerIndex && !wouldCreateCycle) {
+                isValidDrop = true;
+                isParentingDrop = true;
+              }
+            }
           } else if (draggedType === 'child-layer' && targetType === 'animation') {
             // Child layer dropped on animation row - parent to that layer (allows moving subtrees)
             const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
@@ -7910,9 +7922,18 @@
             // Allows moving entire subtrees
             convertLayerToChild(draggedLayerIndex, targetLayerIndex);
           }
-          // For child-layer drops on layer headers: convert to standalone (un-parenting)
+          // For child-layer drops on layer headers: top 10px = un-parent, rest = re-parent
           else if (draggedType === 'child-layer' && targetType === 'layer') {
-            convertChildToStandalone(draggedLayerIndex, targetLayerIndex, 'before');
+            const distFromTop = e.clientY - rect.top;
+            if (distFromTop <= 10) {
+              // Un-parent (become standalone)
+              convertChildToStandalone(draggedLayerIndex, targetLayerIndex, 'before');
+            } else {
+              // Re-parent to this section
+              if (targetLayerIndex !== draggedLayerIndex) {
+                convertLayerToChild(draggedLayerIndex, targetLayerIndex);
+              }
+            }
           }
           // For dropping animations on layer headers
           else if (draggedType === 'animation' && targetType === 'layer') {
@@ -11031,9 +11052,21 @@ ${cleanedScript}
               }
             }
           } else if (draggedType === 'child-layer' && targetType === 'layer') {
-            // Child dropped on layer header = un-parenting
-            isValidDrop = true;
-            isUnparentingDrop = true;
+            // Child on layer header - could be un-parenting (top 10px) or re-parenting (rest)
+            const headerRect = label.getBoundingClientRect();
+            const distFromTop = e.clientY - headerRect.top;
+            if (distFromTop <= 10) {
+              // Top 10px = un-parent (become standalone)
+              isValidDrop = true;
+              isUnparentingDrop = true;
+            } else {
+              // Rest of header = re-parent to this section
+              const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
+              if (targetLayerIndex !== draggedLayerIndex && !wouldCreateCycle) {
+                isValidDrop = true;
+                isParentingDrop = true;
+              }
+            }
           } else if (draggedType === 'child-layer' && targetType === 'animation') {
             // Child layer dropped on animation row - parent to that layer (allows moving subtrees)
             const wouldCreateCycle = isDescendantOf(targetLayerIndex, draggedLayerIndex);
@@ -11249,9 +11282,18 @@ ${cleanedScript}
             const targetParentIndex = targetLayerIndex;
             convertLayerToChild(draggedLayerIndex, targetParentIndex);
           }
-          // For child-layer drops on layer headers: convert to standalone (un-parenting)
+          // For child-layer drops on layer headers: top 10px = un-parent, rest = re-parent
           else if (draggedType === 'child-layer' && targetType === 'layer') {
-            convertChildToStandalone(draggedLayerIndex, targetLayerIndex, 'before');
+            const distFromTop = e.clientY - rect.top;
+            if (distFromTop <= 10) {
+              // Un-parent (become standalone)
+              convertChildToStandalone(draggedLayerIndex, targetLayerIndex, 'before');
+            } else {
+              // Re-parent to this section
+              if (targetLayerIndex !== draggedLayerIndex) {
+                convertLayerToChild(draggedLayerIndex, targetLayerIndex);
+              }
+            }
           }
           // For dropping animations on layer headers (empty sections or add to top)
           else if (draggedType === 'animation' && targetType === 'layer') {
